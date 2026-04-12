@@ -186,7 +186,7 @@ const LiveNowPlayingItem = React.memo(
               &nbsp;-&nbsp;{nowPlayingEntry.title}
             </div>
           }
-          secondary={`${nowPlayingEntry.username}${nowPlayingEntry.playerName ? ` (${nowPlayingEntry.playerName})` : ''} • ${translate('nowPlaying.minutesAgo', { smart_count: nowPlayingEntry.minutesAgo })}`}
+          secondary={`${nowPlayingEntry.username}${nowPlayingEntry.playerName ? ` (${nowPlayingEntry.playerName})` : ''} • ${translate('nowPlaying.minutesAgo', { smart_count: nowPlayingEntry.minutesAgo })}${nowPlayingEntry.libraryName ? ` • ${nowPlayingEntry.libraryName}` : ''}`}
         />
         <Tooltip title={translate('nowPlaying.tuneIn')}>
           <IconButton
@@ -264,6 +264,7 @@ const RecentItem = React.memo(({ entry, onLinkClick, getArtistLink, onPlay }) =>
           <>
             <span className={classes.usernameChip}>{entry.username}</span>
             &bull; {timeAgo()}
+            {entry.libraryName ? ` • ${entry.libraryName}` : ''}
           </>
         }
       />

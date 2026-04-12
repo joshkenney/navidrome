@@ -362,6 +362,7 @@ type NowPlayingEntry struct {
 	PlayerId        int32  `xml:"playerId,attr"                        json:"playerId"`
 	PlayerName      string `xml:"playerName,attr"                      json:"playerName,omitempty"`
 	CurrentPosition int    `xml:"currentPosition,attr,omitempty"       json:"currentPosition,omitempty"`
+	LibraryName     string `xml:"libraryName,attr,omitempty"           json:"libraryName,omitempty"`
 }
 
 type NowPlaying struct {

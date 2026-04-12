@@ -23,6 +23,8 @@ type activityEntry struct {
 	AlbumArtistID  string    `json:"albumArtistId"`
 	Duration       float32   `json:"duration"`
 	UpdatedAt      time.Time `json:"updatedAt"`
+	LibraryID      int       `json:"libraryId"`
+	LibraryName    string    `json:"libraryName,omitempty"`
 }
 
 func (api *Router) addActivityRoute(r chi.Router) {
@@ -55,6 +57,8 @@ func (api *Router) getRecentActivity(w http.ResponseWriter, r *http.Request) {
 			AlbumArtistID:  e.MediaFile.AlbumArtistID,
 			Duration:       e.MediaFile.Duration,
 			UpdatedAt:      e.MediaFile.UpdatedAt,
+			LibraryID:      e.MediaFile.LibraryID,
+			LibraryName:    e.MediaFile.LibraryName,
 		}
 	}
 

@@ -47,6 +47,8 @@ type dbScrobbleEntry struct {
 	AlbumArtistID  string    `db:"album_artist_id"`
 	Duration       float32   `db:"duration"`
 	UpdatedAt      time.Time `db:"updated_at"`
+	LibraryID      int       `db:"library_id"`
+	LibraryName    string    `db:"library_name"`
 }
 
 func (r *scrobbleRepository) GetRecentAll(limit int) ([]model.ListenEntry, error) {
@@ -55,9 +57,11 @@ func (r *scrobbleRepository) GetRecentAll(limit int) ([]model.ListenEntry, error
 		"mf.id AS media_file_id", "mf.title", "mf.artist", "mf.album",
 		"mf.album_id", "mf.artist_id", "mf.album_artist_id",
 		"mf.duration", "mf.updated_at",
+		"mf.library_id", "l.name AS library_name",
 	).From("scrobbles s").
 		Join("user u ON u.id = s.user_id").
 		Join("media_file mf ON mf.id = s.media_file_id").
+		Join("library l ON l.id = mf.library_id").
 		Where(Eq{"u.share_activity": true}).
 		OrderBy("s.submission_time DESC").
 		Limit(uint64(limit))
@@ -83,6 +87,8 @@ func (r *scrobbleRepository) GetRecentAll(limit int) ([]model.ListenEntry, error
 				AlbumArtistID: e.AlbumArtistID,
 				Duration:      e.Duration,
 				UpdatedAt:     e.UpdatedAt,
+				LibraryID:     e.LibraryID,
+				LibraryName:   e.LibraryName,
 			},
 		}
 	}), nil

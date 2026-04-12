@@ -208,6 +208,16 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 		return nil, err
 	}
 
+	libs, err := api.ds.Library(ctx).GetAll()
+	if err != nil {
+		log.Error(r, "Error retrieving libraries for now playing", err)
+		return nil, err
+	}
+	libNames := make(map[int]string, len(libs))
+	for _, lib := range libs {
+		libNames[lib.ID] = lib.Name
+	}
+
 	response := newResponse()
 	response.NowPlaying = &responses.NowPlaying{}
 	var i int32
@@ -228,6 +238,7 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 			PlayerId:        i,
 			PlayerName:      np.PlayerName,
 			CurrentPosition: currentPosition,
+			LibraryName:     libNames[np.MediaFile.LibraryID],
 		})
 	}
 	return response, nil
