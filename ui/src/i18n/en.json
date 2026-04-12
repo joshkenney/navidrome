@@ -587,6 +587,8 @@
     "listenBrainzLinkFailure": "ListenBrainz could not be linked: %{error}",
     "listenBrainzUnlinkSuccess": "ListenBrainz unlinked and scrobbling disabled",
     "listenBrainzUnlinkFailure": "ListenBrainz could not be unlinked",
+    "activitySharingEnabled": "Listening activity is now visible to others",
+    "activitySharingDisabled": "Listening activity is now private",
     "openIn": {
       "lastfm": "Open in Last.fm",
       "musicbrainz": "Open in MusicBrainz"
@@ -622,6 +624,7 @@
         "lastfmNotConfigured": "Last.fm API-Key is not configured",
         "lastfmScrobbling": "Scrobble to Last.fm",
         "listenBrainzScrobbling": "Scrobble to ListenBrainz",
+        "activitySharing": "Share my listening activity",
         "replaygain": "ReplayGain Mode",
         "preAmp": "ReplayGain PreAmp (dB)",
         "gain": {
@@ -704,7 +707,12 @@
   "nowPlaying": {
     "title": "Now Playing",
     "empty": "Nothing playing",
-    "minutesAgo": "%{smart_count} minute ago |||| %{smart_count} minutes ago"
+    "minutesAgo": "%{smart_count} minute ago |||| %{smart_count} minutes ago",
+    "tuneIn": "Tune In (radio sync)",
+    "play": "Play this track",
+    "tabLive": "Live",
+    "tabRecent": "Recent",
+    "recentEmpty": "No recent listens"
   },
   "help": {
     "title": "Navidrome Hotkeys",

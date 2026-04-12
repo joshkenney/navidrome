@@ -32,13 +32,17 @@ const pad = (value) => {
   }
 }
 
-const makeMusicSrc = (trackId) =>
-  decisionService.getProfile()
+const makeMusicSrc = (trackId, startOffset) => {
+  if (startOffset > 0) {
+    return subsonic.streamUrl(trackId, { timeOffset: startOffset })
+  }
+  return decisionService.getProfile()
     ? () =>
         decisionService
           .resolveStreamUrl(trackId)
           .catch(() => subsonic.streamUrl(trackId))
     : subsonic.streamUrl(trackId)
+}
 
 const mapToAudioLists = (item) => {
   // If item comes from a playlist, trackId is mediaFileId
@@ -86,7 +90,7 @@ const mapToAudioLists = (item) => {
     lyric: lyricText,
     singer: item.artist,
     duration: item.duration,
-    musicSrc: makeMusicSrc(trackId),
+    musicSrc: makeMusicSrc(trackId, item.startOffset),
     cover: subsonic.getCoverArtUrl(
       {
         id: trackId,

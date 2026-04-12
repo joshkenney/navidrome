@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/navidrome/navidrome/core/scrobbler"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/server/subsonic/filter"
@@ -212,15 +211,25 @@ func (api *Router) GetNowPlaying(r *http.Request) (*responses.Subsonic, error) {
 	response := newResponse()
 	response.NowPlaying = &responses.NowPlaying{}
 	var i int32
-	response.NowPlaying.Entry = slice.Map(npInfo, func(np scrobbler.NowPlayingInfo) responses.NowPlayingEntry {
-		return responses.NowPlayingEntry{
-			Child:      childFromMediaFile(ctx, np.MediaFile),
-			UserName:   np.Username,
-			MinutesAgo: int32(time.Since(np.Start).Minutes()),
-			PlayerId:   i + 1, // Fake numeric playerId, it does not seem to be used for anything
-			PlayerName: np.PlayerName,
+	for _, np := range npInfo {
+		u, err := api.ds.User(ctx).FindByUsername(np.Username)
+		if err != nil || !u.ShareActivity {
+			continue
 		}
-	})
+		currentPosition := np.Position + int(time.Since(np.Start).Seconds())
+		if float32(currentPosition) > np.MediaFile.Duration {
+			currentPosition = int(np.MediaFile.Duration)
+		}
+		i++
+		response.NowPlaying.Entry = append(response.NowPlaying.Entry, responses.NowPlayingEntry{
+			Child:           childFromMediaFile(ctx, np.MediaFile),
+			UserName:        np.Username,
+			MinutesAgo:      int32(time.Since(np.Start).Minutes()),
+			PlayerId:        i,
+			PlayerName:      np.PlayerName,
+			CurrentPosition: currentPosition,
+		})
+	}
 	return response, nil
 }
 

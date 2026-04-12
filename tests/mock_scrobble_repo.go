@@ -22,3 +22,7 @@ func (m *MockScrobbleRepo) RecordScrobble(fileID string, submissionTime time.Tim
 	})
 	return nil
 }
+
+func (m *MockScrobbleRepo) GetRecentAll(_ int) ([]model.ListenEntry, error) {
+	return nil, nil
+}

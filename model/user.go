@@ -12,8 +12,9 @@ type User struct {
 	IsAdmin      bool       `structs:"is_admin" json:"isAdmin"`
 	LastLoginAt  *time.Time `structs:"last_login_at" json:"lastLoginAt"`
 	LastAccessAt *time.Time `structs:"last_access_at" json:"lastAccessAt"`
-	CreatedAt    time.Time  `structs:"created_at" json:"createdAt"`
-	UpdatedAt    time.Time  `structs:"updated_at" json:"updatedAt"`
+	CreatedAt     time.Time  `structs:"created_at" json:"createdAt"`
+	UpdatedAt     time.Time  `structs:"updated_at" json:"updatedAt"`
+	ShareActivity bool       `structs:"share_activity" json:"shareActivity"`
 
 	// Library associations (many-to-many relationship)
 	Libraries Libraries `structs:"-" json:"libraries,omitempty"`

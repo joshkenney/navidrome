@@ -240,7 +240,7 @@ func (r *userRepository) EntityName() string {
 }
 
 func (r *userRepository) NewInstance() any {
-	return &model.User{}
+	return &model.User{ShareActivity: true}
 }
 
 func (r *userRepository) Save(entity any) (string, error) {
