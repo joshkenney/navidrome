@@ -17,6 +17,7 @@ import radio from './radio'
 import share from './share'
 import library from './library'
 import plugin from './plugin'
+import folder from './folder'
 import { Player } from './audioplayer'
 import customRoutes from './routes'
 import {
@@ -150,6 +151,7 @@ const Admin = (props) => {
           />
         ) : null,
 
+        <Resource name="folder" {...folder} />,
         <Resource name="translation" />,
         <Resource name="genre" />,
         <Resource name="tag" />,

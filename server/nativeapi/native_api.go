@@ -67,6 +67,7 @@ func (api *Router) routes() http.Handler {
 		api.RX(r, "/user", api.users.NewRepository, true)
 		api.R(r, "/song", model.MediaFile{}, false)
 		api.R(r, "/album", model.Album{}, false)
+		api.R(r, "/folder", model.Folder{}, false)
 		api.addArtistRoute(r)
 		api.R(r, "/genre", model.Genre{}, false)
 		api.R(r, "/player", model.Player{}, true)

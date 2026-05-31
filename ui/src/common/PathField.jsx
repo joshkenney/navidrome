@@ -1,11 +1,15 @@
 import PropTypes from 'prop-types'
 import React from 'react'
-import { usePermissions, useRecordContext } from 'react-admin'
+import { usePermissions, useRecordContext, useRedirect } from 'react-admin'
+import IconButton from '@material-ui/core/IconButton'
+import Tooltip from '@material-ui/core/Tooltip'
+import FolderOpenIcon from '@material-ui/icons/FolderOpen'
 import config from '../config'
 
 export const PathField = (props) => {
   const record = useRecordContext(props)
   const { permissions } = usePermissions()
+  const redirect = useRedirect()
   let path = permissions === 'admin' ? record.libraryPath : ''
 
   if (path && path.endsWith(config.separator)) {
@@ -14,7 +18,22 @@ export const PathField = (props) => {
     path = path ? `${path}${config.separator}${record.path}` : record.path
   }
 
-  return <span>{path}</span>
+  const handleBrowse = () => {
+    redirect('show', '/folder', record.folderId)
+  }
+
+  return (
+    <span>
+      {path}
+      {record.folderId && (
+        <Tooltip title="Browse folder">
+          <IconButton size="small" onClick={handleBrowse} style={{ marginLeft: 4 }}>
+            <FolderOpenIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      )}
+    </span>
+  )
 }
 
 PathField.propTypes = {

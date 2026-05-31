@@ -69,7 +69,8 @@ const mapResource = (resource, params) => {
     case 'album':
     case 'song':
     case 'artist':
-    case 'tag': {
+    case 'tag':
+    case 'folder': {
       params.filter = params.filter || {}
       if (!isAdmin()) {
         params.filter.missing = false

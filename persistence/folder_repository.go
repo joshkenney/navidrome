@@ -13,6 +13,7 @@ import (
 	"time"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/deluan/rest"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
@@ -62,6 +63,7 @@ func newFolderRepository(ctx context.Context, db dbx.Builder) model.FolderReposi
 	r.ctx = ctx
 	r.db = db
 	r.tableName = "folder"
+	r.registerModel(model.Folder{}, map[string]filterFunc{})
 	return r
 }
 
@@ -258,4 +260,21 @@ func (r folderRepository) purgeEmpty(libraryIDs ...int) error {
 	return nil
 }
 
+func (r folderRepository) Count(options ...rest.QueryOptions) (int64, error) {
+	return r.CountAll(r.parseRestOptions(r.ctx, options...))
+}
+
+func (r folderRepository) Read(id string) (any, error) {
+	return r.Get(id)
+}
+
+func (r folderRepository) ReadAll(options ...rest.QueryOptions) (any, error) {
+	return r.GetAll(r.parseRestOptions(r.ctx, options...))
+}
+
+func (r folderRepository) EntityName() string { return "folder" }
+
+func (r folderRepository) NewInstance() any { return &model.Folder{} }
+
 var _ model.FolderRepository = (*folderRepository)(nil)
+var _ model.ResourceRepository = (*folderRepository)(nil)
