@@ -18,20 +18,32 @@ export const PathField = (props) => {
     path = path ? `${path}${config.separator}${record.path}` : record.path
   }
 
+  const hasFolderId = !!record.folderId
+  const tooltipTitle = hasFolderId
+    ? 'Browse folder'
+    : 'Run a library scan to enable folder browsing'
+
   const handleBrowse = () => {
-    redirect('show', '/folder', record.folderId)
+    if (hasFolderId) {
+      redirect('show', '/folder', record.folderId)
+    }
   }
 
   return (
     <span>
       {path}
-      {record.folderId && (
-        <Tooltip title="Browse folder">
-          <IconButton size="small" onClick={handleBrowse} style={{ marginLeft: 4 }}>
+      <Tooltip title={tooltipTitle}>
+        <span>
+          <IconButton
+            size="small"
+            onClick={handleBrowse}
+            disabled={!hasFolderId}
+            style={{ marginLeft: 4 }}
+          >
             <FolderOpenIcon fontSize="small" />
           </IconButton>
-        </Tooltip>
-      )}
+        </span>
+      </Tooltip>
     </span>
   )
 }
