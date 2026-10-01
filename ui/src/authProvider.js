@@ -49,6 +49,8 @@ const authProvider = {
         storeAuthenticationInfo(response)
         // Avoid "going to create admin" dialog after logout/login without a refresh
         config.firstTime = false
+        // Show the community welcome dialog once after this login
+        localStorage.setItem('show-welcome', 'true')
         removeHomeCache()
         return response
       })
