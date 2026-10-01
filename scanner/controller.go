@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	ErrAlreadyScanning = errors.New("already scanning")
+	ErrAlreadyScanning = model.ErrAlreadyScanning
 )
 
 func New(rootCtx context.Context, ds model.DataStore, cw artwork.CacheWarmer, broker events.Broker,

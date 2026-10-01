@@ -1,6 +1,8 @@
 package core_test
 
 import (
+	"time"
+
 	"context"
 	"errors"
 	"net/http"
@@ -619,12 +621,53 @@ var _ = Describe("Library Service", func() {
 
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
-				return scanner.GetScanAllCallCount()
+				return scanner.GetScanFoldersCallCount()
 			}, "1s", "10ms").Should(Equal(1))
 
-			// Verify scan was called with correct parameters
-			calls := scanner.GetScanAllCalls()
-			Expect(calls[0].FullScan).To(BeFalse()) // Should be quick scan
+			// Verify only the new library was scanned, with a quick scan
+			calls := scanner.GetScanFoldersCalls()
+			Expect(calls[0].FullScan).To(BeFalse())
+			Expect(calls[0].Targets).To(Equal([]model.ScanTarget{{LibraryID: 1}}))
+			Expect(scanner.GetScanAllCallCount()).To(Equal(0))
+		})
+
+		It("retries the scan for a new library when another scan is running", func() {
+			DeferCleanup(func(interval time.Duration) { core.ScanRetryInterval = interval }, core.ScanRetryInterval)
+			core.ScanRetryInterval = 10 * time.Millisecond
+			scanner.SetScanErrors(model.ErrAlreadyScanning)
+			scanner.SetScanning(false)
+
+			library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
+			_, err := repo.Save(library)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() int {
+				return scanner.GetScanFoldersCallCount()
+			}, "1s", "10ms").Should(Equal(2))
+			Expect(scanner.GetScanFoldersCalls()[1].Targets).To(Equal([]model.ScanTarget{{LibraryID: 1}}))
+		})
+
+		It("waits for the running scan to finish before retrying", func() {
+			DeferCleanup(func(interval time.Duration) { core.ScanRetryInterval = interval }, core.ScanRetryInterval)
+			core.ScanRetryInterval = 10 * time.Millisecond
+			scanner.SetScanErrors(model.ErrAlreadyScanning)
+			scanner.SetScanning(true)
+
+			library := &model.Library{ID: 1, Name: "New Library", Path: tempDir}
+			_, err := repo.Save(library)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() int {
+				return scanner.GetScanFoldersCallCount()
+			}, "1s", "10ms").Should(Equal(1))
+			Consistently(func() int {
+				return scanner.GetScanFoldersCallCount()
+			}, "100ms", "10ms").Should(Equal(1))
+
+			scanner.SetScanning(false)
+			Eventually(func() int {
+				return scanner.GetScanFoldersCallCount()
+			}, "1s", "10ms").Should(Equal(2))
 		})
 
 		It("triggers scan when updating library path", func() {
@@ -645,12 +688,13 @@ var _ = Describe("Library Service", func() {
 
 			// Wait briefly for the goroutine to complete
 			Eventually(func() int {
-				return scanner.GetScanAllCallCount()
+				return scanner.GetScanFoldersCallCount()
 			}, "1s", "10ms").Should(Equal(1))
 
-			// Verify scan was called with correct parameters
-			calls := scanner.GetScanAllCalls()
-			Expect(calls[0].FullScan).To(BeFalse()) // Should be quick scan
+			// Verify only the updated library was scanned, with a quick scan
+			calls := scanner.GetScanFoldersCalls()
+			Expect(calls[0].FullScan).To(BeFalse())
+			Expect(calls[0].Targets).To(Equal([]model.ScanTarget{{LibraryID: 1}}))
 		})
 
 		It("does not trigger scan when updating library without path change", func() {
@@ -666,7 +710,7 @@ var _ = Describe("Library Service", func() {
 
 			// Wait a bit to ensure no scan was triggered
 			Consistently(func() int {
-				return scanner.GetScanAllCallCount()
+				return scanner.GetScanAllCallCount() + scanner.GetScanFoldersCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
@@ -679,7 +723,7 @@ var _ = Describe("Library Service", func() {
 
 			// Ensure no scan was triggered since creation failed
 			Consistently(func() int {
-				return scanner.GetScanAllCallCount()
+				return scanner.GetScanAllCallCount() + scanner.GetScanFoldersCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
@@ -696,7 +740,7 @@ var _ = Describe("Library Service", func() {
 
 			// Ensure no scan was triggered since update failed
 			Consistently(func() int {
-				return scanner.GetScanAllCallCount()
+				return scanner.GetScanAllCallCount() + scanner.GetScanFoldersCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 
@@ -727,7 +771,7 @@ var _ = Describe("Library Service", func() {
 
 			// Ensure no scan was triggered since deletion failed
 			Consistently(func() int {
-				return scanner.GetScanAllCallCount()
+				return scanner.GetScanAllCallCount() + scanner.GetScanFoldersCallCount()
 			}, "100ms", "10ms").Should(Equal(0))
 		})
 

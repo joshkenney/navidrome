@@ -27,6 +27,13 @@ type Watcher interface {
 	StopWatching(ctx context.Context, libraryID int) error
 }
 
+// Intervals used when a library scan is requested while another scan is running.
+// Variables so tests can shorten them
+var (
+	ScanRetryInterval = 5 * time.Second
+	ScanRetryTimeout  = time.Hour
+)
+
 // Library provides business logic for library management and user-library associations
 type Library interface {
 	GetUserLibraries(ctx context.Context, userID string) (model.Libraries, error)
@@ -404,12 +411,38 @@ func (s *libraryService) validateLibraryIDs(ctx context.Context, libraryIDs []in
 }
 
 func (r *libraryRepositoryWrapper) triggerScan(lib *model.Library, action string) {
-	log.Info(r.ctx, fmt.Sprintf("Triggering scan for %s library", action), "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
+	// r.ctx is the request context, which is cancelled once the response is sent
+	ctx := context.WithoutCancel(r.ctx)
+	log.Info(ctx, fmt.Sprintf("Triggering scan for %s library", action), "libraryID", lib.ID, "name", lib.Name, "path", lib.Path)
+
+	scan := func() ([]string, error) {
+		// A deleted library needs a full pass to clean up orphaned data. Otherwise only scan the affected library
+		if action == "deleted" {
+			return r.scanner.ScanAll(ctx, false)
+		}
+		return r.scanner.ScanFolders(ctx, false, []model.ScanTarget{{LibraryID: lib.ID}})
+	}
+
 	start := time.Now()
-	warnings, err := r.scanner.ScanAll(r.ctx, false) // Quick scan for new library
+	warnings, err := scan()
+	// If another scan is running, wait for it to finish and try again, instead of silently skipping this library
+	deadline := time.Now().Add(ScanRetryTimeout)
+	for errors.Is(err, model.ErrAlreadyScanning) && time.Now().Before(deadline) {
+		log.Debug(ctx, fmt.Sprintf("Scanner busy, waiting to scan %s library", action), "libraryID", lib.ID, "name", lib.Name)
+		time.Sleep(ScanRetryInterval)
+		if status, statusErr := r.scanner.Status(ctx); statusErr == nil && status.Scanning {
+			continue
+		}
+		start = time.Now()
+		warnings, err = scan()
+	}
+	if errors.Is(err, model.ErrAlreadyScanning) {
+		log.Warn(ctx, fmt.Sprintf("Gave up waiting to scan %s library. Please run a manual scan", action), "libraryID", lib.ID, "name", lib.Name)
+		return
+	}
 	if err != nil {
-		log.Error(r.ctx, fmt.Sprintf("Error scanning %s library", action), "libraryID", lib.ID, "name", lib.Name, err)
+		log.Error(ctx, fmt.Sprintf("Error scanning %s library", action), "libraryID", lib.ID, "name", lib.Name, err)
 	} else {
-		log.Info(r.ctx, fmt.Sprintf("Scan completed for %s library", action), "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))
+		log.Info(ctx, fmt.Sprintf("Scan completed for %s library", action), "libraryID", lib.ID, "name", lib.Name, "warnings", len(warnings), "elapsed", time.Since(start))
 	}
 }

@@ -15,6 +15,7 @@ type MockScanner struct {
 	scanningStatus   bool
 	statusResponse   *model.ScannerStatus
 	scanStatusFunc   func(fullScan bool, targets []model.ScanTarget) *model.ScannerStatus
+	scanErrors       []error
 }
 
 type ScanAllCall struct {
@@ -38,6 +39,9 @@ func (m *MockScanner) ScanAll(_ context.Context, fullScan bool) ([]string, error
 	defer m.mu.Unlock()
 
 	m.scanAllCalls = append(m.scanAllCalls, ScanAllCall{FullScan: fullScan})
+	if err := m.nextScanError(); err != nil {
+		return nil, err
+	}
 
 	// Simulate the scanner updating its status when the scan starts
 	if m.scanStatusFunc != nil {
@@ -61,6 +65,9 @@ func (m *MockScanner) ScanFolders(_ context.Context, fullScan bool, targets []mo
 		FullScan: fullScan,
 		Targets:  targetsCopy,
 	})
+	if err := m.nextScanError(); err != nil {
+		return nil, err
+	}
 
 	// Simulate the scanner updating its status when the scan starts
 	if m.scanStatusFunc != nil {
@@ -140,4 +147,21 @@ func (m *MockScanner) SetScanStatusFunc(fn func(fullScan bool, targets []model.S
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.scanStatusFunc = fn
+}
+
+// SetScanErrors queues errors to be returned by the next ScanAll/ScanFolders calls, one per call.
+// Calls are still recorded when they return an error.
+func (m *MockScanner) SetScanErrors(errs ...error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.scanErrors = errs
+}
+
+func (m *MockScanner) nextScanError() error {
+	if len(m.scanErrors) == 0 {
+		return nil
+	}
+	err := m.scanErrors[0]
+	m.scanErrors = m.scanErrors[1:]
+	return err
 }
