@@ -719,6 +719,8 @@
       "onIpods": "On %{smart_count} iPod |||| On %{smart_count} iPods",
       "play": "Play",
       "topArtists": "Most shared artists",
+      "twins": "iPod twins",
+      "twinsAlike": "%{percent}% alike · %{smart_count} shared artist |||| %{percent}% alike · %{smart_count} shared artists",
       "superlatives": "iPod superlatives",
       "superlative": {
         "biggest": "Biggest iPod",

@@ -48,6 +48,21 @@ type ipodFacts struct {
 	TopSharedArtists  []ipodSharedArtist `json:"topSharedArtists"`
 	Superlatives      []model.IpodStats  `json:"superlatives"`
 	UniqueGems        []model.IpodGem    `json:"uniqueGems"`
+	Twins             *ipodTwins         `json:"twins"`
+}
+
+type ipodRef struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
+// ipodTwins are the two iPods with the most similar artists
+type ipodTwins struct {
+	A             ipodRef  `json:"a"`
+	B             ipodRef  `json:"b"`
+	Weight        float64  `json:"weight"`
+	SharedCount   int      `json:"sharedCount"`
+	SharedArtists []string `json:"sharedArtists"`
 }
 
 type ipodNode struct {
@@ -93,6 +108,7 @@ type ipodMatchResult struct {
 // ipodData is everything the iPod endpoints need, computed once per user and cached
 type ipodData struct {
 	createdAt time.Time
+	version   string
 	stats     []model.IpodStats
 	counts    []model.IpodArtistCount
 	totals    *model.IpodTotals
@@ -115,18 +131,23 @@ func (api *Router) addIpodRoutes(r chi.Router) {
 }
 
 // loadIpodData returns the cached data for the current user (results depend on the
-// libraries the user can access), loading it from the DB if missing or expired
+// libraries the user can access), loading it from the DB if missing, expired, or if
+// the libraries changed since it was loaded (e.g. after a scan)
 func (api *Router) loadIpodData(ctx context.Context) (*ipodData, error) {
 	user, _ := request.UserFrom(ctx)
+	repo := api.ds.Ipod(ctx)
+	version, err := repo.DataVersion()
+	if err != nil {
+		return nil, err
+	}
+
 	ipodDataCache.mu.Lock()
 	defer ipodDataCache.mu.Unlock()
-	if d, ok := ipodDataCache.entries[user.ID]; ok && time.Since(d.createdAt) < ipodCacheTTL {
+	if d, ok := ipodDataCache.entries[user.ID]; ok && d.version == version && time.Since(d.createdAt) < ipodCacheTTL {
 		return d, nil
 	}
 
-	repo := api.ds.Ipod(ctx)
-	d := &ipodData{createdAt: time.Now()}
-	var err error
+	d := &ipodData{createdAt: time.Now(), version: version}
 	if d.stats, err = repo.Stats(); err != nil {
 		return nil, err
 	}
@@ -170,7 +191,28 @@ func (api *Router) getIpodFacts(w http.ResponseWriter, r *http.Request) {
 		TopSharedArtists:  topSharedArtists(d.counts, ipodTopArtists),
 		Superlatives:      d.stats,
 		UniqueGems:        gems,
+		Twins:             findIpodTwins(d.stats, d.counts),
 	})
+}
+
+// findIpodTwins returns the two iPods linked by the strongest edge of the network, if any
+func findIpodTwins(stats []model.IpodStats, counts []model.IpodArtistCount) *ipodTwins {
+	edges := buildIpodNetwork(stats, counts).Edges
+	if len(edges) == 0 {
+		return nil
+	}
+	names := make(map[int]string, len(stats))
+	for _, s := range stats {
+		names[s.LibraryID] = s.Name
+	}
+	e := edges[0]
+	return &ipodTwins{
+		A:             ipodRef{ID: e.Source, Name: names[e.Source]},
+		B:             ipodRef{ID: e.Target, Name: names[e.Target]},
+		Weight:        e.Weight,
+		SharedCount:   e.SharedCount,
+		SharedArtists: e.SharedArtists,
+	}
 }
 
 func (api *Router) getIpodNetwork(w http.ResponseWriter, r *http.Request) {

@@ -59,4 +59,6 @@ type IpodRepository interface {
 	Stats() ([]IpodStats, error)
 	Totals() (*IpodTotals, error)
 	ArtistCounts() ([]IpodArtistCount, error)
+	// DataVersion changes whenever a scan finishes or a library is added, changed or removed
+	DataVersion() (string, error)
 }

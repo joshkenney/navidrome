@@ -75,6 +75,13 @@ const facts = {
   ],
   topSharedArtists: [{ id: 'ar-1', name: 'OutKast', ipodCount: 2 }],
   superlatives: stats,
+  twins: {
+    a: { id: 1, name: "Alice's iPod" },
+    b: { id: 2, name: "Bob's iPod" },
+    weight: 0.42,
+    sharedCount: 7,
+    sharedArtists: ['Weezer', 'Blur'],
+  },
   uniqueGems: [
     {
       id: 'song-2',
@@ -131,6 +138,17 @@ describe('<IpodFactsDialog />', () => {
     expect(screen.getByText('150')).toBeInTheDocument()
     expect(screen.getByText('Obscure B-side — Someone')).toBeInTheDocument()
     expect(screen.getByText('OutKast · 2')).toBeInTheDocument()
+    expect(screen.getByText("Alice's iPod ♥ Bob's iPod")).toBeInTheDocument()
+    expect(screen.getByText('Blur')).toBeInTheDocument()
+  })
+
+  it('hides the twins when no iPods share artists', async () => {
+    httpClient.mockResolvedValue({ json: { ...facts, twins: null } })
+    renderDialog()
+    await waitFor(() =>
+      expect(screen.getByText('Hey Ya! — OutKast')).toBeInTheDocument(),
+    )
+    expect(screen.queryByText('ipods.facts.twins')).toBeNull()
   })
 
   it('plays a duplicate song', async () => {

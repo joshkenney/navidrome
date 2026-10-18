@@ -51,6 +51,22 @@ var _ = Describe("iPod network and matching", func() {
 		})
 	})
 
+	Describe("findIpodTwins", func() {
+		It("returns the two most similar iPods", func() {
+			twins := findIpodTwins(stats, counts)
+			Expect(twins).ToNot(BeNil())
+			Expect(twins.A.Name).To(Equal("Alice's iPod"))
+			Expect(twins.B.Name).To(Equal("Bob's iPod"))
+			Expect(twins.Weight).To(BeNumerically("~", 2.0/3.0))
+			Expect(twins.SharedArtists).To(Equal([]string{"Name niche", "Name everyone"}))
+		})
+
+		It("returns nil when no iPods share artists", func() {
+			counts = []model.IpodArtistCount{count(1, "x", 1), count(2, "y", 1)}
+			Expect(findIpodTwins(stats[:2], counts)).To(BeNil())
+		})
+	})
+
 	Describe("matchIpods", func() {
 		It("ranks iPods sharing rarer artists higher", func() {
 			res := matchIpods(stats, counts, []string{"everyone", "niche"})

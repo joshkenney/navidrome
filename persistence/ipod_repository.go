@@ -6,13 +6,15 @@ import (
 	"errors"
 
 	. "github.com/Masterminds/squirrel"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
-// songKeyExpr identifies "the same song" across iPods: same title and same (normalized) artist
-const songKeyExpr = "lower(trim(mf.title)) || '|' || mf.order_artist_name"
+// songKeyExpr identifies "the same song" across iPods (see songkey.Key). It is empty for
+// placeholder songs, like "Track 05" or songs by [Unknown Artist]
+const songKeyExpr = "SONG_KEY(mf.title, mf.artist_id)"
 
 type ipodRepository struct {
 	sqlRepository
@@ -41,7 +43,7 @@ func (r *ipodRepository) songsPerKey() SelectBuilder {
 		"min(mf.id) AS media_file_id",
 		"min(mf.title) AS title",
 		"min(mf.artist) AS artist",
-	).Where(NotEq{"mf.title": ""}).GroupBy("song_key")
+	).Where(songKeyExpr + " != ''").GroupBy("song_key")
 }
 
 func ignoreNotFound(err error) error {
@@ -65,7 +67,7 @@ func (r *ipodRepository) TopDuplicateSongs(limit int) ([]model.IpodSong, error) 
 		"count(DISTINCT mf.library_id) AS ipod_count",
 		"json_group_array(DISTINCT l.name) AS ipod_names",
 	).Join("library l ON l.id = mf.library_id").
-		Where(NotEq{"mf.title": ""}).
+		Where(songKeyExpr+" != ''").
 		GroupBy(songKeyExpr).
 		Having("count(DISTINCT mf.library_id) > 1").
 		OrderBy("ipod_count DESC", "title").
@@ -134,8 +136,8 @@ func (r *ipodRepository) Stats() ([]model.IpodStats, error) {
 	sq := r.mediaFiles(
 		"mf.library_id", "l.name",
 		"count(*) AS song_count",
-		"count(DISTINCT "+songKeyExpr+") AS distinct_songs",
-		"count(DISTINCT nullif(mf.artist_id, '')) AS artist_count",
+		"count(DISTINCT nullif("+songKeyExpr+", '')) AS distinct_songs",
+		"count(DISTINCT CASE WHEN mf.artist_id NOT IN ('', '"+consts.UnknownArtistID+"') THEN mf.artist_id END) AS artist_count",
 		"count(DISTINCT nullif(mf.genre, '')) AS genre_count",
 		"coalesce(sum(mf.duration), 0) AS total_duration",
 		"coalesce(sum(mf.size), 0) AS total_size",
@@ -231,6 +233,7 @@ type dbIpodArtistCount struct {
 func (r *ipodRepository) ArtistCounts() ([]model.IpodArtistCount, error) {
 	sq := r.mediaFiles("mf.library_id", "mf.artist_id", "a.name AS artist_name", "count(*) AS song_count").
 		Join("artist a ON a.id = mf.artist_id").
+		Where(NotEq{"mf.artist_id": consts.UnknownArtistID}).
 		GroupBy("mf.library_id", "mf.artist_id")
 
 	var rows []dbIpodArtistCount
@@ -240,4 +243,14 @@ func (r *ipodRepository) ArtistCounts() ([]model.IpodArtistCount, error) {
 	return slice.Map(rows, func(a dbIpodArtistCount) model.IpodArtistCount {
 		return model.IpodArtistCount(a)
 	}), nil
+}
+
+func (r *ipodRepository) DataVersion() (string, error) {
+	var res struct {
+		Version string `db:"version"`
+	}
+	sq := Select("count(*) || '|' || coalesce(max(last_scan_at), '') || '|' || coalesce(max(updated_at), '') AS version").
+		From("library")
+	err := r.queryOne(sq, &res)
+	return res.Version, err
 }

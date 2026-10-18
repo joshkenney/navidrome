@@ -194,6 +194,33 @@ export const IpodFactsDialog = ({ open, onClose }) => {
               </Section>
             )}
 
+            {facts.twins && (
+              <Section title={t('twins')}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle1">
+                      {`${facts.twins.a.name} ♥ ${facts.twins.b.name}`}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="textSecondary"
+                      gutterBottom
+                    >
+                      {t('twinsAlike', {
+                        percent: Math.round(facts.twins.weight * 100),
+                        smart_count: facts.twins.sharedCount,
+                      })}
+                    </Typography>
+                    <div className={classes.chips}>
+                      {facts.twins.sharedArtists.map((name) => (
+                        <Chip key={name} size="small" label={name} />
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Section>
+            )}
+
             <Section title={t('superlatives')}>
               <Grid container spacing={2}>
                 {pickSuperlatives(facts.superlatives).map((p) => (
