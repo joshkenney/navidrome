@@ -19,6 +19,10 @@ vi.mock('react-admin', () => ({
 vi.mock('./NowPlayingPanel', () => ({
   default: () => <div data-testid="now-playing-panel" />,
 }))
+vi.mock('../ipods', () => ({
+  IpodFactsButton: () => <div data-testid="ipod-facts-button" />,
+  IpodNetworkButton: () => <div data-testid="ipod-network-button" />,
+}))
 vi.mock('./ActivityPanel', () => ({
   default: () => <div data-testid="activity-panel" />,
 }))
@@ -61,5 +65,15 @@ describe('<AppBar />', () => {
       </Provider>,
     )
     expect(screen.queryByTestId('now-playing-panel')).toBeNull()
+  })
+
+  it('renders the iPod facts and network buttons', () => {
+    render(
+      <Provider store={store}>
+        <AppBar />
+      </Provider>,
+    )
+    expect(screen.getByTestId('ipod-facts-button')).toBeInTheDocument()
+    expect(screen.getByTestId('ipod-network-button')).toBeInTheDocument()
   })
 })

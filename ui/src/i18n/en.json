@@ -704,6 +704,54 @@
     "status": "Scan Error",
     "elapsedTime": "Elapsed Time"
   },
+  "ipods": {
+    "facts": {
+      "title": "iPod Facts",
+      "error": "Could not load iPod facts",
+      "ipods": "iPods",
+      "songs": "Songs",
+      "hours": "Hours of music",
+      "sharedSongs": "Songs on 2+ iPods",
+      "topGenre": "Most common genre: %{genre}.",
+      "topDecade": "Most common decade: the %{decade}s.",
+      "topDuplicates": "Top 10 duplicate songs",
+      "noDuplicates": "No song is on more than one iPod yet",
+      "onIpods": "On %{smart_count} iPod |||| On %{smart_count} iPods",
+      "play": "Play",
+      "topArtists": "Most shared artists",
+      "superlatives": "iPod superlatives",
+      "superlative": {
+        "biggest": "Biggest iPod",
+        "longest": "Longest playtime",
+        "oldest": "Time capsule",
+        "newest": "Freshest picks",
+        "genres": "Genre explorer",
+        "unique": "Most original"
+      },
+      "gems": "Unique gems",
+      "reshuffle": "Reshuffle",
+      "onlyOn": "Only on %{name}"
+    },
+    "network": {
+      "title": "iPod Network",
+      "tab": "Network",
+      "error": "Could not load the iPod network",
+      "empty": "No iPods to show",
+      "selectHint": "Click an iPod to see its closest matches. Lines connect iPods that share artists; thicker lines mean more in common.",
+      "counts": "%{songs} songs · %{artists} artists",
+      "closest": "Closest iPods",
+      "browse": "Browse this iPod"
+    },
+    "match": {
+      "tab": "Find your iPod",
+      "hint": "Pick some artists you love and find the iPods you resonate with most.",
+      "artists": "Artists",
+      "find": "Find matches",
+      "resonance": "%{value}% resonance",
+      "notFound": "Not on any iPod: %{names}",
+      "noMatches": "No iPod has these artists"
+    }
+  },
   "nowPlaying": {
     "title": "Now Playing",
     "empty": "Nothing playing",

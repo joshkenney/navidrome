@@ -28,6 +28,7 @@ type MockDataStore struct {
 	MockedScrobble       model.ScrobbleRepository
 	MockedRadio          model.RadioRepository
 	MockedPlugin         model.PluginRepository
+	MockedIpod           model.IpodRepository
 	scrobbleBufferMu     sync.Mutex
 	repoMu               sync.Mutex
 
@@ -223,6 +224,17 @@ func (db *MockDataStore) Scrobble(ctx context.Context) model.ScrobbleRepository 
 	}
 	db.MockedScrobble = &MockScrobbleRepo{ctx: ctx}
 	return db.MockedScrobble
+}
+
+func (db *MockDataStore) Ipod(ctx context.Context) model.IpodRepository {
+	if db.MockedIpod != nil {
+		return db.MockedIpod
+	}
+	if db.RealDS != nil {
+		return db.RealDS.Ipod(ctx)
+	}
+	db.MockedIpod = struct{ model.IpodRepository }{}
+	return db.MockedIpod
 }
 
 func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {

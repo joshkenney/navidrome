@@ -15,6 +15,7 @@ import { AboutDialog } from '../dialogs'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
 import NowPlayingPanel from './NowPlayingPanel'
+import { IpodFactsButton, IpodNetworkButton } from '../ipods'
 import UserMenu from './UserMenu'
 import config from '../config'
 
@@ -120,6 +121,8 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
+      <IpodFactsButton />
+      <IpodNetworkButton />
       {config.enableNowPlaying && <NowPlayingPanel />}
       {config.devActivityPanel && permissions === 'admin' && <ActivityPanel />}
       <UserMenu {...rest}>
