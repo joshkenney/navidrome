@@ -13,6 +13,9 @@ import sadIpod from '../icons/sad-ipod.webp'
 
 const CONTACT_EMAIL = 'josh@ipodrepair.nyc'
 
+// Fired on window when the dialog is closed, so other popups can wait for it
+export const WELCOME_CLOSED_EVENT = 'welcome-dialog-closed'
+
 const useStyles = makeStyles((theme) => ({
   content: {
     textAlign: 'center',
@@ -38,6 +41,7 @@ export const WelcomeDialog = () => {
   const handleClose = () => {
     localStorage.removeItem('show-welcome')
     setOpen(false)
+    window.dispatchEvent(new Event(WELCOME_CLOSED_EVENT))
   }
 
   return (

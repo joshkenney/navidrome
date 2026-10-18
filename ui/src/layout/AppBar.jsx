@@ -1,4 +1,4 @@
-import React, { createElement, forwardRef, Fragment } from 'react'
+import React, { createElement, forwardRef, Fragment, useState } from 'react'
 import {
   AppBar as RAAppBar,
   MenuItemLink,
@@ -16,6 +16,7 @@ import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
 import NowPlayingPanel from './NowPlayingPanel'
 import { IpodFactsButton, IpodNetworkButton } from '../ipods'
+import { FeatureTips } from './FeatureTips'
 import UserMenu from './UserMenu'
 import config from '../config'
 
@@ -73,6 +74,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   const resources = useSelector(getResources)
   const classes = useStyles(rest)
   const { permissions } = usePermissions()
+  const [tipsAnchor, setTipsAnchor] = useState(null)
 
   const resourceDefinition = (resourceName) =>
     resources.find((r) => r?.name === resourceName)
@@ -121,9 +123,15 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
-      <IpodFactsButton />
-      <IpodNetworkButton />
-      {config.enableNowPlaying && <NowPlayingPanel />}
+      <span ref={setTipsAnchor} style={{ display: 'inline-flex' }}>
+        <IpodFactsButton />
+        <IpodNetworkButton />
+        {config.enableNowPlaying && <NowPlayingPanel />}
+      </span>
+      <FeatureTips
+        anchorEl={tipsAnchor}
+        showNowPlaying={config.enableNowPlaying}
+      />
       {config.devActivityPanel && permissions === 'admin' && <ActivityPanel />}
       <UserMenu {...rest}>
         <PersonalMenu sidebarIsOpen={true} onClick={onClick} />

@@ -754,6 +754,23 @@
       "noMatches": "No iPod has these artists"
     }
   },
+  "featureTips": {
+    "title": "New in the header",
+    "facts": {
+      "title": "iPod Facts",
+      "description": "Fun stats about the iPods: the songs found on the most iPods, iPod twins, superlatives and unique gems."
+    },
+    "ipods": {
+      "title": "iPod Network",
+      "description": "See how all the iPods are connected by the artists they share, and find the iPods you resonate with most."
+    },
+    "nowPlaying": {
+      "title": "Now Playing",
+      "description": "See what others are listening to right now and tune in to listen along."
+    },
+    "dontShowAgain": "Don't show again",
+    "gotIt": "Got it"
+  },
   "nowPlaying": {
     "title": "Now Playing",
     "empty": "Nothing playing",

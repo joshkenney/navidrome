@@ -213,74 +213,82 @@ LiveNowPlayingItem.propTypes = {
 }
 
 // RecentItem - an entry from the recent scrobble feed
-const RecentItem = React.memo(({ entry, onLinkClick, getArtistLink, onPlay }) => {
-  const classes = useStyles()
-  const translate = useTranslate()
+const RecentItem = React.memo(
+  ({ entry, onLinkClick, getArtistLink, onPlay }) => {
+    const classes = useStyles()
+    const translate = useTranslate()
 
-  const timeAgo = useCallback(() => {
-    const diffMs = Date.now() - new Date(entry.submissionTime).getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    if (diffMins < 1) return translate('nowPlaying.minutesAgo', { smart_count: 0 })
-    if (diffMins < 60) return translate('nowPlaying.minutesAgo', { smart_count: diffMins })
-    const diffHours = Math.floor(diffMins / 60)
-    if (diffHours < 24) return `${diffHours}h ago`
-    return `${Math.floor(diffHours / 24)}d ago`
-  }, [entry.submissionTime, translate])
+    const timeAgo = useCallback(() => {
+      const diffMs = Date.now() - new Date(entry.submissionTime).getTime()
+      const diffMins = Math.floor(diffMs / 60000)
+      if (diffMins < 1)
+        return translate('nowPlaying.minutesAgo', { smart_count: 0 })
+      if (diffMins < 60)
+        return translate('nowPlaying.minutesAgo', { smart_count: diffMins })
+      const diffHours = Math.floor(diffMins / 60)
+      if (diffHours < 24) return `${diffHours}h ago`
+      return `${Math.floor(diffHours / 24)}d ago`
+    }, [entry.submissionTime, translate])
 
-  return (
-    <ListItem className={classes.listItem}>
-      <ListItemAvatar>
-        <Link to={`/album/${entry.albumId}/show`} onClick={onLinkClick}>
-          <Avatar
-            className={classes.avatar}
-            src={subsonic.getCoverArtUrl(
-              { id: entry.id, album: entry.album, updatedAt: entry.updatedAt },
-              80,
-            )}
-            variant="square"
-            alt={`${entry.album} cover art`}
-            loading="lazy"
-          />
-        </Link>
-      </ListItemAvatar>
-      <ListItemText
-        primary={
-          <div className={classes.primaryText}>
-            {entry.artistId ? (
-              <Link
-                to={getArtistLink(entry.albumArtistId || entry.artistId)}
-                className={classes.artistLink}
-                onClick={onLinkClick}
-              >
-                {entry.artist}
-              </Link>
-            ) : (
-              <span>{entry.artist}</span>
-            )}
-            &nbsp;-&nbsp;{entry.title}
-          </div>
-        }
-        secondary={
-          <>
-            <span className={classes.usernameChip}>{entry.username}</span>
-            &bull; {timeAgo()}
-            {entry.libraryName ? ` • ${entry.libraryName}` : ''}
-          </>
-        }
-      />
-      <Tooltip title={translate('nowPlaying.play')}>
-        <IconButton
-          size="small"
-          className={classes.tuneInButton}
-          onClick={() => onPlay(entry)}
-          aria-label={translate('nowPlaying.play')}
-        >
-          <FaRegCirclePlay size={16} />
-        </IconButton>
-      </Tooltip>
-    </ListItem>
-  )
-})
+    return (
+      <ListItem className={classes.listItem}>
+        <ListItemAvatar>
+          <Link to={`/album/${entry.albumId}/show`} onClick={onLinkClick}>
+            <Avatar
+              className={classes.avatar}
+              src={subsonic.getCoverArtUrl(
+                {
+                  id: entry.id,
+                  album: entry.album,
+                  updatedAt: entry.updatedAt,
+                },
+                80,
+              )}
+              variant="square"
+              alt={`${entry.album} cover art`}
+              loading="lazy"
+            />
+          </Link>
+        </ListItemAvatar>
+        <ListItemText
+          primary={
+            <div className={classes.primaryText}>
+              {entry.artistId ? (
+                <Link
+                  to={getArtistLink(entry.albumArtistId || entry.artistId)}
+                  className={classes.artistLink}
+                  onClick={onLinkClick}
+                >
+                  {entry.artist}
+                </Link>
+              ) : (
+                <span>{entry.artist}</span>
+              )}
+              &nbsp;-&nbsp;{entry.title}
+            </div>
+          }
+          secondary={
+            <>
+              <span className={classes.usernameChip}>{entry.username}</span>
+              &bull; {timeAgo()}
+              {entry.libraryName ? ` • ${entry.libraryName}` : ''}
+            </>
+          }
+        />
+        <Tooltip title={translate('nowPlaying.play')}>
+          <IconButton
+            size="small"
+            className={classes.tuneInButton}
+            onClick={() => onPlay(entry)}
+            aria-label={translate('nowPlaying.play')}
+          >
+            <FaRegCirclePlay size={16} />
+          </IconButton>
+        </Tooltip>
+      </ListItem>
+    )
+  },
+)
 
 RecentItem.displayName = 'RecentItem'
 
@@ -376,7 +384,9 @@ const NowPlayingPanel = () => {
             setLiveEntries(entries)
             dispatch(nowPlayingCountUpdate({ count: entries.length }))
           } else {
-            throw new Error(data.error?.message || 'Failed to fetch now playing')
+            throw new Error(
+              data.error?.message || 'Failed to fetch now playing',
+            )
           }
         })
         .catch((error) => {
@@ -481,8 +491,7 @@ const NowPlayingPanel = () => {
     open && activeTab === 'recent' ? 30000 : null,
   )
 
-  const displayEntries =
-    activeTab === 'live' ? liveEntries : recentEntries
+  const displayEntries = activeTab === 'live' ? liveEntries : recentEntries
 
   return (
     <div>
@@ -505,7 +514,10 @@ const NowPlayingPanel = () => {
             }}
           >
             {displayEntries.length === 0 ? (
-              <Typography id="now-playing-title" style={{ padding: theme.spacing(1) }}>
+              <Typography
+                id="now-playing-title"
+                style={{ padding: theme.spacing(1) }}
+              >
                 {activeTab === 'live'
                   ? translate('nowPlaying.empty')
                   : translate('nowPlaying.recentEmpty')}
