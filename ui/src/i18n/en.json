@@ -742,7 +742,8 @@
       "selectHint": "Click an iPod to see its closest matches. Lines connect iPods that share artists; thicker lines mean more in common.",
       "counts": "%{songs} songs · %{artists} artists",
       "closest": "Closest iPods",
-      "browse": "Browse this iPod"
+      "browse": "Browse this iPod",
+      "resetView": "Show all iPods"
     },
     "match": {
       "tab": "Find your iPod",
