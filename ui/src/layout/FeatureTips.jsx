@@ -13,9 +13,8 @@ import { FaLightbulb, FaRegCirclePlay } from 'react-icons/fa6'
 import { IpodIcon } from '../ipods/IpodIcon'
 import { WELCOME_CLOSED_EVENT } from '../dialogs/WelcomeDialog'
 
+// The tips show every time the app loads, until "Do not show this again" is checked
 export const HIDE_TIPS_KEY = 'hide-feature-tips'
-// Dismissing without "don't show again" only hides the tips until the next visit
-export const TIPS_DISMISSED_KEY = 'feature-tips-dismissed'
 
 const useStyles = makeStyles((theme) => ({
   popper: { zIndex: theme.zIndex.modal - 1 },
@@ -56,9 +55,7 @@ const writeFlag = (storage, key) => {
   }
 }
 
-const shouldShow = () =>
-  !readFlag(localStorage, HIDE_TIPS_KEY) &&
-  !readFlag(sessionStorage, TIPS_DISMISSED_KEY)
+const shouldShow = () => !readFlag(localStorage, HIDE_TIPS_KEY)
 
 // Points out the new header features, under the header icons (anchorEl)
 export const FeatureTips = ({ anchorEl, showNowPlaying }) => {
@@ -79,10 +76,7 @@ export const FeatureTips = ({ anchorEl, showNowPlaying }) => {
   }, [])
 
   const handleClose = () => {
-    writeFlag(
-      dontShowAgain ? localStorage : sessionStorage,
-      dontShowAgain ? HIDE_TIPS_KEY : TIPS_DISMISSED_KEY,
-    )
+    if (dontShowAgain) writeFlag(localStorage, HIDE_TIPS_KEY)
     setOpen(false)
   }
 

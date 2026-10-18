@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { FeatureTips, HIDE_TIPS_KEY, TIPS_DISMISSED_KEY } from './FeatureTips'
+import { FeatureTips, HIDE_TIPS_KEY } from './FeatureTips'
 import { WELCOME_CLOSED_EVENT } from '../dialogs/WelcomeDialog'
 
 vi.mock('react-admin', async (importOriginal) => {
@@ -14,7 +14,6 @@ describe('<FeatureTips />', () => {
 
   beforeEach(() => {
     localStorage.clear()
-    sessionStorage.clear()
     anchor = document.createElement('span')
     document.body.appendChild(anchor)
   })
@@ -34,12 +33,20 @@ describe('<FeatureTips />', () => {
     expect(screen.queryByText('featureTips.nowPlaying.title')).toBeNull()
   })
 
-  it('hides only for this session when closed without the checkbox', () => {
+  it('starts with the checkbox unchecked', () => {
     renderTips()
+    expect(screen.getByLabelText('featureTips.dontShowAgain')).not.toBeChecked()
+  })
+
+  it('shows again next time when closed without the checkbox', () => {
+    const { unmount } = renderTips()
     fireEvent.click(screen.getByText('featureTips.gotIt'))
     expect(screen.queryByText('featureTips.title')).toBeNull()
-    expect(sessionStorage.getItem(TIPS_DISMISSED_KEY)).toBe('true')
     expect(localStorage.getItem(HIDE_TIPS_KEY)).toBeNull()
+
+    unmount()
+    renderTips()
+    expect(screen.getByText('featureTips.title')).toBeInTheDocument()
   })
 
   it('never shows again when the checkbox is ticked', () => {
@@ -49,7 +56,6 @@ describe('<FeatureTips />', () => {
     expect(localStorage.getItem(HIDE_TIPS_KEY)).toBe('true')
 
     unmount()
-    sessionStorage.clear()
     renderTips()
     expect(screen.queryByText('featureTips.title')).toBeNull()
   })
