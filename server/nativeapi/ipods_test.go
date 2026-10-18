@@ -1,6 +1,8 @@
 package nativeapi
 
 import (
+	"fmt"
+
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -90,6 +92,52 @@ var _ = Describe("iPod network and matching", func() {
 		It("returns no matches for an empty query", func() {
 			res := matchIpods(stats, counts, nil)
 			Expect(res.Matches).To(BeEmpty())
+		})
+	})
+
+	Describe("summarizeSongs", func() {
+		entry := func(key string, lib int, title string) model.IpodSongEntry {
+			return model.IpodSongEntry{Key: key, LibraryID: lib, MediaFileID: key + "-" + title, Title: title, Artist: "Artist"}
+		}
+
+		It("finds duplicates and unique songs", func() {
+			entries := []model.IpodSongEntry{
+				entry("everywhere", 1, "Everywhere"), entry("everywhere", 2, "everywhere"), entry("everywhere", 3, "Everywhere"),
+				entry("pair", 2, "Pair"), entry("pair", 3, "Pair"),
+				entry("alone", 1, "Alone"),
+				entry("alone2", 1, "Alone 2"),
+			}
+			summary := summarizeSongs(entries, stats)
+
+			Expect(summary.distinctSongs).To(Equal(4))
+			Expect(summary.sharedSongs).To(Equal(2))
+			Expect(summary.topSongs).To(HaveLen(2))
+			Expect(summary.topSongs[0].Title).To(Equal("Everywhere"))
+			Expect(summary.topSongs[0].IpodCount).To(Equal(3))
+			Expect(summary.topSongs[0].IpodNames).To(Equal([]string{"Alice's iPod", "Bob's iPod", "Carol's iPod"}))
+			Expect(summary.topSongs[1].IpodCount).To(Equal(2))
+
+			Expect(summary.gemPool).To(HaveLen(2))
+			Expect(summary.gemPool).To(HaveEach(HaveField("LibraryName", "Alice's iPod")))
+
+			Expect(stats[0].DistinctSongs).To(Equal(3))
+			Expect(stats[0].UniqueSongs).To(Equal(2))
+			Expect(stats[2].DistinctSongs).To(Equal(2))
+			Expect(stats[2].UniqueSongs).To(Equal(0))
+		})
+
+		It("caps the gem pool and samples from it", func() {
+			var entries []model.IpodSongEntry
+			for i := range ipodGemPoolSize + 50 {
+				entries = append(entries, entry(fmt.Sprint("song", i), 1, fmt.Sprint("Song ", i)))
+			}
+			summary := summarizeSongs(entries, stats)
+			Expect(summary.gemPool).To(HaveLen(ipodGemPoolSize))
+			Expect(summary.topSongs).To(BeEmpty())
+
+			gems := sampleGems(summary.gemPool, ipodGemsCount)
+			Expect(gems).To(HaveLen(ipodGemsCount))
+			Expect(summary.gemPool).To(ContainElements(gems))
 		})
 	})
 })

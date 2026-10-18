@@ -8,6 +8,7 @@ import { pickSuperlatives } from './superlatives'
 import { httpClient } from '../dataProvider'
 
 const getOne = vi.fn()
+const redirect = vi.fn()
 
 vi.mock('../dataProvider', () => ({
   httpClient: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock('react-admin', async (importOriginal) => {
     useTranslate: () => (x) => x,
     useDataProvider: () => ({ getOne }),
     useNotify: () => vi.fn(),
+    useRedirect: () => redirect,
     // eslint-disable-next-line react/display-name
     Link: React.forwardRef(({ to, children, ...props }, ref) => (
       <a href={to} ref={ref} {...props}>
@@ -115,17 +117,22 @@ describe('pickSuperlatives', () => {
 })
 
 describe('<IpodFactsDialog />', () => {
-  const store = createStore(() => ({}))
+  let store
 
   beforeEach(() => {
     vi.clearAllMocks()
     httpClient.mockResolvedValue({ json: facts })
+    store = createStore((state = {}, action) =>
+      action.type === 'SET_SELECTED_LIBRARIES'
+        ? { ...state, selected: action.data }
+        : state,
+    )
   })
 
-  const renderDialog = () =>
+  const renderDialog = (onClose = vi.fn()) =>
     render(
       <Provider store={store}>
-        <IpodFactsDialog open onClose={vi.fn()} />
+        <IpodFactsDialog open onClose={onClose} />
       </Provider>,
     )
 
@@ -138,8 +145,34 @@ describe('<IpodFactsDialog />', () => {
     expect(screen.getByText('150')).toBeInTheDocument()
     expect(screen.getByText('Obscure B-side — Someone')).toBeInTheDocument()
     expect(screen.getByText('OutKast · 2')).toBeInTheDocument()
-    expect(screen.getByText("Alice's iPod ♥ Bob's iPod")).toBeInTheDocument()
+    expect(screen.getByText('♥', { exact: false }).textContent).toBe(
+      "Alice's iPod ♥ Bob's iPod",
+    )
     expect(screen.getByText('Blur')).toBeInTheDocument()
+    expect(screen.getByText('ipods.facts.duplicates')).toBeInTheDocument()
+    expect(screen.getByText('ipods.facts.onIpods')).toBeInTheDocument()
+  })
+
+  it('hides the duplicates when there are none', async () => {
+    httpClient.mockResolvedValue({ json: { ...facts, topDuplicateSongs: [] } })
+    renderDialog()
+    await waitFor(() =>
+      expect(screen.getByText('ipods.facts.superlatives')).toBeInTheDocument(),
+    )
+    expect(screen.queryByText('ipods.facts.duplicates')).toBeNull()
+  })
+
+  it('browses an iPod from the superlatives and twins', async () => {
+    const onClose = vi.fn()
+    renderDialog(onClose)
+    await waitFor(() =>
+      expect(screen.getByText('ipods.facts.superlatives')).toBeInTheDocument(),
+    )
+    // Bob is the "newest" superlative and the second twin
+    fireEvent.click(screen.getAllByRole('button', { name: "Bob's iPod" })[0])
+    expect(store.getState().selected).toEqual([2])
+    expect(onClose).toHaveBeenCalled()
+    expect(redirect).toHaveBeenCalledWith('/album')
   })
 
   it('hides the twins when no iPods share artists', async () => {

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"math"
+	"math/rand/v2"
 	"net/http"
 	"slices"
 	"sync"
@@ -13,7 +14,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
-	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/req"
 )
 
@@ -22,6 +22,7 @@ const (
 	ipodTopSongs        = 10
 	ipodTopArtists      = 10
 	ipodGemsCount       = 8
+	ipodGemPoolSize     = 300
 	ipodMinEdgeWeight   = 0.02
 	ipodMaxEdgesPerNode = 5
 	ipodSharedArtistMax = 5
@@ -30,9 +31,11 @@ const (
 
 type ipodTotals struct {
 	model.IpodTotals
-	Ipods int     `json:"ipods"`
-	Songs int     `json:"songs"`
-	Hours float64 `json:"hours"`
+	Ipods         int     `json:"ipods"`
+	Songs         int     `json:"songs"`
+	Hours         float64 `json:"hours"`
+	DistinctSongs int     `json:"distinctSongs"`
+	SharedSongs   int     `json:"sharedSongs"`
 }
 
 type ipodSharedArtist struct {
@@ -105,16 +108,25 @@ type ipodMatchResult struct {
 	NotFound []string    `json:"notFound"`
 }
 
-// ipodData is everything the iPod endpoints need, computed once per user and cached
-type ipodData struct {
-	createdAt time.Time
-	version   string
-	stats     []model.IpodStats
-	counts    []model.IpodArtistCount
-	totals    *model.IpodTotals
-	topSongs  []model.IpodSong
+// ipodSongSummary is what the facts need from the song index
+type ipodSongSummary struct {
+	topSongs      []model.IpodSong
+	gemPool       []model.IpodGem
+	distinctSongs int
+	sharedSongs   int
 }
 
+// ipodData is everything the iPod endpoints need, computed once and cached
+type ipodData struct {
+	createdAt time.Time
+	stats     []model.IpodStats
+	counts    []model.IpodArtistCount
+	totals    ipodTotals
+	songs     ipodSongSummary
+}
+
+// ipodCache is keyed by DataVersion, so users who can access the same iPods share an entry,
+// and entries are reloaded after a scan
 type ipodCache struct {
 	mu      sync.Mutex
 	entries map[string]*ipodData
@@ -130,11 +142,9 @@ func (api *Router) addIpodRoutes(r chi.Router) {
 	})
 }
 
-// loadIpodData returns the cached data for the current user (results depend on the
-// libraries the user can access), loading it from the DB if missing, expired, or if
-// the libraries changed since it was loaded (e.g. after a scan)
+// loadIpodData returns the cached data for the iPods the current user can access, loading
+// it from the DB if missing, expired, or if the libraries changed since it was loaded
 func (api *Router) loadIpodData(ctx context.Context) (*ipodData, error) {
-	user, _ := request.UserFrom(ctx)
 	repo := api.ds.Ipod(ctx)
 	version, err := repo.DataVersion()
 	if err != nil {
@@ -143,25 +153,115 @@ func (api *Router) loadIpodData(ctx context.Context) (*ipodData, error) {
 
 	ipodDataCache.mu.Lock()
 	defer ipodDataCache.mu.Unlock()
-	if d, ok := ipodDataCache.entries[user.ID]; ok && d.version == version && time.Since(d.createdAt) < ipodCacheTTL {
+	if d, ok := ipodDataCache.entries[version]; ok && time.Since(d.createdAt) < ipodCacheTTL {
 		return d, nil
 	}
 
-	d := &ipodData{createdAt: time.Now(), version: version}
+	d := &ipodData{createdAt: time.Now()}
 	if d.stats, err = repo.Stats(); err != nil {
 		return nil, err
 	}
 	if d.counts, err = repo.ArtistCounts(); err != nil {
 		return nil, err
 	}
-	if d.totals, err = repo.Totals(); err != nil {
+	totals, err := repo.Totals()
+	if err != nil {
 		return nil, err
 	}
-	if d.topSongs, err = repo.TopDuplicateSongs(ipodTopSongs); err != nil {
+	entries, err := repo.SongIndex()
+	if err != nil {
 		return nil, err
 	}
-	ipodDataCache.entries[user.ID] = d
+	d.songs = summarizeSongs(entries, d.stats)
+
+	d.totals = ipodTotals{
+		IpodTotals:    *totals,
+		Ipods:         len(d.stats),
+		DistinctSongs: d.songs.distinctSongs,
+		SharedSongs:   d.songs.sharedSongs,
+	}
+	for _, s := range d.stats {
+		d.totals.Songs += s.SongCount
+		d.totals.Hours += s.TotalDuration / 3600
+	}
+
+	for k, e := range ipodDataCache.entries {
+		if time.Since(e.createdAt) >= ipodCacheTTL {
+			delete(ipodDataCache.entries, k)
+		}
+	}
+	ipodDataCache.entries[version] = d
 	return d, nil
+}
+
+// summarizeSongs finds the songs on the most iPods and a random pool of songs found on only
+// one iPod, and fills in the DistinctSongs and UniqueSongs of each iPod's stats
+func summarizeSongs(entries []model.IpodSongEntry, stats []model.IpodStats) ipodSongSummary {
+	names := make(map[int]string, len(stats))
+	for _, s := range stats {
+		names[s.LibraryID] = s.Name
+	}
+	byKey := map[string][]model.IpodSongEntry{}
+	for _, e := range entries {
+		byKey[e.Key] = append(byKey[e.Key], e)
+	}
+
+	var summary ipodSongSummary
+	distinct := map[int]int{}
+	unique := map[int]int{}
+	var gems []model.IpodGem
+	for _, found := range byKey {
+		summary.distinctSongs++
+		for _, e := range found {
+			distinct[e.LibraryID]++
+		}
+		first := slices.MinFunc(found, func(a, b model.IpodSongEntry) int { return cmp.Compare(a.Title, b.Title) })
+		if len(found) == 1 {
+			unique[first.LibraryID]++
+			gems = append(gems, model.IpodGem{
+				MediaFileID: first.MediaFileID, Title: first.Title, Artist: first.Artist,
+				LibraryID: first.LibraryID, LibraryName: names[first.LibraryID],
+			})
+			continue
+		}
+		summary.sharedSongs++
+		ipodNames := make([]string, len(found))
+		for i, e := range found {
+			ipodNames[i] = names[e.LibraryID]
+		}
+		slices.Sort(ipodNames)
+		summary.topSongs = append(summary.topSongs, model.IpodSong{
+			MediaFileID: first.MediaFileID, Title: first.Title, Artist: first.Artist,
+			IpodCount: len(found), IpodNames: ipodNames,
+		})
+	}
+
+	slices.SortFunc(summary.topSongs, func(a, b model.IpodSong) int {
+		return cmp.Or(cmp.Compare(b.IpodCount, a.IpodCount), cmp.Compare(a.Title, b.Title))
+	})
+	summary.topSongs = summary.topSongs[:min(ipodTopSongs, len(summary.topSongs))]
+	if summary.topSongs == nil {
+		summary.topSongs = []model.IpodSong{}
+	}
+
+	rand.Shuffle(len(gems), func(i, j int) { gems[i], gems[j] = gems[j], gems[i] })
+	summary.gemPool = gems[:min(ipodGemPoolSize, len(gems))]
+
+	for i := range stats {
+		stats[i].DistinctSongs = distinct[stats[i].LibraryID]
+		stats[i].UniqueSongs = unique[stats[i].LibraryID]
+	}
+	return summary
+}
+
+// sampleGems picks a few random songs from the pool, without changing it
+func sampleGems(pool []model.IpodGem, n int) []model.IpodGem {
+	idx := rand.Perm(len(pool))[:min(n, len(pool))]
+	gems := make([]model.IpodGem, len(idx))
+	for i, j := range idx {
+		gems[i] = pool[j]
+	}
+	return gems
 }
 
 func (api *Router) getIpodFacts(w http.ResponseWriter, r *http.Request) {
@@ -172,25 +272,12 @@ func (api *Router) getIpodFacts(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	// Gems are not cached, so each request shows a new random sample
-	gems, err := api.ds.Ipod(ctx).UniqueGems(ipodGemsCount)
-	if err != nil {
-		log.Error(ctx, "Error loading unique iPod songs", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	totals := ipodTotals{IpodTotals: *d.totals, Ipods: len(d.stats)}
-	for _, s := range d.stats {
-		totals.Songs += s.SongCount
-		totals.Hours += s.TotalDuration / 3600
-	}
 	writeJSON(ctx, w, ipodFacts{
-		Totals:            totals,
-		TopDuplicateSongs: d.topSongs,
+		Totals:            d.totals,
+		TopDuplicateSongs: d.songs.topSongs,
 		TopSharedArtists:  topSharedArtists(d.counts, ipodTopArtists),
 		Superlatives:      d.stats,
-		UniqueGems:        gems,
+		UniqueGems:        sampleGems(d.songs.gemPool, ipodGemsCount),
 		Twins:             findIpodTwins(d.stats, d.counts),
 	})
 }

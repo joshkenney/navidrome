@@ -7,6 +7,7 @@ import (
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
+	"github.com/navidrome/navidrome/utils/songkey"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pocketbase/dbx"
@@ -33,6 +34,9 @@ var _ = Describe("IpodRepository", func() {
 				Bind(dbx.Params{"id": lib, "name": "iPod test " + string(rune('0'+lib)), "path": "/ipod/test" + string(rune('0'+lib))}).Execute()
 			Expect(err).ToNot(HaveOccurred())
 		}
+		// A library holding the folders of other libraries, which should be left out
+		_, err := db.NewQuery("INSERT OR IGNORE INTO library (id, name, path) VALUES (4, 'Combined', '/ipod/')").Execute()
+		Expect(err).ToNot(HaveOccurred())
 
 		ctx := request.WithUser(log.NewContext(context.TODO()), adminUser)
 		Expect(NewArtistRepository(ctx, db).Put(&unknownArtist)).To(Succeed())
@@ -50,46 +54,61 @@ var _ = Describe("IpodRepository", func() {
 			ipodSong("ipod-9", 1, "Ipod Mystery Song", unknownArtist),
 			ipodSong("ipod-10", 2, "Ipod Mystery Song", unknownArtist),
 			ipodSong("ipod-11", 3, "Ipod Lonely Mystery", unknownArtist),
+			// Copies in the combined library
+			ipodSong("ipod-12", 4, "Ipod Lonely Song", artistBeatles),
+			ipodSong("ipod-13", 4, "Ipod Pair Song", artistBeatles),
 		}
 		for i := range songs {
 			Expect(mr.Put(&songs[i])).To(Succeed())
 		}
 		DeferCleanup(func() {
 			_, _ = db.NewQuery("DELETE FROM media_file WHERE id LIKE 'ipod-%'").Execute()
-			_, _ = db.NewQuery("DELETE FROM library WHERE id IN (2, 3)").Execute()
+			_, _ = db.NewQuery("DELETE FROM library WHERE id IN (2, 3, 4)").Execute()
 			_, _ = db.Delete("artist", dbx.HashExp{"id": unknownArtist.ID}).Execute()
 		})
 
 		adminRepo = NewIpodRepository(ctx, db)
 	})
 
-	It("finds the songs on the most iPods, matching title case and spacing", func() {
-		songs, err := adminRepo.TopDuplicateSongs(10)
+	// iPodsWith returns the iPods each song (by key) is found on
+	iPodsWith := func(entries []model.IpodSongEntry) map[string][]int {
+		res := map[string][]int{}
+		for _, e := range entries {
+			res[e.Key] = append(res[e.Key], e.LibraryID)
+		}
+		return res
+	}
+	key := songkey.Key
+
+	It("indexes each song once per iPod, merging versions and case differences", func() {
+		entries, err := adminRepo.SongIndex()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(songs).ToNot(BeEmpty())
-		Expect(songs[0].Title).To(Equal("Ipod Shared Song"))
-		Expect(songs[0].IpodCount).To(Equal(3))
-		Expect(songs[0].IpodNames).To(HaveLen(3))
-		Expect(songs).To(ContainElement(HaveField("IpodCount", 2)))
+		found := iPodsWith(entries)
+		Expect(found[key("Ipod Shared Song", artistKraftwerk.ID)]).To(ConsistOf(1, 2, 3))
+		Expect(found[key("Ipod Pair Song", artistBeatles.ID)]).To(ConsistOf(2, 3))
+		Expect(found[key("Ipod Lonely Song", artistBeatles.ID)]).To(ConsistOf(3))
 	})
 
-	It("merges versions of a song and ignores placeholder songs", func() {
-		songs, err := adminRepo.TopDuplicateSongs(10)
+	It("leaves out placeholder songs", func() {
+		entries, err := adminRepo.SongIndex()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(songs).To(HaveEach(HaveField("Title", Not(ContainSubstring("Remastered")))))
-		Expect(songs).ToNot(ContainElement(HaveField("Title", "Track 05")))
-		Expect(songs).ToNot(ContainElement(HaveField("Artist", consts.UnknownArtist)))
+		Expect(entries).ToNot(ContainElement(HaveField("Title", "Track 05")))
+		Expect(entries).ToNot(ContainElement(HaveField("Title", "Ipod Mystery Song")))
+		Expect(entries).ToNot(ContainElement(HaveField("Title", "Ipod Lonely Mystery")))
 	})
 
-	It("returns songs found on only one iPod as gems", func() {
-		gems, err := adminRepo.UniqueGems(10000)
+	It("leaves out libraries that contain other libraries", func() {
+		entries, err := adminRepo.SongIndex()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(gems).To(ContainElement(model.IpodGem{
-			MediaFileID: "ipod-6", Title: "Ipod Lonely Song", Artist: artistBeatles.Name,
-			LibraryID: 3, LibraryName: "iPod test 3",
-		}))
-		Expect(gems).ToNot(ContainElement(HaveField("Title", "Ipod Shared Song")))
-		Expect(gems).ToNot(ContainElement(HaveField("Title", "Ipod Lonely Mystery")))
+		Expect(entries).ToNot(ContainElement(HaveField("LibraryID", 4)))
+
+		stats, err := adminRepo.Stats()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stats).ToNot(ContainElement(HaveField("LibraryID", 4)))
+
+		counts, err := adminRepo.ArtistCounts()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(counts).ToNot(ContainElement(HaveField("LibraryID", 4)))
 	})
 
 	It("computes per-iPod stats", func() {
@@ -102,8 +121,6 @@ var _ = Describe("IpodRepository", func() {
 			}
 		}
 		Expect(lib3.SongCount).To(Equal(4))
-		Expect(lib3.DistinctSongs).To(Equal(3))
-		Expect(lib3.UniqueSongs).To(Equal(1))
 		Expect(lib3.ArtistCount).To(Equal(2))
 		Expect(lib3.AvgYear).To(BeNumerically("~", 1985))
 	})
@@ -117,11 +134,10 @@ var _ = Describe("IpodRepository", func() {
 		Expect(counts).ToNot(ContainElement(HaveField("ArtistID", consts.UnknownArtistID)))
 	})
 
-	It("computes library-wide totals", func() {
+	It("finds the most common decade", func() {
 		totals, err := adminRepo.Totals()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(totals.SharedSongs).To(Equal(2))
-		Expect(totals.DistinctSongs).To(BeNumerically(">", 3))
+		Expect(totals.TopDecade).To(Equal(1980))
 	})
 
 	It("changes the data version when a scan finishes", func() {
@@ -140,14 +156,45 @@ var _ = Describe("IpodRepository", func() {
 		DeferCleanup(func() { _ = ur.SetUserLibraries(regularUser.ID, []int{1}) })
 
 		repo := NewIpodRepository(request.WithUser(log.NewContext(context.TODO()), regularUser), db)
-		songs, err := repo.TopDuplicateSongs(10)
+		entries, err := repo.SongIndex()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(songs).To(BeEmpty())
+		Expect(entries).To(HaveEach(HaveField("LibraryID", 2)))
 
 		stats, err := repo.Stats()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(stats).To(HaveLen(1))
 		Expect(stats[0].LibraryID).To(Equal(2))
-		Expect(stats[0].UniqueSongs).To(Equal(2))
+
+		// Users with different access get different versions, so they don't share cached data
+		userVersion, err := repo.DataVersion()
+		Expect(err).ToNot(HaveOccurred())
+		adminVersion, err := adminRepo.DataVersion()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(userVersion).ToNot(Equal(adminVersion))
+	})
+})
+
+var _ = Describe("findCombinedLibraries", func() {
+	It("finds libraries whose folder holds other libraries", func() {
+		Expect(findCombinedLibraries([]dbLibraryPath{
+			{ID: 1, Path: "/music"},
+			{ID: 2, Path: "/music/alice"},
+			{ID: 3, Path: "/music/bob/"},
+			{ID: 4, Path: "/other"},
+		})).To(Equal([]int{1}))
+	})
+
+	It("does not confuse folders sharing a name prefix", func() {
+		Expect(findCombinedLibraries([]dbLibraryPath{
+			{ID: 1, Path: "/music/ipod"},
+			{ID: 2, Path: "/music/ipod2"},
+		})).To(BeEmpty())
+	})
+
+	It("handles a library at the root folder", func() {
+		Expect(findCombinedLibraries([]dbLibraryPath{
+			{ID: 1, Path: "/"},
+			{ID: 2, Path: "/music"},
+		})).To(Equal([]int{1}))
 	})
 })

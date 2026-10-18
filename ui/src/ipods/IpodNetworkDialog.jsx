@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useDispatch } from 'react-redux'
-import { useDataProvider, useRedirect, useTranslate } from 'react-admin'
+import { useDataProvider, useTranslate } from 'react-admin'
 import ForceGraph2D from 'react-force-graph-2d'
 import {
   Button,
@@ -26,8 +25,8 @@ import { MdZoomOutMap } from 'react-icons/md'
 import { DialogTitle } from '../dialogs/DialogTitle'
 import { DialogContent } from '../dialogs/DialogContent'
 import { httpClient } from '../dataProvider'
-import { setSelectedLibraries } from '../actions'
 import { IpodIcon } from './IpodIcon'
+import { useBrowseIpod } from './useBrowseIpod'
 
 const GRAPH_HEIGHT = 520
 const FOCUS_MS = 800
@@ -512,8 +511,6 @@ export const MatchTab = ({ onSelectIpod }) => {
 export const IpodNetworkDialog = ({ open, onClose }) => {
   const classes = useStyles()
   const translate = useTranslate()
-  const dispatch = useDispatch()
-  const redirect = useRedirect()
   const [tab, setTab] = useState(0)
   const [network, setNetwork] = useState(null)
   const [error, setError] = useState(false)
@@ -526,14 +523,7 @@ export const IpodNetworkDialog = ({ open, onClose }) => {
       .catch(() => setError(true))
   }, [open])
 
-  const handleBrowse = useCallback(
-    (id) => {
-      dispatch(setSelectedLibraries([id]))
-      onClose()
-      redirect('/album')
-    },
-    [dispatch, onClose, redirect],
-  )
+  const handleBrowse = useBrowseIpod(onClose)
 
   const handleSelectIpod = useCallback((id) => {
     setSelectedId(id)

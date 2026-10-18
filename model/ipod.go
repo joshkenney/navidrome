@@ -12,6 +12,15 @@ type IpodSong struct {
 	IpodNames   []string `json:"ipodNames"`
 }
 
+// IpodSongEntry is a song (matched by Key, see utils/songkey) as found on one iPod
+type IpodSongEntry struct {
+	Key         string
+	LibraryID   int
+	MediaFileID string
+	Title       string
+	Artist      string
+}
+
 // IpodGem is a song found on exactly one iPod
 type IpodGem struct {
 	MediaFileID string `json:"id"`
@@ -45,20 +54,21 @@ type IpodArtistCount struct {
 
 // IpodTotals holds library-wide numbers that can't be derived from per-iPod stats
 type IpodTotals struct {
-	DistinctSongs int    `json:"distinctSongs"`
-	SharedSongs   int    `json:"sharedSongs"`
-	TopGenre      string `json:"topGenre"`
-	TopDecade     int    `json:"topDecade"`
+	TopGenre  string `json:"topGenre"`
+	TopDecade int    `json:"topDecade"`
 }
 
+// IpodRepository only considers iPods: libraries that contain other libraries (like a
+// "Music Library" holding every iPod's folder) are left out, as they would count every song twice
 type IpodRepository interface {
-	// TopDuplicateSongs returns the songs found on the most iPods, most shared first
-	TopDuplicateSongs(limit int) ([]IpodSong, error)
-	// UniqueGems returns a random sample of songs found on only one iPod
-	UniqueGems(limit int) ([]IpodGem, error)
+	// SongIndex returns one entry per song per iPod, leaving out placeholder songs
+	SongIndex() ([]IpodSongEntry, error)
+	// Stats returns per-iPod numbers. DistinctSongs and UniqueSongs are not filled in,
+	// as they are derived from the SongIndex
 	Stats() ([]IpodStats, error)
 	Totals() (*IpodTotals, error)
 	ArtistCounts() ([]IpodArtistCount, error)
-	// DataVersion changes whenever a scan finishes or a library is added, changed or removed
+	// DataVersion identifies the iPods the current user can access and their state. It changes
+	// whenever a scan finishes or a library is added, changed or removed
 	DataVersion() (string, error)
 }

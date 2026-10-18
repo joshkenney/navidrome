@@ -14,6 +14,7 @@ import {
   ListItem,
   ListItemSecondaryAction,
   ListItemText,
+  Link as MuiLink,
   Tooltip,
   Typography,
 } from '@material-ui/core'
@@ -24,6 +25,7 @@ import { DialogContent } from '../dialogs/DialogContent'
 import { httpClient } from '../dataProvider'
 import { setTrack } from '../actions'
 import { pickSuperlatives } from './superlatives'
+import { useBrowseIpod } from './useBrowseIpod'
 
 const useStyles = makeStyles((theme) => ({
   button: { color: 'inherit' },
@@ -62,6 +64,19 @@ const Section = ({ title, action, children }) => {
   )
 }
 
+// An iPod name that opens the iPod's albums
+const IpodLink = ({ ipod, onBrowse }) => (
+  <MuiLink
+    component="button"
+    variant="subtitle1"
+    color="inherit"
+    underline="hover"
+    onClick={() => onBrowse(ipod.id)}
+  >
+    {ipod.name}
+  </MuiLink>
+)
+
 const StatTile = ({ label, value }) => {
   const classes = useStyles()
   return (
@@ -86,6 +101,7 @@ export const IpodFactsDialog = ({ open, onClose }) => {
   const notify = useNotify()
   const [facts, setFacts] = useState(null)
   const [error, setError] = useState(false)
+  const browseIpod = useBrowseIpod(onClose)
 
   const fetchFacts = useCallback(() => {
     setError(false)
@@ -145,19 +161,21 @@ export const IpodFactsDialog = ({ open, onClose }) => {
               </Typography>
             )}
 
-            <Section title={t('topDuplicates')}>
-              {facts.topDuplicateSongs.length === 0 ? (
-                <Typography color="textSecondary">
-                  {t('noDuplicates')}
-                </Typography>
-              ) : (
+            {facts.topDuplicateSongs.length > 0 && (
+              <Section title={t('duplicates')}>
                 <List dense disablePadding>
                   {facts.topDuplicateSongs.map((song, idx) => (
                     <ListItem key={song.id} divider>
                       <span className={classes.rank}>{idx + 1}</span>
                       <ListItemText
                         primary={`${song.title} — ${song.artist}`}
-                        secondary={`${t('onIpods', { smart_count: song.ipodCount })}: ${song.ipodNames.join(', ')}`}
+                        secondary={
+                          <Tooltip title={song.ipodNames.join(', ')}>
+                            <span>
+                              {t('onIpods', { smart_count: song.ipodCount })}
+                            </span>
+                          </Tooltip>
+                        }
                       />
                       <ListItemSecondaryAction>
                         <Tooltip title={t('play')}>
@@ -174,8 +192,8 @@ export const IpodFactsDialog = ({ open, onClose }) => {
                     </ListItem>
                   ))}
                 </List>
-              )}
-            </Section>
+              </Section>
+            )}
 
             {facts.topSharedArtists.length > 0 && (
               <Section title={t('topArtists')}>
@@ -199,7 +217,9 @@ export const IpodFactsDialog = ({ open, onClose }) => {
                 <Card variant="outlined">
                   <CardContent>
                     <Typography variant="subtitle1">
-                      {`${facts.twins.a.name} ♥ ${facts.twins.b.name}`}
+                      <IpodLink ipod={facts.twins.a} onBrowse={browseIpod} />
+                      {' ♥ '}
+                      <IpodLink ipod={facts.twins.b} onBrowse={browseIpod} />
                     </Typography>
                     <Typography
                       variant="body2"
@@ -230,9 +250,9 @@ export const IpodFactsDialog = ({ open, onClose }) => {
                         <Typography variant="overline">
                           {t(`superlative.${p.key}`)}
                         </Typography>
-                        <Typography variant="subtitle1">
-                          {p.ipod.name}
-                        </Typography>
+                        <div>
+                          <IpodLink ipod={p.ipod} onBrowse={browseIpod} />
+                        </div>
                         <Typography variant="body2" color="textSecondary">
                           {p.value(p.ipod)}
                         </Typography>
