@@ -41,6 +41,7 @@ export const ImageUploadOverlay = ({
   entityId,
   hasUploadedImage,
   onImageChange,
+  adminOnly = false,
 }) => {
   const translate = useTranslate()
   const notify = useNotify()
@@ -48,8 +49,8 @@ export const ImageUploadOverlay = ({
   const classes = useStyles()
   const fileInputRef = useRef(null)
 
-  const canEdit =
-    config.enableArtworkUpload || localStorage.getItem('role') === 'admin'
+  const isAdmin = localStorage.getItem('role') === 'admin'
+  const canEdit = adminOnly ? isAdmin : config.enableArtworkUpload || isAdmin
 
   const handleUploadClick = useCallback((e) => {
     e.stopPropagation()

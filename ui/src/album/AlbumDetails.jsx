@@ -27,6 +27,7 @@ import {
   DurationField,
   formatRange,
   LoveButton,
+  ImageUploadOverlay,
   RatingField,
   SizeField,
   useAlbumsPerPage,
@@ -79,6 +80,7 @@ const useStyles = makeStyles(
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      position: 'relative', // For the cover upload buttons
     },
     cover: {
       objectFit: 'contain',
@@ -276,6 +278,13 @@ const AlbumDetails = (props) => {
             style={{
               cursor: imageError ? 'default' : 'pointer',
             }}
+          />
+          {/* Admins can set their own cover, or remove one set before or found online */}
+          <ImageUploadOverlay
+            entityType="album"
+            entityId={record.id}
+            hasUploadedImage={!!record.customCover}
+            adminOnly
           />
         </div>
         <div className={classes.details}>

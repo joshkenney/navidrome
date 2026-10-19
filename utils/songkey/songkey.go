@@ -30,6 +30,10 @@ var (
 	// ...unless they mark a different recording
 	differentRecordingWords = regexp.MustCompile(`\b(remix|mix|instrumental|acoustic|demo|karaoke|cover)\b`)
 
+	// Suffixes stores and taggers add to album titles: "(Deluxe Edition)", "[Remastered]", " - EP"
+	albumEditionWords = regexp.MustCompile(`\b(remaster(ed)?|deluxe|expanded|anniversary|special|collector'?s|` +
+		`limited|bonus|edition|version|explicit|clean|mono|stereo|reissue|single|ep)\b`)
+
 	artistAnd         = regexp.MustCompile(`\s*[&+]\s*`)
 	artistPunctuation = regexp.MustCompile(`[^\p{L}\p{N}\s]`)
 )
@@ -118,4 +122,28 @@ func stripVersionSuffix(t string) string {
 		}
 	}
 	return t
+}
+
+// AlbumKey matches spellings of the same album title, ignoring case, punctuation and edition
+// suffixes: "Blue Album (Deluxe Edition)" and "The Blue Album", "Pinkerton - EP" and "Pinkerton".
+// It returns "" for titles that don't name an album, like "[Unknown Album]" or "Untitled"
+func AlbumKey(title string) string {
+	t := strings.TrimSpace(spaces.ReplaceAllString(strings.ToLower(title), " "))
+	for {
+		stripped := t
+		for _, suffix := range []*regexp.Regexp{bracketSuffix, dashSuffix} {
+			if m := suffix.FindStringSubmatchIndex(stripped); m != nil &&
+				albumEditionWords.MatchString(stripped[m[2]:m[3]]) {
+				stripped = strings.TrimSpace(stripped[:m[0]])
+			}
+		}
+		if stripped == t || stripped == "" {
+			break
+		}
+		t = stripped
+	}
+	if t == "" || t == strings.ToLower(consts.UnknownAlbum) || placeholderTitle.MatchString(t) {
+		return ""
+	}
+	return ArtistKey(t)
 }

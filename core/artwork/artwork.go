@@ -28,6 +28,12 @@ func NewArtwork(ds model.DataStore, cache cache.FileCache, ffmpeg ffmpeg.FFmpeg,
 	return &artwork{ds: ds, cache: cache, ffmpeg: ffmpeg, provider: provider}
 }
 
+// IsPlaceholder tells whether GetOrPlaceholder returned a placeholder, from the lastUpdate it
+// returned. Placeholders should only be cached briefly, as a cover can be found later
+func IsPlaceholder(lastUpdate time.Time) bool {
+	return lastUpdate.Equal(consts.ServerStart)
+}
+
 type artwork struct {
 	ds       model.DataStore
 	cache    cache.FileCache

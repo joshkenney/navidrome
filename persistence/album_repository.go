@@ -268,6 +268,11 @@ func (r *albumRepository) CopyAttributes(fromID, toID string, columns ...string)
 	return err
 }
 
+func (r *albumRepository) TouchCover(id string) error {
+	_, err := r.executeSQL(Update(r.tableName).Set("updated_at", time.Now()).Where(Eq{"id": id}))
+	return err
+}
+
 // Touch flags an album as being scanned by the scanner, but not necessarily updated.
 // This is used for when missing tracks are detected for an album during scan.
 func (r *albumRepository) Touch(ids ...string) error {
@@ -390,7 +395,13 @@ func (r *albumRepository) Count(options ...rest.QueryOptions) (int64, error) {
 }
 
 func (r *albumRepository) Read(id string) (any, error) {
-	return r.Get(id)
+	al, err := r.Get(id)
+	if err != nil {
+		return nil, err
+	}
+	// Covers kept in the data folder, for the album page to offer replacing or removing them
+	al.CustomCover = model.AlbumCoverKind(al.ID)
+	return al, nil
 }
 
 func (r *albumRepository) ReadAll(options ...rest.QueryOptions) (any, error) {

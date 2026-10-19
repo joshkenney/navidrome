@@ -11,6 +11,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/coverart"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/core/metrics"
 	"github.com/navidrome/navidrome/core/playback"
@@ -30,6 +31,7 @@ import (
 var allProviders = wire.NewSet(
 	core.Set,
 	artwork.Set,
+	coverart.NewFinder,
 	server.New,
 	subsonic.New,
 	nativeapi.New,
@@ -134,4 +136,10 @@ func GetPluginManager(ctx context.Context) *plugins.Manager {
 	manager := getPluginManager()
 	manager.SetSubsonicRouter(CreateSubsonicAPIRouter(ctx))
 	return manager
+}
+
+func CreateCoverFinder() *coverart.Finder {
+	panic(wire.Build(
+		allProviders,
+	))
 }

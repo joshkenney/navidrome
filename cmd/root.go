@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -88,6 +89,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(schedulePeriodicBackup(ctx))
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBOptimizer(ctx))
+	g.Go(scheduleCoverFinder(ctx))
 	g.Go(startPluginManager(ctx))
 	g.Go(runInitialScan(ctx))
 	if conf.Server.Scanner.Enabled {
@@ -325,6 +327,70 @@ func scheduleDBOptimizer(ctx context.Context) func() error {
 		})
 		return err
 	}
+}
+
+const (
+	coverFinderStartDelay = 2 * time.Minute
+	coverFinderCheck      = "@every 10m"
+	coverFinderInterval   = 6 * time.Hour
+)
+
+// scheduleCoverFinder looks up covers online for albums that have none: shortly after startup,
+// after each scan that finished since, and every few hours. A run that is still going (the first
+// one can take hours) is not started again
+func scheduleCoverFinder(ctx context.Context) func() error {
+	return func() error {
+		if !conf.Server.EnableExternalServices {
+			log.Info(ctx, "Cover finder disabled, as external services are disabled")
+			return nil
+		}
+		ds := CreateDataStore()
+		finder := CreateCoverFinder()
+		finder.IsScanning = scanner.IsScanning
+
+		var mu sync.Mutex
+		var lastRun, lastScan time.Time
+		run := func() {
+			if scanner.IsScanning() || !mu.TryLock() {
+				return
+			}
+			defer mu.Unlock()
+			scanAt := latestScanAt(ctx, ds)
+			if !lastRun.IsZero() && !scanAt.After(lastScan) && time.Since(lastRun) < coverFinderInterval {
+				return
+			}
+			lastRun, lastScan = time.Now(), scanAt
+			if _, err := finder.Run(ctx); err != nil {
+				log.Error(ctx, "Cover finder failed", err)
+			}
+		}
+
+		log.Info(ctx, "Scheduling cover finder", "check", coverFinderCheck)
+		if _, err := scheduler.GetInstance().Add(coverFinderCheck, run); err != nil {
+			return err
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(coverFinderStartDelay):
+			run()
+		}
+		return nil
+	}
+}
+
+// latestScanAt returns when the last library scan finished
+func latestScanAt(ctx context.Context, ds model.DataStore) time.Time {
+	libs, err := ds.Library(ctx).GetAll()
+	if err != nil {
+		return time.Time{}
+	}
+	var latest time.Time
+	for _, lib := range libs {
+		if lib.LastScanAt.After(latest) {
+			latest = lib.LastScanAt
+		}
+	}
+	return latest
 }
 
 // startScheduler starts the Navidrome scheduler, which is used to run periodic tasks.

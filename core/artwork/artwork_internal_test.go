@@ -10,11 +10,13 @@ import (
 
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/gen2brain/webp"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/tests"
@@ -120,6 +122,58 @@ var _ = Describe("Artwork", func() {
 				Expect(err).ToNot(HaveOccurred())
 				_, _, err = aw.Reader(ctx)
 				Expect(err).To(MatchError(ErrUnavailable))
+			})
+		})
+		Context("Covers in the data folder", func() {
+			saveCover := func(albumID string, auto bool) string {
+				path := model.UploadedImagePath(consts.EntityAlbum, model.AlbumCoverFilename(albumID, auto, ".png"))
+				Expect(os.MkdirAll(filepath.Dir(path), 0755)).To(Succeed())
+				Expect(os.WriteFile(path, []byte("cover"), 0600)).To(Succeed())
+				return path
+			}
+			BeforeEach(func() {
+				conf.Server.DataFolder = GinkgoT().TempDir()
+				folderRepo.result = []model.Folder{{
+					Path:       "tests/fixtures/artist/an-album",
+					ImageFiles: []string{"front.png"},
+				}}
+				ds.Album(ctx).(*tests.MockAlbumRepo).SetData(model.Albums{alOnlyExternal, alExternalNotFound})
+			})
+			It("uses a cover set by an admin before the album's own images", func() {
+				manual := saveCover(alOnlyExternal.ID, false)
+				saveCover(alOnlyExternal.ID, true)
+				r, err := newAlbumArtworkReader(ctx, aw, alOnlyExternal.CoverArtID(), nil)
+				Expect(err).ToNot(HaveOccurred())
+				_, path, err := r.Reader(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(path).To(Equal(manual))
+			})
+			It("uses a found cover only when the album has no image of its own", func() {
+				saveCover(alOnlyExternal.ID, true)
+				r, err := newAlbumArtworkReader(ctx, aw, alOnlyExternal.CoverArtID(), nil)
+				Expect(err).ToNot(HaveOccurred())
+				_, path, err := r.Reader(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(path).To(Equal("tests/fixtures/artist/an-album/front.png"))
+
+				folderRepo.result = []model.Folder{}
+				found := saveCover(alExternalNotFound.ID, true)
+				r, err = newAlbumArtworkReader(ctx, aw, alExternalNotFound.CoverArtID(), nil)
+				Expect(err).ToNot(HaveOccurred())
+				_, path, err = r.Reader(ctx)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(path).To(Equal(found))
+			})
+			It("changes the cache key when a cover is found", func() {
+				folderRepo.result = []model.Folder{}
+				before, err := newAlbumArtworkReader(ctx, aw, alExternalNotFound.CoverArtID(), nil)
+				Expect(err).ToNot(HaveOccurred())
+				path := saveCover(alExternalNotFound.ID, true)
+				later := time.Now().Add(time.Hour)
+				Expect(os.Chtimes(path, later, later)).To(Succeed())
+				after, err := newAlbumArtworkReader(ctx, aw, alExternalNotFound.CoverArtID(), nil)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(after.Key()).ToNot(Equal(before.Key()))
 			})
 		})
 		Context("Multiple covers", func() {

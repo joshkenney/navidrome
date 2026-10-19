@@ -30,6 +30,9 @@ type albumArtworkReader struct {
 	updatedAt  *time.Time
 	imgFiles   []string
 	rootFolder string
+	// Covers kept in the data folder (see model.AlbumCoverPath)
+	manualCover string
+	autoCover   string
 }
 
 func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.ArtworkID, provider external.Provider) (*albumArtworkReader, error) {
@@ -54,6 +57,12 @@ func newAlbumArtworkReader(ctx context.Context, artwork *artwork, artID model.Ar
 		a.cacheKey.lastUpdate = *a.updatedAt
 	} else {
 		a.cacheKey.lastUpdate = al.UpdatedAt
+	}
+	// A cover set by an admin or found by the cover finder replaces any image cached before it
+	a.manualCover = model.AlbumCoverPath(al.ID, false)
+	a.autoCover = model.AlbumCoverPath(al.ID, true)
+	if coverAt := model.AlbumCoverUpdatedAt(al.ID); coverAt.After(a.cacheKey.lastUpdate) {
+		a.cacheKey.lastUpdate = coverAt
 	}
 	return a, nil
 }
@@ -80,8 +89,14 @@ func (a *albumArtworkReader) Reader(ctx context.Context) (io.ReadCloser, string,
 	return selectImageReader(ctx, a.artID, ff...)
 }
 
+// The cover set by an admin comes first. The one found by the cover finder comes after the
+// album's own images, in place of looking it up online (or last, if that is not configured)
 func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ffmpeg.FFmpeg, priority string) []sourceFunc {
 	var ff []sourceFunc
+	if a.manualCover != "" {
+		ff = append(ff, fromLocalFile(a.manualCover))
+	}
+	autoAdded := a.autoCover == ""
 	for pattern := range strings.SplitSeq(strings.ToLower(priority), ",") {
 		pattern = strings.TrimSpace(pattern)
 		switch {
@@ -89,10 +104,17 @@ func (a *albumArtworkReader) fromCoverArtPriority(ctx context.Context, ffmpeg ff
 			embedArtPath := filepath.Join(a.rootFolder, a.album.EmbedArtPath)
 			ff = append(ff, fromTag(ctx, embedArtPath), fromFFmpegTag(ctx, ffmpeg, embedArtPath))
 		case pattern == "external":
+			if !autoAdded {
+				ff = append(ff, fromLocalFile(a.autoCover))
+				autoAdded = true
+			}
 			ff = append(ff, fromAlbumExternalSource(ctx, a.album, a.provider))
 		case len(a.imgFiles) > 0:
 			ff = append(ff, fromExternalFile(ctx, a.imgFiles, pattern))
 		}
+	}
+	if !autoAdded {
+		ff = append(ff, fromLocalFile(a.autoCover))
 	}
 	return ff
 }

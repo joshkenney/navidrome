@@ -14,6 +14,7 @@ import (
 	"github.com/navidrome/navidrome/core"
 	"github.com/navidrome/navidrome/core/agents"
 	"github.com/navidrome/navidrome/core/artwork"
+	"github.com/navidrome/navidrome/core/coverart"
 	"github.com/navidrome/navidrome/core/external"
 	"github.com/navidrome/navidrome/core/ffmpeg"
 	"github.com/navidrome/navidrome/core/lyrics"
@@ -212,9 +213,21 @@ func getPluginManager() *plugins.Manager {
 	return manager
 }
 
+func CreateCoverFinder() *coverart.Finder {
+	sqlDB := db.Db()
+	dataStore := persistence.New(sqlDB)
+	broker := events.GetBroker()
+	metricsMetrics := metrics.GetPrometheusInstance(dataStore)
+	manager := plugins.GetManager(dataStore, broker, metricsMetrics)
+	agentsAgents := agents.GetAgents(dataStore, manager)
+	provider := external.NewProvider(dataStore, agentsAgents)
+	finder := coverart.NewFinder(dataStore, provider)
+	return finder
+}
+
 // wire_injectors.go:
 
-var allProviders = wire.NewSet(core.Set, artwork.Set, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)), wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)), wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)), wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)), wire.Bind(new(core.Watcher), new(scanner.Watcher)))
+var allProviders = wire.NewSet(core.Set, artwork.Set, coverart.NewFinder, server.New, subsonic.New, nativeapi.New, public.New, persistence.New, lastfm.NewRouter, listenbrainz.NewRouter, events.GetBroker, scanner.New, scanner.GetWatcher, metrics.GetPrometheusInstance, db.Db, plugins.GetManager, wire.Bind(new(agents.PluginLoader), new(*plugins.Manager)), wire.Bind(new(scrobbler.PluginLoader), new(*plugins.Manager)), wire.Bind(new(lyrics.PluginLoader), new(*plugins.Manager)), wire.Bind(new(nativeapi.PluginManager), new(*plugins.Manager)), wire.Bind(new(core.PluginUnloader), new(*plugins.Manager)), wire.Bind(new(plugins.PluginMetricsRecorder), new(metrics.Metrics)), wire.Bind(new(core.Watcher), new(scanner.Watcher)))
 
 func GetPluginManager(ctx context.Context) *plugins.Manager {
 	manager := getPluginManager()

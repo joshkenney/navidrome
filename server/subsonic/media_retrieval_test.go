@@ -13,6 +13,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
+	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/core/lyrics"
 	"github.com/navidrome/navidrome/model"
@@ -58,6 +59,20 @@ var _ = Describe("MediaRetrievalController", func() {
 			Expect(err).To(BeNil())
 			Expect(artwork.recvId).To(BeEmpty())
 			Expect(w.Body.String()).To(Equal(artwork.data))
+		})
+
+		It("lets clients keep covers for good, but placeholders only for an hour", func() {
+			artwork.lastUpdate = time.Now().Add(-time.Hour)
+			_, err := router.GetCoverArt(w, newGetRequest("id=34"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Header().Get("cache-control")).To(Equal("public, max-age=315360000"))
+
+			// A cover can be found later for an album showing the placeholder
+			w = httptest.NewRecorder()
+			artwork.lastUpdate = consts.ServerStart
+			_, err = router.GetCoverArt(w, newGetRequest("id=al-34"))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(w.Header().Get("cache-control")).To(Equal("public, max-age=3600"))
 		})
 
 		It("should fail when the file is not found", func() {
@@ -334,6 +349,7 @@ type fakeArtwork struct {
 	recvId        string
 	recvSize      int
 	recvSquare    bool
+	lastUpdate    time.Time
 }
 
 func (c *fakeArtwork) GetOrPlaceholder(_ context.Context, id string, size int, square bool) (io.ReadCloser, time.Time, error) {
@@ -347,7 +363,7 @@ func (c *fakeArtwork) GetOrPlaceholder(_ context.Context, id string, size int, s
 		c.ctxCancelFunc() // Simulate context cancellation
 		return nil, time.Time{}, context.Canceled
 	}
-	return io.NopCloser(bytes.NewReader([]byte(c.data))), time.Time{}, nil
+	return io.NopCloser(bytes.NewReader([]byte(c.data))), c.lastUpdate, nil
 }
 
 type mockedMediaFile struct {

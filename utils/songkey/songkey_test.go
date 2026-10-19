@@ -103,3 +103,29 @@ var _ = Describe("ArtistKey", func() {
 		Expect(ArtistKey("!!!")).To(Equal("!!!"))
 	})
 })
+
+var _ = Describe("AlbumKey", func() {
+	DescribeTable("matches spellings of the same album",
+		func(a, b string) {
+			Expect(AlbumKey(a)).ToNot(BeEmpty())
+			Expect(AlbumKey(a)).To(Equal(AlbumKey(b)))
+		},
+		Entry("edition suffix", "Weezer (Deluxe Edition)", "Weezer"),
+		Entry("remaster in brackets", "Nevermind [Remastered]", "Nevermind"),
+		Entry("iTunes EP suffix", "Pinkerton - EP", "Pinkerton"),
+		Entry("several suffixes", "OK Computer (Collector's Edition) [Remastered]", "OK Computer"),
+		Entry("case and punctuation", "Is This It?", "is this it"),
+		Entry("leading The", "The Blue Album", "Blue Album"),
+	)
+
+	It("keeps different albums apart", func() {
+		Expect(AlbumKey("Weezer (Blue Album)")).ToNot(Equal(AlbumKey("Weezer")))
+		Expect(AlbumKey("Live at Leeds")).ToNot(Equal(AlbumKey("Leeds")))
+	})
+
+	It("ignores titles that don't name an album", func() {
+		Expect(AlbumKey("[Unknown Album]")).To(BeEmpty())
+		Expect(AlbumKey("Untitled")).To(BeEmpty())
+		Expect(AlbumKey("  ")).To(BeEmpty())
+	})
+})

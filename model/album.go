@@ -21,7 +21,8 @@ type Album struct {
 	LibraryName   string `structs:"-" json:"libraryName" hash:"ignore"`
 	Name          string `structs:"name" json:"name"`
 	EmbedArtPath  string `structs:"embed_art_path" json:"-"`
-	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"` // Deprecated, use Participants
+	CustomCover   string `structs:"-" json:"customCover,omitempty" hash:"ignore"` // See AlbumCoverKind
+	AlbumArtistID string `structs:"album_artist_id" json:"albumArtistId"`         // Deprecated, use Participants
 	// AlbumArtist is the display name used for the album artist.
 	AlbumArtist          string   `structs:"album_artist" json:"albumArtist"`
 	MaxYear              int      `structs:"max_year" json:"maxYear"`
@@ -139,6 +140,8 @@ type AlbumRepository interface {
 	Exists(id string) (bool, error)
 	Put(*Album) error
 	UpdateExternalInfo(*Album) error
+	// TouchCover marks the album as updated after its cover changed, so clients load the new one
+	TouchCover(id string) error
 	Get(id string) (*Album, error)
 	GetAll(...QueryOptions) (Albums, error)
 

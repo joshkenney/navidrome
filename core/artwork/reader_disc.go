@@ -103,6 +103,10 @@ func newDiscArtworkReader(ctx context.Context, a *artwork, artID model.ArtworkID
 	} else {
 		r.cacheKey.lastUpdate = al.UpdatedAt
 	}
+	// Discs without their own art show the album's, which can be a cover kept in the data folder
+	if coverAt := model.AlbumCoverUpdatedAt(al.ID); coverAt.After(r.cacheKey.lastUpdate) {
+		r.cacheKey.lastUpdate = coverAt
+	}
 	return r, nil
 }
 

@@ -43,6 +43,10 @@ func newMediafileArtworkReader(ctx context.Context, artwork *artwork, artID mode
 	if imagesUpdatedAt != nil && imagesUpdatedAt.After(a.cacheKey.lastUpdate) {
 		a.cacheKey.lastUpdate = *imagesUpdatedAt
 	}
+	// Songs without their own art show the album's, which can be a cover kept in the data folder
+	if coverAt := model.AlbumCoverUpdatedAt(al.ID); coverAt.After(a.cacheKey.lastUpdate) {
+		a.cacheKey.lastUpdate = coverAt
+	}
 	return a, nil
 }
 

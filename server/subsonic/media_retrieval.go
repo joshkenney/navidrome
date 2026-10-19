@@ -10,6 +10,7 @@ import (
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/consts"
+	"github.com/navidrome/navidrome/core/artwork"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/resources"
@@ -80,7 +81,12 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	}
 
 	defer imgReader.Close()
-	w.Header().Set("cache-control", "public, max-age=315360000")
+	if artwork.IsPlaceholder(lastUpdate) {
+		// Not for long: the cover finder or an admin can give the album a cover later
+		w.Header().Set("cache-control", "public, max-age=3600")
+	} else {
+		w.Header().Set("cache-control", "public, max-age=315360000")
+	}
 	w.Header().Set("last-modified", lastUpdate.Format(http.TimeFormat))
 
 	cnt, err := io.Copy(w, imgReader)

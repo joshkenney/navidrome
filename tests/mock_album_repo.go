@@ -36,6 +36,14 @@ func (m *MockAlbumRepo) SetData(albums model.Albums) {
 	}
 }
 
+func (m *MockAlbumRepo) TouchCover(id string) error {
+	if d, ok := m.Data[id]; ok {
+		d.UpdatedAt = time.Now()
+		return nil
+	}
+	return model.ErrNotFound
+}
+
 func (m *MockAlbumRepo) Exists(id string) (bool, error) {
 	if m.Err {
 		return false, errors.New("unexpected error")
