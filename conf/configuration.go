@@ -109,6 +109,7 @@ type configOptions struct {
 	Subsonic                        subsonicOptions     `json:",omitzero"`
 	LastFM                          lastfmOptions       `json:",omitzero"`
 	Deezer                          deezerOptions       `json:",omitzero"`
+	CoverFinder                     coverFinderOptions  `json:",omitzero"`
 	ListenBrainz                    listenBrainzOptions `json:",omitzero"`
 	EnableScrobbleHistory           bool
 	Tags                            map[string]TagConf `json:",omitempty"`
@@ -186,6 +187,12 @@ type lastfmOptions struct {
 
 	// Computed values
 	Languages []string // Computed from Language, split by comma
+}
+
+// coverFinderOptions configure the background lookup of covers for albums without one
+type coverFinderOptions struct {
+	Enabled bool
+	Delay   time.Duration // Pause after each album looked up online
 }
 
 type deezerOptions struct {
@@ -786,6 +793,8 @@ func setViperDefaults() {
 	viper.SetDefault("lastfm.secret", "")
 	viper.SetDefault("lastfm.scrobblefirstartistonly", false)
 	viper.SetDefault("deezer.enabled", true)
+	viper.SetDefault("coverfinder.enabled", true)
+	viper.SetDefault("coverfinder.delay", 3*time.Second)
 	viper.SetDefault("deezer.language", consts.DefaultInfoLanguage)
 	viper.SetDefault("listenbrainz.enabled", true)
 	viper.SetDefault("listenbrainz.baseurl", consts.DefaultListenBrainzBaseURL)

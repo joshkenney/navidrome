@@ -71,6 +71,8 @@ type Finder struct {
 	// Pause after each album looked up online, to stay within the sources' rate limits (iTunes
 	// allows about 20 searches a minute)
 	Delay time.Duration
+	// Pause between pages of albums read from the database
+	PagePause time.Duration
 	// Stops a run while the library is being scanned
 	IsScanning func() bool
 
@@ -86,7 +88,8 @@ func NewFinder(ds model.DataStore, provider external.Provider) *Finder {
 		ITunesURL:    "https://itunes.apple.com/search",
 		DeezerURL:    "https://api.deezer.com/search/album",
 		AllowedHosts: defaultAllowedHosts,
-		Delay:        3 * time.Second,
+		Delay:        conf.Server.CoverFinder.Delay,
+		PagePause:    200 * time.Millisecond,
 		IsScanning:   func() bool { return false },
 		now:          time.Now,
 	}
@@ -400,17 +403,27 @@ func saveAutoCover(albumID string, data []byte, ext string) error {
 
 // forEachAlbumWithoutCover calls fn for each album the artwork code has no cover for (no art
 // embedded in its songs, no image in its folders matching CoverArtPriority, no cover in the data
-// folder), until fn returns false. Albums are read a page at a time, as there can be hundreds of
-// thousands of them
+// folder), until fn returns false. There can be hundreds of thousands of albums, so they are read a
+// page at a time, each page starting after the last album of the previous one (an OFFSET would
+// make the database go through all the previous albums again for every page), with a pause
+// between pages to leave the database to the other users
 func (f *Finder) forEachAlbumWithoutCover(ctx context.Context, fn func(model.Album) bool) error {
 	patterns := coverFilePatterns()
-	filter := squirrel.And{squirrel.Eq{"embed_art_path": ""}, squirrel.Eq{"album.missing": false}}
-	for offset := 0; ; offset += albumPageSize {
+	lastID := ""
+	for {
 		albums, err := f.ds.Album(ctx).GetAll(model.QueryOptions{
-			Filters: filter, Sort: "album.id", Max: albumPageSize, Offset: offset,
+			Filters: squirrel.And{
+				squirrel.Eq{"embed_art_path": ""},
+				squirrel.Eq{"album.missing": false},
+				squirrel.Gt{"album.id": lastID},
+			},
+			Sort: "album.id", Max: albumPageSize,
 		})
 		if err != nil {
 			return err
+		}
+		if len(albums) > 0 {
+			lastID = albums[len(albums)-1].ID
 		}
 		folders, err := f.foldersOf(ctx, albums)
 		if err != nil {
@@ -426,6 +439,11 @@ func (f *Finder) forEachAlbumWithoutCover(ctx context.Context, fn func(model.Alb
 		}
 		if len(albums) < albumPageSize {
 			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(f.PagePause):
 		}
 	}
 }

@@ -343,8 +343,8 @@ const (
 // one can take hours) is not started again
 func scheduleCoverFinder(ctx context.Context) func() error {
 	return func() error {
-		if !conf.Server.EnableExternalServices {
-			log.Info(ctx, "Cover finder disabled, as external services are disabled")
+		if !conf.Server.EnableExternalServices || !conf.Server.CoverFinder.Enabled {
+			log.Info(ctx, "Cover finder disabled")
 			return nil
 		}
 		ds := CreateDataStore()

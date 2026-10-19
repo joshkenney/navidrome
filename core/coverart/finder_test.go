@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
 	"github.com/navidrome/navidrome/model"
@@ -29,7 +30,7 @@ type fakeFolders struct {
 
 func (f fakeFolders) GetAll(...model.QueryOptions) ([]model.Folder, error) { return f.folders, nil }
 
-// pagedAlbums honours Max and Offset, like the database
+// pagedAlbums honours Max and the "album.id >" filter the finder pages with, like the database
 type pagedAlbums struct {
 	*tests.MockAlbumRepo
 	pages int
@@ -38,8 +39,19 @@ type pagedAlbums struct {
 func (p *pagedAlbums) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
 	p.pages++
 	all, _ := p.MockAlbumRepo.GetAll(qo...)
-	o := qo[0]
-	return all[min(o.Offset, len(all)):min(o.Offset+o.Max, len(all))], nil
+	after := ""
+	for _, f := range qo[0].Filters.(squirrel.And) {
+		if gt, ok := f.(squirrel.Gt); ok {
+			after = gt["album.id"].(string)
+		}
+	}
+	var page model.Albums
+	for _, al := range all {
+		if al.ID > after && len(page) < qo[0].Max {
+			page = append(page, al)
+		}
+	}
+	return page, nil
 }
 
 type iTunesResult struct {
@@ -119,6 +131,7 @@ var _ = Describe("Finder", func() {
 		finder.DeezerURL = server.URL + "/deezer"
 		finder.AllowedHosts = []string{"127.0.0.1"}
 		finder.Delay = 0
+		finder.PagePause = 0
 	})
 
 	img := func(name string) string { return server.URL + "/img/" + name }
