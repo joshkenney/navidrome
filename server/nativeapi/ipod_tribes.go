@@ -24,19 +24,17 @@ const (
 	tribeMinGenreLift   = 1.25 // A tribe's genre must be at least this much more common than overall
 	tribeSecondGenre    = 0.6  // A second genre is named if it scores at least this share of the first
 
-	// Tribe counts aimed for when there are enough iPods, and the largest share of iPods one tribe
-	// may hold. Finer resolutions are tried until both hold
-	tribeMinCount      = 8
-	tribeMaxCount      = 15
-	tribeTargetCount   = 12
-	tribeMaxShare      = 0.25
-	tribeMinIpodsSplit = tribeMinCount * tribeMinSize
+	// Number of tribes aimed for: the largest tribes are split into their own sub-groups until
+	// there are this many, as long as each part has at least tribeMinSplitSize iPods
+	tribeTargetCount  = 17
+	tribeMinSplitSize = 5
 )
 
 // An admin's tribe name follows the tribe while at least this share of its iPods remain
 const tribeOverrideMinOverlap = 0.5
 
-var tribeResolutions = []float64{1.0, 1.25, 1.5, 1.75, 2, 2.5, 3, 4}
+// Resolutions tried, from coarse to fine, to split a tribe into sub-groups
+var tribeSplitResolutions = []float64{1.0, 1.25, 1.5, 2, 3, 4}
 
 // genreSynonyms maps the many spellings of common genres (iTunes and others) to one name
 var genreSynonyms = map[string]string{
@@ -187,37 +185,110 @@ func aggregate(adj []map[int]float64, community []int) []map[int]float64 {
 	return merged
 }
 
-// chooseCommunities runs Louvain at increasing resolutions, until the iPods are split into a
-// readable number of tribes, none of them holding too many of the iPods
+// chooseCommunities finds the natural communities of iPods, then keeps splitting the largest ones
+// into their own sub-groups (say, emo and pop-punk inside an alternative crowd) until there are
+// about tribeTargetCount tribes. Splits never leave iPods out: small leftovers join the part they
+// are closest to
 func chooseCommunities(n int, pairs []ipodPair) []int {
-	if n < tribeMinIpodsSplit {
-		return louvain(n, pairs, 1)
+	membership := louvain(n, pairs, 1)
+	adj := make([]map[int]float64, n)
+	for i := range adj {
+		adj[i] = map[int]float64{}
 	}
-	var best []int
-	bestCount, bestLargest := 0, n+1
-	for _, resolution := range tribeResolutions {
-		membership := louvain(n, pairs, resolution)
-		sizes := map[int]int{}
-		for _, c := range membership {
-			sizes[c]++
+	for _, p := range pairs {
+		adj[p.i][p.j] = p.weight
+		adj[p.j][p.i] = p.weight
+	}
+
+	unsplittable := map[int]bool{}
+	for {
+		groups := map[int][]int{}
+		for i, c := range membership {
+			groups[c] = append(groups[c], i)
 		}
-		count, largest := 0, 0
-		for _, size := range sizes {
-			if size >= tribeMinSize {
+		count := 0
+		largest := -1
+		for c, members := range groups {
+			if len(members) >= tribeMinSize {
 				count++
 			}
-			largest = max(largest, size)
+			if !unsplittable[c] && len(members) >= 2*tribeMinSplitSize &&
+				(largest < 0 || len(members) > len(groups[largest]) ||
+					len(members) == len(groups[largest]) && c < largest) {
+				largest = c
+			}
 		}
-		if count >= tribeMinCount && count <= tribeMaxCount && float64(largest) <= tribeMaxShare*float64(n) {
+		if count >= tribeTargetCount || largest < 0 {
 			return membership
 		}
-		distance := func(c int) int { return max(c-tribeTargetCount, tribeTargetCount-c) }
-		if best == nil || distance(count) < distance(bestCount) ||
-			(distance(count) == distance(bestCount) && largest < bestLargest) {
-			best, bestCount, bestLargest = membership, count, largest
+		parts := splitCommunity(groups[largest], adj)
+		if parts == nil {
+			unsplittable[largest] = true
+			continue
+		}
+		next := slices.Max(membership) + 1
+		for p, part := range parts[1:] {
+			for _, i := range part {
+				membership[i] = next + p
+			}
 		}
 	}
-	return best
+}
+
+// splitCommunity splits a community in sub-groups of at least tribeMinSplitSize iPods, using the
+// coarsest resolution that splits it. Smaller leftovers join the sub-group they are most similar
+// to. Returns nil if it can't be split
+func splitCommunity(members []int, adj []map[int]float64) [][]int {
+	local := make(map[int]int, len(members))
+	for k, i := range members {
+		local[i] = k
+	}
+	var pairs []ipodPair
+	for k, i := range members {
+		for j, w := range adj[i] {
+			if l, ok := local[j]; ok && k < l {
+				pairs = append(pairs, ipodPair{i: k, j: l, weight: w})
+			}
+		}
+	}
+	for _, resolution := range tribeSplitResolutions {
+		sub := louvain(len(members), pairs, resolution)
+		groups := map[int][]int{}
+		for k, c := range sub {
+			groups[c] = append(groups[c], members[k])
+		}
+		var big [][]int
+		var leftovers []int
+		for _, g := range groups {
+			if len(g) >= tribeMinSplitSize {
+				big = append(big, g)
+			} else {
+				leftovers = append(leftovers, g...)
+			}
+		}
+		if len(big) < 2 {
+			continue
+		}
+		slices.SortFunc(big, func(a, b []int) int {
+			return cmp.Or(cmp.Compare(len(b), len(a)), cmp.Compare(slices.Min(a), slices.Min(b)))
+		})
+		slices.Sort(leftovers)
+		for _, i := range leftovers {
+			best, bestWeight := 0, -1.0
+			for g, group := range big {
+				w := 0.0
+				for _, j := range group {
+					w += adj[i][j]
+				}
+				if w > bestWeight {
+					best, bestWeight = g, w
+				}
+			}
+			big[best] = append(big[best], i)
+		}
+		return big
+	}
+	return nil
 }
 
 // normalizeGenre keeps the first of several genres ("Rock; Pop", "Hip-Hop/Rap") and merges

@@ -127,10 +127,10 @@ var _ = Describe("iPod tribes", func() {
 	})
 
 	It("splits large, loosely linked groups into finer tribes", func() {
-		// 8 groups of 4 iPods (32 iPods, enough to aim for 8+ tribes), each group sharing its own
+		// 16 groups of 4 iPods (64 iPods, enough to aim for 15+ tribes), each group sharing its own
 		// artists, and all of them sharing a couple of common artists
 		stats, counts, genres = nil, nil, nil
-		for g := range 8 {
+		for g := range 16 {
 			for k := range 4 {
 				lib := g*4 + k + 1
 				addIpod(lib, 2000, "", fmt.Sprint("g", g, "-a"), fmt.Sprint("g", g, "-b"), fmt.Sprint("g", g, "-c"),
@@ -138,9 +138,29 @@ var _ = Describe("iPod tribes", func() {
 			}
 		}
 		ts := tribes()
-		Expect(len(ts.tribes)).To(BeNumerically(">=", tribeMinCount))
+		Expect(ts.tribes).To(HaveLen(16))
 		for _, t := range ts.tribes {
-			Expect(float64(t.Size)).To(BeNumerically("<=", tribeMaxShare*float64(len(stats))))
+			Expect(t.Size).To(Equal(4))
+		}
+	})
+
+	It("splits the largest tribes into sub-groups, without leaving iPods out", func() {
+		// 2 big crowds of 30 iPods, each made of 3 sub-groups of 10 sharing their own artists
+		stats, counts, genres = nil, nil, nil
+		lib := 0
+		for crowd := range 2 {
+			for sub := range 3 {
+				for range 10 {
+					lib++
+					addIpod(lib, 2000, "", fmt.Sprint("crowd", crowd, "-a"), fmt.Sprint("crowd", crowd, "-b"),
+						fmt.Sprint("crowd", crowd, "-c"), fmt.Sprint("sub", crowd, sub, "-a"), fmt.Sprint("sub", crowd, sub, "-b"))
+				}
+			}
+		}
+		ts := tribes()
+		Expect(len(ts.tribes)).To(BeNumerically(">=", 6))
+		for _, id := range ts.byIpod {
+			Expect(id).To(BeNumerically(">=", 0), "no iPod becomes a free spirit by splitting")
 		}
 	})
 
