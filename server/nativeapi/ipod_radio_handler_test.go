@@ -182,4 +182,58 @@ var _ = Describe("iPod Radio endpoint", Ordered, func() {
 			Expect(rename(user, `{"name": "x", "ipods": [2]}`).Code).To(Equal(http.StatusForbidden))
 		})
 	})
+
+	Describe("radio history", func() {
+		call := func(method, query, body string) []radioHistoryEntry {
+			r := httptest.NewRequest(method, "/ipods/radio/history"+query, strings.NewReader(body)).WithContext(ctx)
+			w := httptest.NewRecorder()
+			switch method {
+			case http.MethodGet:
+				api.getRadioHistory(w, r)
+			case http.MethodPost:
+				api.addRadioHistory(w, r)
+			case http.MethodDelete:
+				api.deleteRadioHistory(w, r)
+			}
+			Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+			var history []radioHistoryEntry
+			Expect(json.Unmarshal(w.Body.Bytes(), &history)).To(Succeed())
+			return history
+		}
+		seeds := func(history []radioHistoryEntry) []string {
+			ids := make([]string, len(history))
+			for i, e := range history {
+				ids[i] = e.SeedID
+			}
+			return ids
+		}
+
+		BeforeEach(func() { call(http.MethodDelete, "", "") })
+
+		It("records radios, most recent first, moving a restarted one to the top", func() {
+			call(http.MethodPost, "", `{"seedId": "a1", "title": "Buddy Holly", "artist": "Weezer", "adventure": 0.5}`)
+			call(http.MethodPost, "", `{"seedId": "b3", "title": "Only On B"}`)
+			history := call(http.MethodPost, "", `{"seedId": "a1", "title": "Buddy Holly"}`)
+			Expect(seeds(history)).To(Equal([]string{"a1", "b3"}))
+			Expect(history[0].StartedAt).ToNot(BeZero())
+
+			Expect(seeds(call(http.MethodGet, "", ""))).To(Equal([]string{"a1", "b3"}))
+		})
+
+		It("keeps only the last 50 radios", func() {
+			history := []radioHistoryEntry{}
+			for i := range radioHistoryMax + 5 {
+				history = addToRadioHistory(history, radioHistoryEntry{SeedID: fmt.Sprint("s", i)})
+			}
+			Expect(history).To(HaveLen(radioHistoryMax))
+			Expect(history[0].SeedID).To(Equal(fmt.Sprint("s", radioHistoryMax+4)))
+		})
+
+		It("removes one radio, or all of them", func() {
+			call(http.MethodPost, "", `{"seedId": "a1"}`)
+			call(http.MethodPost, "", `{"seedId": "b3"}`)
+			Expect(seeds(call(http.MethodDelete, "?seedId=a1", ""))).To(Equal([]string{"b3"}))
+			Expect(call(http.MethodDelete, "", "")).To(BeEmpty())
+		})
+	})
 })

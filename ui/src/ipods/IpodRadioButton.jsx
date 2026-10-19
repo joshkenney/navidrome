@@ -23,28 +23,26 @@ import {
 
 const useStyles = makeStyles((theme) => ({
   button: { color: 'inherit' },
-  // While a radio plays, the icon keeps the app bar's colour (a theme colour could match the
-  // app bar itself and hide it) and pulses, with a small dot
-  '@keyframes radioPulse': {
+  // While a radio plays, the icon stays still, with a blinking red "REC" dot
+  '@keyframes recBlink': {
     '0%, 100%': { opacity: 1 },
-    '50%': { opacity: 0.35 },
+    '50%': { opacity: 0.15 },
   },
   active: {
     color: 'inherit',
     position: 'relative',
-    '& svg': {
-      animation: '$radioPulse 1.6s ease-in-out infinite',
-      '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
-    },
     '&::after': {
       content: '""',
       position: 'absolute',
-      top: 8,
-      right: 8,
-      width: 7,
-      height: 7,
+      top: 7,
+      right: 7,
+      width: 8,
+      height: 8,
       borderRadius: '50%',
-      backgroundColor: 'currentColor',
+      backgroundColor: '#e53935',
+      boxShadow: '0 0 4px #e53935',
+      animation: '$recBlink 1.2s steps(2, jump-none) infinite',
+      '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
     },
   },
   paper: {

@@ -149,6 +149,7 @@ export const playIpodRadio = async (
   }
   const seed = json.seed
   const radioSeedId = json.radioSeedId || seed.id
+  recordRadioHistory(seed, adventure, !songId)
   const others = json.songs.filter((s) => s.id !== seed.id)
   if (json.seedFallback) {
     notify('ipods.radio.standIn', 'info')
@@ -175,6 +176,23 @@ export const playIpodRadio = async (
     })
   }
 }
+
+// Adds a radio to the user's iPod Radio history. Failing to record it doesn't stop the radio
+export const recordRadioHistory = (seed, adventure, surprise) =>
+  httpClient('/api/ipods/radio/history', {
+    method: 'POST',
+    body: JSON.stringify({
+      seedId: seed.id,
+      title: seed.title,
+      artist: seed.artist,
+      album: seed.album,
+      albumId: seed.albumId,
+      libraryId: seed.libraryId,
+      libraryName: seed.libraryName,
+      adventure,
+      surprise,
+    }),
+  }).catch(() => {})
 
 // Appends the next radio songs to the queue. They follow the anchor song and drift towards the
 // songs listened through lately, avoid skipped artists, and never repeat a song of the session

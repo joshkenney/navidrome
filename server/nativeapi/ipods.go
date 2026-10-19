@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/req"
 	"github.com/navidrome/navidrome/utils/songkey"
 )
@@ -182,6 +183,9 @@ func (api *Router) addIpodRoutes(r chi.Router) {
 		r.Get("/network", api.getIpodNetwork)
 		r.Get("/match", api.getIpodMatch)
 		r.Get("/radio", api.getIpodRadio)
+		r.Get("/radio/history", api.getRadioHistory)
+		r.Post("/radio/history", api.addRadioHistory)
+		r.Delete("/radio/history", api.deleteRadioHistory)
 		r.Get("/taste/me", api.getMyTaste)
 		r.With(adminOnlyMiddleware).Put("/tribes/name", api.renameIpodTribe)
 	})
@@ -1004,4 +1008,106 @@ func renameCachedTribes(overrides []tribeOverride) {
 		d.network.Tribes = d.tribes.tribes
 		e.data = &d
 	}
+}
+
+// iPod Radio history: the last radios each user started, to start them again
+
+const (
+	radioHistoryKey = "IpodRadioHistory"
+	radioHistoryMax = 50
+)
+
+type radioHistoryEntry struct {
+	SeedID      string    `json:"seedId"`
+	Title       string    `json:"title"`
+	Artist      string    `json:"artist"`
+	Album       string    `json:"album,omitempty"`
+	AlbumID     string    `json:"albumId,omitempty"`
+	LibraryID   int       `json:"libraryId,omitempty"`
+	LibraryName string    `json:"libraryName,omitempty"`
+	Adventure   float64   `json:"adventure"`
+	Surprise    bool      `json:"surprise,omitempty"` // Started with "Surprise me"
+	StartedAt   time.Time `json:"startedAt"`
+}
+
+func (api *Router) radioHistory(ctx context.Context) ([]radioHistoryEntry, error) {
+	user, _ := request.UserFrom(ctx)
+	value, err := api.ds.UserProps(ctx).DefaultGet(user.ID, radioHistoryKey, "[]")
+	if err != nil {
+		return nil, err
+	}
+	history := []radioHistoryEntry{}
+	if err := json.Unmarshal([]byte(value), &history); err != nil {
+		log.Warn(ctx, "Ignoring unreadable iPod Radio history", err)
+		return []radioHistoryEntry{}, nil
+	}
+	return history, nil
+}
+
+func (api *Router) saveRadioHistory(ctx context.Context, history []radioHistoryEntry) error {
+	user, _ := request.UserFrom(ctx)
+	value, _ := json.Marshal(history)
+	return api.ds.UserProps(ctx).Put(user.ID, radioHistoryKey, string(value))
+}
+
+func (api *Router) getRadioHistory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	history, err := api.radioHistory(ctx)
+	if err != nil {
+		log.Error(ctx, "Error loading iPod Radio history", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(ctx, w, history)
+}
+
+// addRadioHistory records a radio that was started. Starting the same song again moves it to the
+// top; only the last radioHistoryMax radios are kept
+func (api *Router) addRadioHistory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var entry radioHistoryEntry
+	if err := json.NewDecoder(r.Body).Decode(&entry); err != nil || entry.SeedID == "" {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	entry.StartedAt = time.Now()
+	history, err := api.radioHistory(ctx)
+	if err == nil {
+		history = addToRadioHistory(history, entry)
+		err = api.saveRadioHistory(ctx, history)
+	}
+	if err != nil {
+		log.Error(ctx, "Error saving iPod Radio history", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(ctx, w, history)
+}
+
+func addToRadioHistory(history []radioHistoryEntry, entry radioHistoryEntry) []radioHistoryEntry {
+	history = slices.DeleteFunc(history, func(e radioHistoryEntry) bool { return e.SeedID == entry.SeedID })
+	history = append([]radioHistoryEntry{entry}, history...)
+	return history[:min(radioHistoryMax, len(history))]
+}
+
+// deleteRadioHistory removes one radio (seedId) from the history, or clears it
+func (api *Router) deleteRadioHistory(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	seedID, _ := req.Params(r).String("seedId")
+	history := []radioHistoryEntry{}
+	var err error
+	if seedID != "" {
+		if history, err = api.radioHistory(ctx); err == nil {
+			history = slices.DeleteFunc(history, func(e radioHistoryEntry) bool { return e.SeedID == seedID })
+		}
+	}
+	if err == nil {
+		err = api.saveRadioHistory(ctx, history)
+	}
+	if err != nil {
+		log.Error(ctx, "Error updating iPod Radio history", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(ctx, w, history)
 }

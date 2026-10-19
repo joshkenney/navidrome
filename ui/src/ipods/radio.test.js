@@ -140,4 +140,19 @@ describe('iPod Radio client', () => {
     recordRadioListen('other')
     expect(getRadioSession().skipped).toEqual([])
   })
+
+  it('records the radio in the history', async () => {
+    await playIpodRadio(dispatch, notify, { songId: 'seed', adventure: 0.5 })
+    const [url, options] = httpClient.mock.calls.find(
+      ([u]) => u === '/api/ipods/radio/history',
+    )
+    expect(url).toBe('/api/ipods/radio/history')
+    expect(options.method).toBe('POST')
+    expect(JSON.parse(options.body)).toMatchObject({
+      seedId: 'seed',
+      title: 'Song seed',
+      adventure: 0.5,
+      surprise: false,
+    })
+  })
 })

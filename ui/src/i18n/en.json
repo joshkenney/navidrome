@@ -780,7 +780,15 @@
         "sameArtist": "more from %{artist}",
         "neighbour": "from a similar iPod"
       },
-      "standIn": "This song isn't on any iPod yet, so the radio is playing a mix from a similar one"
+      "standIn": "This song isn't on any iPod yet, so the radio is playing a mix from a similar one",
+      "pageHelp": "Start a radio from any song's menu, the header's radio icon, or here. Your last 50 radios are kept below.",
+      "history": "Your last radios",
+      "historyEmpty": "No radios yet. Start one from any song's menu, or try Surprise me.",
+      "playAgain": "Play this radio again",
+      "remove": "Remove from history",
+      "clearHistory": "Clear history",
+      "clearConfirm": "Remove all radios from your history?",
+      "balanced": "Balanced"
     },
     "taste": {
       "badge": "Taste %{score} · %{label}",

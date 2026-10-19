@@ -11,6 +11,7 @@ import albumLists from '../album/albumLists'
 import PlaylistsSubMenu from './PlaylistsSubMenu'
 import LibrarySelector from '../common/LibrarySelector'
 import config from '../config'
+import { FaRadio } from 'react-icons/fa6'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -64,17 +65,34 @@ const Menu = ({ dense = false }) => {
     setState((state) => ({ ...state, [menu]: !state[menu] }))
   }
 
-  const renderResourceMenuItemLink = (resource) => (
+  // The "Radios" (internet radio stations) entry is replaced by iPod Radio. The stations still
+  // work by direct link and in Subsonic apps
+  const renderIpodRadioMenuItemLink = () => (
     <MenuItemLink
-      key={resource.name}
-      to={`/${resource.name}`}
+      key="ipod-radio"
+      to="/ipod-radio"
       activeClassName={classes.active}
-      primaryText={translatedResourceName(resource, translate)}
-      leftIcon={resource.icon || <ViewListIcon />}
+      primaryText={translate('ipods.radio.title')}
+      leftIcon={<FaRadio size={20} />}
       sidebarIsOpen={open}
       dense={dense}
     />
   )
+
+  const renderResourceMenuItemLink = (resource) =>
+    resource.name === 'radio' ? (
+      renderIpodRadioMenuItemLink()
+    ) : (
+      <MenuItemLink
+        key={resource.name}
+        to={`/${resource.name}`}
+        activeClassName={classes.active}
+        primaryText={translatedResourceName(resource, translate)}
+        leftIcon={resource.icon || <ViewListIcon />}
+        sidebarIsOpen={open}
+        dense={dense}
+      />
+    )
 
   const renderAlbumMenuItemLink = (type, al) => {
     const resource = resources.find((r) => r.name === 'album')
