@@ -9,6 +9,7 @@ import { useToggleLove } from './useToggleLove'
 import { useRecordContext } from 'react-admin'
 import config from '../config'
 import { isDateSet } from '../utils/validations'
+import { burstHearts } from './heartBurst'
 
 const useStyles = makeStyles(
   {
@@ -44,10 +45,13 @@ export const LoveButton = ({
   const handleToggleLove = useCallback(
     (e) => {
       e.preventDefault()
+      if (!record.starred) {
+        burstHearts(e.currentTarget)
+      }
       toggleLove()
       e.stopPropagation()
     },
-    [toggleLove],
+    [toggleLove, record.starred],
   )
 
   if (!config.enableFavourites) {
