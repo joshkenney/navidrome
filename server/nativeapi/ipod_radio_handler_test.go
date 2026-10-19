@@ -105,6 +105,13 @@ var _ = Describe("iPod Radio endpoint", Ordered, func() {
 		Entry("a placeholder song", "t5"),
 	)
 
+	It("reports how long each step took, for the browser's Network tab", func() {
+		w, _ := radio("songId=a1")
+		Expect(w.Code).To(Equal(http.StatusOK))
+		Expect(w.Header().Get("Server-Timing")).To(MatchRegexp(
+			`^data;dur=[\d.]+, seed;dur=[\d.]+, picks;dur=[\d.]+, songs;dur=[\d.]+$`))
+	})
+
 	It("plays a mix from a stand-in when neither the song nor its artist is on an iPod", func() {
 		w, resp := radio("songId=x1")
 		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())

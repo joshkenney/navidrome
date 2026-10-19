@@ -90,6 +90,7 @@ func runNavidrome(ctx context.Context) {
 	g.Go(startInsightsCollector(ctx))
 	g.Go(scheduleDBOptimizer(ctx))
 	g.Go(scheduleCoverFinder(ctx))
+	g.Go(startIpodWarmup(ctx))
 	g.Go(startPluginManager(ctx))
 	g.Go(runInitialScan(ctx))
 	if conf.Server.Scanner.Enabled {
@@ -375,6 +376,29 @@ func scheduleCoverFinder(ctx context.Context) func() error {
 			run()
 		}
 		return nil
+	}
+}
+
+const ipodWarmupCheck = 30 * time.Second
+
+// startIpodWarmup prepares the iPod data in the background once the startup scan is done, so the
+// first iPod request after a restart (starting a radio, the iPod Facts) doesn't wait for it
+func startIpodWarmup(ctx context.Context) func() error {
+	return func() error {
+		ticker := time.NewTicker(ipodWarmupCheck)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-ticker.C:
+				if scanner.IsScanning() {
+					continue
+				}
+				CreateNativeAPIRouter(ctx).WarmIpodData(ctx)
+				return nil
+			}
+		}
 	}
 }
 

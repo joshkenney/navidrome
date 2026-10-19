@@ -5,6 +5,9 @@ import { Provider } from 'react-redux'
 import { createStore } from 'redux'
 import { IpodRadioButton } from './IpodRadioButton'
 import { playIpodRadio, startRadioSession, stopRadioSession } from './radio'
+import { httpClient } from '../dataProvider'
+
+vi.mock('../dataProvider', () => ({ httpClient: vi.fn() }))
 
 vi.mock('./radio', async (importOriginal) => {
   const actual = await importOriginal()
@@ -90,5 +93,30 @@ describe('<IpodRadioButton />', () => {
     expect(screen.getByText('ipods.radio.playingFrom')).toBeInTheDocument()
     fireEvent.click(screen.getByText('ipods.radio.stop'))
     expect(screen.queryByText('ipods.radio.playingFrom')).toBeNull()
+  })
+
+  it('spins while a radio is starting, from anywhere', async () => {
+    const actual = await vi.importActual('./radio')
+    let respond
+    httpClient.mockReturnValue(new Promise((resolve) => (respond = resolve)))
+    render(
+      <Provider
+        store={createStore(() => ({ player: { queue: [], current: {} } }))}
+      >
+        <IpodRadioButton />
+      </Provider>,
+    )
+    const button = screen.getByLabelText('ipods.radio.title')
+    let started
+    act(() => {
+      // As the song menu does
+      started = actual.playIpodRadio(vi.fn(), vi.fn(), { songId: 'song-1' })
+    })
+    expect(button.querySelector('[role="progressbar"]')).toBeTruthy()
+    await act(async () => {
+      respond({ status: 204 })
+      await started
+    })
+    expect(button.querySelector('[role="progressbar"]')).toBeNull()
   })
 })

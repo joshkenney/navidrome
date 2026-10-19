@@ -7,7 +7,9 @@ import {
   recordRadioListen,
   fetchIpodRadio,
   getRadioSession,
+  getRadioStarting,
   playIpodRadio,
+  SURPRISE,
   stopRadioSession,
 } from './radio'
 
@@ -33,6 +35,26 @@ describe('iPod Radio client', () => {
   })
 
   const url = () => decodeURIComponent(httpClient.mock.calls.at(-1)[0])
+
+  it('marks the radio as starting while the server picks its songs', async () => {
+    let respond
+    httpClient.mockReturnValue(new Promise((resolve) => (respond = resolve)))
+    const started = playIpodRadio(dispatch, notify, { songId: 'seed' })
+    expect(getRadioStarting()).toBe('seed')
+    respond({ status: 200, json: { seed: song('seed'), songs: [song('a')] } })
+    await started
+    expect(getRadioStarting()).toBeNull()
+  })
+
+  it('marks a surprise radio as starting, and clears it when the request fails', async () => {
+    let fail
+    httpClient.mockReturnValue(new Promise((_, reject) => (fail = reject)))
+    const started = playIpodRadio(dispatch, notify, {})
+    expect(getRadioStarting()).toBe(SURPRISE)
+    fail(new Error('offline'))
+    await expect(started).rejects.toThrow('offline')
+    expect(getRadioStarting()).toBeNull()
+  })
 
   it('asks for radio songs, excluding the queued ones', async () => {
     await fetchIpodRadio({ songId: 'x', adventure: 0.5, exclude: ['q1', 'q2'] })

@@ -95,6 +95,29 @@ export const useRadioSession = () => {
   return current
 }
 
+// The radio being started, while the server picks its songs: the seed song's ID, or SURPRISE.
+// Buttons show a spinner meanwhile
+export const SURPRISE = 'surprise'
+let starting = null
+const startingListeners = new Set()
+
+const setStarting = (value) => {
+  starting = value
+  startingListeners.forEach((listener) => listener(starting))
+}
+
+export const getRadioStarting = () => starting
+
+export const useRadioStarting = () => {
+  const [current, setCurrent] = useState(starting)
+  useEffect(() => {
+    startingListeners.add(setCurrent)
+    setCurrent(starting)
+    return () => startingListeners.delete(setCurrent)
+  }, [])
+  return current
+}
+
 export const getAdventure = () => {
   try {
     const value = parseFloat(localStorage.getItem(ADVENTURE_KEY))
@@ -142,7 +165,13 @@ export const playIpodRadio = async (
   notify,
   { songId, adventure = getAdventure(), keepPlaying = false } = {},
 ) => {
-  const json = await fetchIpodRadio({ songId, adventure })
+  setStarting(songId || SURPRISE)
+  let json
+  try {
+    json = await fetchIpodRadio({ songId, adventure })
+  } finally {
+    setStarting(null)
+  }
   if (!json || !json.songs.length) {
     notify('ipods.radio.nothingFound', 'warning')
     return

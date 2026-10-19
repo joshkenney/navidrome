@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"math/rand/v2"
 	"net/http"
@@ -235,6 +236,17 @@ func (api *Router) loadIpodData(ctx context.Context) (*ipodData, error) {
 		delete(c.entries, access) // Try again on the next request
 	}
 	return d, err
+}
+
+// WarmIpodData computes the iPod data for the all-iPods view (admins), so the first iPod request
+// after a restart doesn't wait for it. It runs with no user in the context, which sees every iPod
+func (api *Router) WarmIpodData(ctx context.Context) {
+	start := time.Now()
+	if _, err := api.loadIpodData(ctx); err != nil {
+		log.Error(ctx, "Error preparing iPod data", err)
+		return
+	}
+	log.Info(ctx, "iPod data ready", "elapsed", time.Since(start))
 }
 
 // refreshIpodData recomputes outdated data in the background, while the old data is still served
@@ -727,12 +739,14 @@ func (api *Router) getIpodRadio(w http.ResponseWriter, r *http.Request) {
 	skipped, _ := p.Strings("skipped")
 	skipped = skipped[max(0, len(skipped)-radioMaxReactions):]
 
+	timer := newStepTimer()
 	d, err := api.loadIpodData(ctx)
 	if err != nil {
 		log.Error(ctx, "Error loading iPod data", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+	timer.step("data")
 	idx := d.radio
 	rng := rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
 	mfRepo := api.ds.MediaFile(ctx)
@@ -770,6 +784,7 @@ func (api *Router) getIpodRadio(w http.ResponseWriter, r *http.Request) {
 		log.Debug(ctx, "iPod Radio: seed not found on any iPod, using a stand-in", "id", songID,
 			"standIn", idx.songs[seed].rep)
 	}
+	timer.step("seed")
 	radioSeedID := songID
 	if seed >= 0 && (songID == "" || fallback) {
 		radioSeedID = idx.songs[seed].rep
@@ -800,6 +815,7 @@ func (api *Router) getIpodRadio(w http.ResponseWriter, r *http.Request) {
 	seeds := radioSeeds(idx, seed, seedArtist, resolveSongs(songOf, drift), bias)
 
 	picks := idx.recommendFrom(seeds, radioOptions{count: count, adventure: adventure, exclude: excluded, bias: bias, rng: rng})
+	timer.step("picks")
 	ids := make([]string, len(picks))
 	reasons := make(map[string]radioReason, len(picks))
 	for i, pick := range picks {
@@ -823,9 +839,47 @@ func (api *Router) getIpodRadio(w http.ResponseWriter, r *http.Request) {
 			songs = append(songs, f)
 		}
 	}
+	timer.step("songs")
+	timer.report(ctx, w, "iPod Radio: slow start")
 	writeJSON(ctx, w, ipodRadioResponse{
 		Seed: seedFile, RadioSeedID: radioSeedID, SeedFallback: fallback, Songs: songs, Reasons: reasons,
 	})
+}
+
+// slowRequest is how long a request can take before its steps are logged
+const slowRequest = time.Second
+
+// stepTimer times the steps of a request, to show where the time goes: in the Server-Timing header
+// (the browser's Network tab), and in the log when the request is slow
+type stepTimer struct {
+	start, last time.Time
+	names       []string
+	durations   []time.Duration
+}
+
+func newStepTimer() *stepTimer {
+	now := time.Now()
+	return &stepTimer{start: now, last: now}
+}
+
+func (t *stepTimer) step(name string) {
+	now := time.Now()
+	t.names = append(t.names, name)
+	t.durations = append(t.durations, now.Sub(t.last))
+	t.last = now
+}
+
+func (t *stepTimer) report(ctx context.Context, w http.ResponseWriter, slowMsg string) {
+	timings := make([]string, len(t.names))
+	logArgs := []any{"elapsed", time.Since(t.start)}
+	for i, name := range t.names {
+		timings[i] = fmt.Sprintf("%s;dur=%.1f", name, float64(t.durations[i].Microseconds())/1000)
+		logArgs = append(logArgs, name, t.durations[i])
+	}
+	w.Header().Set("Server-Timing", strings.Join(timings, ", "))
+	if time.Since(t.start) >= slowRequest {
+		log.Info(append([]any{ctx, slowMsg}, logArgs...)...)
+	}
 }
 
 func resolveSongs(songOf map[string]int32, ids []string) []int32 {

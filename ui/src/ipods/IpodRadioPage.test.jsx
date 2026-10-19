@@ -114,4 +114,29 @@ describe('<IpodRadioPage />', () => {
       expect(screen.getByText('ipods.radio.historyEmpty')).toBeInTheDocument(),
     )
   })
+
+  it('shows a spinner on the radio being started, and waits for it', async () => {
+    const actual = await vi.importActual('./radio')
+    let respond
+    httpClient.mockImplementation((url) =>
+      url.startsWith('/api/ipods/radio?')
+        ? new Promise((resolve) => (respond = resolve))
+        : Promise.resolve({ json: history }),
+    )
+    playIpodRadio.mockImplementation(actual.playIpodRadio)
+    renderPage()
+    const buttons = await screen.findAllByLabelText('ipods.radio.playAgain')
+    fireEvent.click(buttons[0])
+
+    await waitFor(() => expect(buttons[0]).toHaveAttribute('aria-busy', 'true'))
+    expect(buttons[0].querySelector('[role="progressbar"]')).toBeTruthy()
+    expect(buttons[1]).toBeDisabled()
+    expect(
+      screen.getByText('ipods.radio.surprise').closest('button'),
+    ).toBeDisabled()
+
+    respond({ status: 204 })
+    await waitFor(() => expect(buttons[1]).not.toBeDisabled())
+    expect(buttons[0].querySelector('[role="progressbar"]')).toBeNull()
+  })
 })

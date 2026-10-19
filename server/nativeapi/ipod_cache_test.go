@@ -44,6 +44,14 @@ var _ = Describe("iPod data cache", func() {
 		api = &Router{ds: &tests.MockDataStore{MockedIpod: repo, MockedProperty: &tests.MockedPropertyRepo{}}}
 	})
 
+	It("prepares the data at startup, so an admin's first request doesn't load it again", func() {
+		api.WarmIpodData(context.Background())
+		Expect(repo.loads.Load()).To(Equal(int32(1)))
+		_, err := api.loadIpodData(ctx)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(repo.loads.Load()).To(Equal(int32(1)))
+	})
+
 	It("loads the data once, even for concurrent requests", func() {
 		var wg sync.WaitGroup
 		for range 5 {

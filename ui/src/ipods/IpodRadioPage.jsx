@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   CardContent,
+  CircularProgress,
   IconButton,
   List,
   ListItem,
@@ -18,10 +19,12 @@ import DeleteIcon from '@material-ui/icons/DeleteOutline'
 import { FaRadio, FaShuffle } from 'react-icons/fa6'
 import { httpClient } from '../dataProvider'
 import {
+  SURPRISE,
   getAdventure,
   playIpodRadio,
   stopRadioSession,
   useRadioSession,
+  useRadioStarting,
 } from './radio'
 import { IpodLabel } from './IpodLabel'
 
@@ -58,6 +61,8 @@ const IpodRadioPage = () => {
   const dispatch = useDispatch()
   const notify = useNotify()
   const session = useRadioSession()
+  // While a radio starts, its button shows a spinner and the others wait
+  const starting = useRadioStarting()
   const [history, setHistory] = useState(null)
   const t = (key, opts) => translate(`ipods.radio.${key}`, opts)
 
@@ -108,7 +113,14 @@ const IpodRadioPage = () => {
             <Button
               variant="contained"
               color="primary"
-              startIcon={<FaShuffle size={14} />}
+              startIcon={
+                starting === SURPRISE ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : (
+                  <FaShuffle size={14} />
+                )
+              }
+              disabled={!!starting}
               onClick={() => start({ adventure: getAdventure() })}
             >
               {t('surprise')}
@@ -162,17 +174,25 @@ const IpodRadioPage = () => {
                   />
                   <ListItemSecondaryAction>
                     <Tooltip title={t('playAgain')}>
-                      <IconButton
-                        aria-label={t('playAgain')}
-                        onClick={() =>
-                          start({
-                            songId: entry.seedId,
-                            adventure: entry.adventure,
-                          })
-                        }
-                      >
-                        <FaRadio size={16} />
-                      </IconButton>
+                      <span>
+                        <IconButton
+                          aria-label={t('playAgain')}
+                          aria-busy={starting === entry.seedId}
+                          disabled={!!starting}
+                          onClick={() =>
+                            start({
+                              songId: entry.seedId,
+                              adventure: entry.adventure,
+                            })
+                          }
+                        >
+                          {starting === entry.seedId ? (
+                            <CircularProgress size={16} color="inherit" />
+                          ) : (
+                            <FaRadio size={16} />
+                          )}
+                        </IconButton>
+                      </span>
                     </Tooltip>
                     <Tooltip title={t('remove')}>
                       <IconButton

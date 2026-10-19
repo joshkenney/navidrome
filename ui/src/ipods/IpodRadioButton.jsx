@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useNotify, useTranslate } from 'react-admin'
 import {
   Button,
+  CircularProgress,
   IconButton,
   Paper,
   Popover,
@@ -19,6 +20,8 @@ import {
   stopRadioSession,
   useRadioReason,
   useRadioSession,
+  useRadioStarting,
+  SURPRISE,
 } from './radio'
 
 const useStyles = makeStyles((theme) => ({
@@ -71,6 +74,8 @@ export const IpodRadioButton = () => {
   const [anchorEl, setAnchorEl] = useState(null)
   const [adventure, setAdventure] = useState(getAdventure)
   const [loading, setLoading] = useState(false)
+  // A radio started from anywhere (this popover, the song menu, the iPod Radio page)
+  const starting = useRadioStarting()
   const t = (key, opts) => translate(`ipods.radio.${key}`, opts)
   const currentTrackId = current?.isRadio ? null : current?.trackId
 
@@ -100,7 +105,11 @@ export const IpodRadioButton = () => {
           aria-pressed={!!session}
           data-playing={session ? 'true' : undefined}
         >
-          <FaRadio size={18} />
+          {starting ? (
+            <CircularProgress size={18} color="inherit" />
+          ) : (
+            <FaRadio size={18} />
+          )}
         </IconButton>
       </Tooltip>
       <Popover
@@ -156,6 +165,11 @@ export const IpodRadioButton = () => {
               variant="contained"
               color="primary"
               disabled={!currentTrackId || loading}
+              startIcon={
+                starting && starting === currentTrackId ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : null
+              }
               onClick={() =>
                 start({ songId: currentTrackId, keepPlaying: true })
               }
@@ -165,6 +179,11 @@ export const IpodRadioButton = () => {
             <Button
               variant="outlined"
               disabled={loading}
+              startIcon={
+                starting === SURPRISE ? (
+                  <CircularProgress size={14} color="inherit" />
+                ) : null
+              }
               onClick={() => start({})}
             >
               {t('surprise')}
