@@ -810,7 +810,13 @@
       "one": "Shuffle %{name}",
       "some": "Shuffle %{smart_count} selected iPod |||| Shuffle %{smart_count} selected iPods",
       "empty": "No songs to shuffle"
-    }
+    },
+    "download": {
+      "button": "Download this iPod",
+      "title": "Download %{name}?",
+      "warning": "This downloads every song on this iPod as one zip file. It can be several gigabytes and take a while."
+    },
+    "fromIpod": "From"
   },
   "featureTips": {
     "title": "New in the header",

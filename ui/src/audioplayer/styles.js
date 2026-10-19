@@ -20,6 +20,11 @@ const useStyle = makeStyles(
       fontStyle: 'italic',
       fontSize: 'smaller',
     },
+    ipod: {
+      marginRight: theme.spacing(1),
+      fontWeight: 600,
+      verticalAlign: 'bottom',
+    },
     qualityInfo: {
       marginTop: '-4px',
       opacity: 0,

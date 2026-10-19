@@ -28,6 +28,7 @@ import { httpClient } from '../dataProvider'
 import { REST_URL } from '../consts'
 import { IpodIcon } from './IpodIcon'
 import { useBrowseIpod } from './useBrowseIpod'
+import { DownloadIpodButton } from './DownloadIpodButton'
 import { uniqueArtists } from './artistKey'
 import { TasteBadge } from './TasteBadge'
 import { tasteLabelOf } from './taste'
@@ -215,6 +216,11 @@ const IpodDetails = ({ node, network, onSelect, onSelectTribe, onBrowse }) => {
         >
           {t('browse')}
         </Button>
+        <DownloadIpodButton
+          libraryId={node.id}
+          name={node.name}
+          variant="button"
+        />
       </CardContent>
     </Card>
   )

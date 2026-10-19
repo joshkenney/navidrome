@@ -113,6 +113,12 @@ var _ = Describe("iPod Radio endpoint", Ordered, func() {
 		Expect(resp.Songs).ToNot(BeEmpty())
 	})
 
+	It("returns songs that carry the name of their iPod", func() {
+		_, resp := radio("songId=a1")
+		Expect(resp.Seed.LibraryName).To(Equal("iPod A"))
+		Expect(resp.Songs).To(HaveEach(HaveField("LibraryName", Not(BeEmpty()))))
+	})
+
 	It("asks for more songs with the seed itself when it was found", func() {
 		_, resp := radio("songId=a1")
 		Expect(resp.SeedFallback).To(BeFalse())

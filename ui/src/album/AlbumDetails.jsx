@@ -35,6 +35,7 @@ import {
 import { formatFullDate, intersperse } from '../utils'
 import AlbumExternalLinks from './AlbumExternalLinks'
 import { SafeHTML } from '../common/SafeHTML'
+import { AlbumIpod } from '../ipods/AlbumIpod'
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -299,6 +300,7 @@ const AlbumDetails = (props) => {
             <Typography component={'h6'} className={classes.recordArtist}>
               <ArtistLinkField record={record} />
             </Typography>
+            <AlbumIpod record={record} className={classes.recordMeta} />
             <Typography component={'div'} className={classes.recordMeta}>
               <Details />
             </Typography>

@@ -64,9 +64,11 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		return nil, newError(responses.ErrorAuthorizationFail, "downloads are disabled")
 	}
 
-	entity, err := model.GetEntityByID(ctx, api.ds, id)
-	if err != nil {
-		return nil, err
+	var entity any
+	if _, isIpod := ipodDownloadID(id); !isIpod {
+		if entity, err = model.GetEntityByID(ctx, api.ds, id); err != nil {
+			return nil, err
+		}
 	}
 
 	maxBitRate := p.IntOr("bitrate", 0)
@@ -95,6 +97,19 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		disposition := fmt.Sprintf("attachment; filename=\"%s.zip\"", name)
 		w.Header().Set("Content-Disposition", disposition)
 		w.Header().Set("Content-Type", "application/zip")
+	}
+
+	if libraryID, ok := ipodDownloadID(id); ok {
+		user, _ := request.UserFrom(ctx)
+		if !user.HasLibraryAccess(libraryID) {
+			return nil, newError(responses.ErrorDataNotFound, "iPod not found")
+		}
+		lib, err := api.ds.Library(ctx).Get(libraryID)
+		if err != nil {
+			return nil, err
+		}
+		setHeaders(lib.Name)
+		return nil, api.archiver.ZipLibrary(ctx, libraryID, format, maxBitRate, w)
 	}
 
 	switch v := entity.(type) {
@@ -129,4 +144,16 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	default:
 		return nil, model.ErrNotFound
 	}
+}
+
+// ipodDownloadPrefix marks a download of a whole iPod (library): id "ipod-<library id>"
+const ipodDownloadPrefix = "ipod-"
+
+func ipodDownloadID(id string) (int, bool) {
+	rest, ok := strings.CutPrefix(id, ipodDownloadPrefix)
+	if !ok {
+		return 0, false
+	}
+	libraryID, err := strconv.Atoi(rest)
+	return libraryID, err == nil
 }

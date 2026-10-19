@@ -2,11 +2,13 @@ package core
 
 import (
 	"archive/zip"
+	"cmp"
 	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/Masterminds/squirrel"
@@ -21,6 +23,8 @@ type Archiver interface {
 	ZipArtist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 	ZipShare(ctx context.Context, id string, w io.Writer) error
 	ZipPlaylist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
+	// ZipLibrary zips all songs of a library (on this server, a whole iPod), in Artist/Album folders
+	ZipLibrary(ctx context.Context, libraryID int, format string, bitrate int, w io.Writer) error
 }
 
 func NewArchiver(ms stream.MediaStreamer, ds model.DataStore, shares Share) Archiver {
@@ -34,14 +38,21 @@ type archiver struct {
 }
 
 func (a *archiver) ZipAlbum(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
-	return a.zipAlbums(ctx, id, format, bitrate, out, squirrel.Eq{"album_id": id})
+	return a.zipAlbums(ctx, id, format, bitrate, out, squirrel.Eq{"album_id": id}, false)
 }
 
 func (a *archiver) ZipArtist(ctx context.Context, id string, format string, bitrate int, out io.Writer) error {
-	return a.zipAlbums(ctx, id, format, bitrate, out, squirrel.Eq{"album_artist_id": id})
+	return a.zipAlbums(ctx, id, format, bitrate, out, squirrel.Eq{"album_artist_id": id}, false)
 }
 
-func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitrate int, out io.Writer, filters squirrel.Sqlizer) error {
+func (a *archiver) ZipLibrary(ctx context.Context, libraryID int, format string, bitrate int, out io.Writer) error {
+	filters := squirrel.Eq{"media_file.library_id": libraryID, "media_file.missing": false}
+	return a.zipAlbums(ctx, strconv.Itoa(libraryID), format, bitrate, out, filters, true)
+}
+
+// zipAlbums zips the songs matching the filters in one folder per album, inside one folder per
+// album artist when artistFolders is set
+func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitrate int, out io.Writer, filters squirrel.Sqlizer, artistFolders bool) error {
 	mfs, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: filters, Sort: "album"})
 	if err != nil {
 		log.Error(ctx, "Error loading mediafiles from artist", "id", id, err)
@@ -59,6 +70,10 @@ func (a *archiver) zipAlbums(ctx context.Context, id string, format string, bitr
 			"format", format, "bitrate", bitrate, "isMultiDisc", isMultiDisc, "numTracks", len(album))
 		for _, mf := range album {
 			file := a.albumFilename(mf, format, isMultiDisc)
+			if artistFolders {
+				artist := cmp.Or(mf.AlbumArtist, mf.Artist, "Unknown Artist")
+				file = sanitizeName(artist) + "/" + file
+			}
 			_ = a.addFileToZip(ctx, z, mf, format, bitrate, file)
 		}
 	}
