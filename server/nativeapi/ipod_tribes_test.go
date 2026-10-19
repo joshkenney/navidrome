@@ -177,6 +177,12 @@ var _ = Describe("iPod tribes", func() {
 		Expect(ts.userTribe([]model.IpodArtistPlays{{Key: "weezer", Plays: 2}})).To(BeNil())
 	})
 
+	It("tells same-named tribes apart by genre, or by an artist with a real name", func() {
+		Expect(tribeHint(ipodTribe{Name: "2000s Pop-Punk", Genre: "Alternative", Artists: []string{"#1"}})).To(Equal("Alternative"))
+		Expect(tribeHint(ipodTribe{Name: "2000s Alternative", Genre: "Alternative", Artists: []string{"#1", "Jojo"}})).To(Equal("Jojo"))
+		Expect(tribeHint(ipodTribe{Name: "Rock", Artists: []string{"#1"}})).To(BeEmpty())
+	})
+
 	It("capitalizes genres", func() {
 		Expect(titleCase("hip-hop")).To(Equal("Hip-Hop"))
 		Expect(titleCase("classic rock")).To(Equal("Classic Rock"))
@@ -198,6 +204,30 @@ var _ = Describe("iPod tribes", func() {
 			ts := tribes()
 			Expect(ts.tribes[0].Scene).To(Equal("Emo"))
 			Expect(ts.tribes[0].Name).To(Equal("2000s Emo"))
+		})
+
+		It("is not won by a scene just because its artist list is longer", func() {
+			// 4 strong emo artists against 8 weaker pop-punk ones
+			share, lift := map[string]float64{}, map[string]float64{}
+			for _, name := range []string{"Saves the Day", "Brand New", "Taking Back Sunday", "Thursday"} {
+				share[key(name)], lift[key(name)] = 0.8, 6
+			}
+			for _, name := range []string{"Blink-182", "Green Day", "Sum 41", "Good Charlotte", "New Found Glory",
+				"Simple Plan", "Yellowcard", "Motion City Soundtrack"} {
+				share[key(name)], lift[key(name)] = 0.5, 2
+			}
+			Expect(sceneOf(share, lift)).To(HavePrefix("Emo"))
+		})
+
+		It("names both scenes when they are close", func() {
+			share, lift := map[string]float64{}, map[string]float64{}
+			for _, name := range []string{"Saves the Day", "Brand New", "Taking Back Sunday"} {
+				share[key(name)], lift[key(name)] = 0.7, 4
+			}
+			for _, name := range []string{"Blink-182", "Sum 41", "New Found Glory"} {
+				share[key(name)], lift[key(name)] = 0.6, 4
+			}
+			Expect(sceneOf(share, lift)).To(Equal("Emo & Pop-Punk"))
 		})
 
 		It("needs several of the scene's artists", func() {

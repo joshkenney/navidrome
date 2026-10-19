@@ -434,8 +434,10 @@ func findTribes(stats []model.IpodStats, counts []model.IpodArtistCount, genres 
 		}
 
 		t.Name = tribeName(t)
-		if usedNames[t.Name] && len(t.Artists) > 0 {
-			t.Name = fmt.Sprintf("%s (%s)", t.Name, t.Artists[0])
+		if usedNames[t.Name] {
+			if hint := tribeHint(t); hint != "" {
+				t.Name = fmt.Sprintf("%s (%s)", t.Name, hint)
+			}
 		}
 		usedNames[t.Name] = true
 		t.autoName = t.Name
@@ -541,6 +543,20 @@ func distinctiveGenre(members []int, stats []model.IpodStats, genresByIpod map[i
 		genre += " & " + titleCase(candidates[1].genre)
 	}
 	return genre
+}
+
+// tribeHint tells apart tribes with the same name: by their genre, when the name is not already
+// about it, or else by their first signature artist with a real name (not "#1")
+func tribeHint(t ipodTribe) string {
+	if t.Genre != "" && !strings.Contains(t.Name, t.Genre) {
+		return t.Genre
+	}
+	for _, artist := range t.Artists {
+		if strings.IndexFunc(artist, unicode.IsLetter) >= 0 {
+			return artist
+		}
+	}
+	return ""
 }
 
 func tribeName(t ipodTribe) string {

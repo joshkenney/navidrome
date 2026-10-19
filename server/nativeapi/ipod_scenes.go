@@ -14,9 +14,11 @@ import (
 // (see songkey.ArtistKey)
 
 const (
-	sceneMinArtists = 3   // Scene artists needed in a tribe to name it after the scene
-	sceneMinShare   = 0.2 // A scene artist must be on at least this share of the tribe's iPods
-	sceneMinLift    = 1.5 // ...and that much more common in the tribe than overall
+	sceneMinArtists  = 3   // Scene artists needed in a tribe to name it after the scene
+	sceneMinShare    = 0.2 // A scene artist must be on at least this share of the tribe's iPods
+	sceneMinLift     = 1.5 // ...and that much more common in the tribe than overall
+	sceneTopArtists  = 5   // A scene is scored on its strongest artists in the tribe
+	sceneSecondShare = 0.6 // A second scene is named if it scores at least this share of the first
 )
 
 type ipodScene struct {
@@ -115,9 +117,11 @@ var sceneKeys = func() [][]string {
 	return keys
 }()
 
-// sceneOf returns the scene a tribe belongs to, if enough of the scene's artists are both common
-// in the tribe and more common there than elsewhere. share is the share of the tribe's iPods
-// carrying each artist, and lift how much more common the artist is in the tribe than overall
+// sceneOf returns the scene a tribe belongs to (or two, "Pop-Punk & Emo", when both stand out),
+// if enough of the scene's artists are both common in the tribe and more common there than
+// elsewhere. share is the share of the tribe's iPods carrying each artist, and lift how much more
+// common the artist is in the tribe than overall. Each scene is scored on its strongest artists
+// only, so scenes with longer artist lists don't win just by matching more names
 func sceneOf(share, lift map[string]float64) string {
 	type scored struct {
 		name  string
@@ -125,21 +129,31 @@ func sceneOf(share, lift map[string]float64) string {
 	}
 	var matches []scored
 	for i, scene := range ipodScenes {
-		matched, score := 0, 0.0
+		var evidence []float64
 		for _, key := range sceneKeys[i] {
 			if share[key] >= sceneMinShare && lift[key] >= sceneMinLift {
-				matched++
-				score += share[key] * math.Log(lift[key])
+				evidence = append(evidence, share[key]*math.Log(lift[key]))
 			}
 		}
-		if matched >= sceneMinArtists {
-			matches = append(matches, scored{name: scene.name, score: score})
+		if len(evidence) < sceneMinArtists {
+			continue
 		}
+		slices.SortFunc(evidence, func(a, b float64) int { return cmp.Compare(b, a) })
+		score := 0.0
+		for _, e := range evidence[:min(sceneTopArtists, len(evidence))] {
+			score += e
+		}
+		matches = append(matches, scored{name: scene.name, score: score})
 	}
 	if len(matches) == 0 {
 		return ""
 	}
-	return slices.MaxFunc(matches, func(a, b scored) int {
-		return cmp.Or(cmp.Compare(a.score, b.score), cmp.Compare(b.name, a.name))
-	}).name
+	slices.SortFunc(matches, func(a, b scored) int {
+		return cmp.Or(cmp.Compare(b.score, a.score), cmp.Compare(a.name, b.name))
+	})
+	name := matches[0].name
+	if len(matches) > 1 && matches[1].score >= sceneSecondShare*matches[0].score {
+		name += " & " + matches[1].name
+	}
+	return name
 }

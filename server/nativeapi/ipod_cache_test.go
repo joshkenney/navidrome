@@ -61,6 +61,8 @@ var _ = Describe("iPod data cache", func() {
 	})
 
 	It("serves the old data right away while newer data loads in the background", func() {
+		DeferCleanup(func(old time.Duration) { ipodMinRefreshInterval = old }, ipodMinRefreshInterval)
+		ipodMinRefreshInterval = 0
 		first, err := api.loadIpodData(ctx)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -84,4 +86,35 @@ var _ = Describe("iPod data cache", func() {
 		_, _ = api.loadIpodData(ctx)
 		Expect(ipodDataCache.entries).To(HaveLen(2))
 	})
+
+	It("does not recompute more often than the minimum interval", func() {
+		_, _ = api.loadIpodData(ctx)
+		repo.version.Store("1|scan-2|")
+		_, _ = api.loadIpodData(ctx)
+		Consistently(func() int32 { return repo.loads.Load() }, 300*time.Millisecond).Should(Equal(int32(1)))
+	})
+
+	It("does not recompute during a scan", func() {
+		DeferCleanup(func(old time.Duration) { ipodMinRefreshInterval = old }, ipodMinRefreshInterval)
+		ipodMinRefreshInterval = 0
+		libRepo := &scanningLibraryRepo{}
+		api.ds.(*tests.MockDataStore).MockedLibrary = libRepo
+		_, _ = api.loadIpodData(ctx)
+
+		libRepo.scanning.Store(true)
+		repo.version.Store("1|scan-2|")
+		_, _ = api.loadIpodData(ctx)
+		Consistently(func() int32 { return repo.loads.Load() }, 300*time.Millisecond).Should(Equal(int32(1)))
+
+		libRepo.scanning.Store(false)
+		_, _ = api.loadIpodData(ctx)
+		Eventually(func() int32 { return repo.loads.Load() }).Should(Equal(int32(2)))
+	})
 })
+
+type scanningLibraryRepo struct {
+	model.LibraryRepository
+	scanning atomic.Bool
+}
+
+func (r *scanningLibraryRepo) ScanInProgress() (bool, error) { return r.scanning.Load(), nil }

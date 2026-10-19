@@ -23,7 +23,6 @@ import (
 )
 
 const (
-	ipodCacheTTL        = 10 * time.Minute
 	ipodTopSongs        = 10
 	ipodTopArtists      = 10
 	ipodGemsCount       = 8
@@ -145,8 +144,8 @@ type ipodData struct {
 
 // ipodCache holds the data of each set of iPods users can access (users with the same access
 // share an entry). Computing it reads every song, which takes a while on large servers, so once an
-// entry has data it is always served right away: when it is outdated (after a scan, or after
-// ipodCacheTTL), it is recomputed in the background. Only the very first load waits, and
+// entry has data it is always served right away: when it is outdated (the iPods changed), it is
+// recomputed in the background (see ipodMinRefreshInterval). Only the very first load waits, and
 // concurrent requests wait for that same load
 type ipodCache struct {
 	mu      sync.Mutex
@@ -161,6 +160,13 @@ type ipodCacheEntry struct {
 }
 
 var ipodDataCache = &ipodCache{entries: map[string]*ipodCacheEntry{}}
+
+// Computing the data is heavy (it reads every song), so it is redone at most this often, never
+// during a scan (when the data keeps changing), and one computation at a time
+var (
+	ipodMinRefreshInterval = 15 * time.Minute
+	ipodComputeMu          sync.Mutex
+)
 
 // ipodAccessKey is the part of a DataVersion identifying the iPods a user can access
 func ipodAccessKey(version string) string {
@@ -194,7 +200,7 @@ func (api *Router) loadIpodData(ctx context.Context) (*ipodData, error) {
 	e, ok := c.entries[access]
 	switch {
 	case ok && e.data != nil:
-		outdated := e.data.version != version || time.Since(e.data.createdAt) >= ipodCacheTTL
+		outdated := e.data.version != version && time.Since(e.data.createdAt) >= ipodMinRefreshInterval
 		if outdated && !e.refreshing {
 			e.refreshing = true
 			go api.refreshIpodData(context.WithoutCancel(ctx), access, e)
@@ -229,7 +235,11 @@ func (api *Router) loadIpodData(ctx context.Context) (*ipodData, error) {
 
 // refreshIpodData recomputes outdated data in the background, while the old data is still served
 func (api *Router) refreshIpodData(ctx context.Context, access string, e *ipodCacheEntry) {
-	d, err := api.computeIpodData(ctx)
+	var d *ipodData
+	scanning, err := api.ds.Library(ctx).ScanInProgress()
+	if err == nil && !scanning {
+		d, err = api.computeIpodData(ctx)
+	}
 	c := ipodDataCache
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -238,11 +248,15 @@ func (api *Router) refreshIpodData(ctx context.Context, access string, e *ipodCa
 		log.Error(ctx, "Error refreshing iPod data", err)
 		return
 	}
-	e.data = d
+	if d != nil {
+		e.data = d
+	}
 }
 
 // computeIpodData reads the iPods' songs and artists, and computes everything the iPod features show
 func (api *Router) computeIpodData(ctx context.Context) (*ipodData, error) {
+	ipodComputeMu.Lock()
+	defer ipodComputeMu.Unlock()
 	start := time.Now()
 	repo := api.ds.Ipod(ctx)
 	version, err := repo.DataVersion()
