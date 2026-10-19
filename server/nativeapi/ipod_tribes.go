@@ -70,7 +70,8 @@ type ipodTribe struct {
 	Examples []ipodRef `json:"examples"`
 	Taste    int       `json:"taste"`
 
-	lift map[string]float64 // Artist Key -> how over-represented the artist is in the tribe
+	lift     map[string]float64 // Artist Key -> how over-represented the artist is in the tribe
+	autoName string             // The name computed for the tribe, used when an admin's name is removed
 }
 
 type ipodTribes struct {
@@ -366,6 +367,7 @@ func findTribes(stats []model.IpodStats, counts []model.IpodArtistCount, genres 
 			t.Name = fmt.Sprintf("%s (%s)", t.Name, t.Artists[0])
 		}
 		usedNames[t.Name] = true
+		t.autoName = t.Name
 		result.tribes = append(result.tribes, t)
 	}
 	applyTribeOverrides(result.tribes, overrides)
@@ -400,6 +402,12 @@ func tribeOverlap(a, b []int) float64 {
 // applyTribeOverrides gives tribes the names admins chose. A name follows its tribe across rescans
 // as long as at least half of the iPods are the same; each name is given to one tribe only
 func applyTribeOverrides(tribes []ipodTribe, overrides []tribeOverride) {
+	for i := range tribes {
+		if tribes[i].autoName != "" {
+			tribes[i].Name = tribes[i].autoName
+		}
+		tribes[i].Custom = false
+	}
 	type match struct {
 		tribe, override int
 		overlap         float64

@@ -36,7 +36,7 @@ var _ = Describe("iPod Radio endpoint", Ordered, func() {
 		ds = persistence.New(db.Db())
 		Expect(ds.User(ctx).Put(&admin)).To(Succeed())
 		api = &Router{ds: ds}
-		ipodDataCache.entries = map[string]*ipodData{}
+		ipodDataCache.entries = map[string]*ipodCacheEntry{}
 
 		// Library 1 ("/radio/music") holds both iPods' folders
 		libs := []model.Library{
@@ -156,14 +156,24 @@ var _ = Describe("iPod Radio endpoint", Ordered, func() {
 			return w
 		}
 
-		It("stores and removes an admin's name for a tribe", func() {
-			ipodDataCache.entries["stale"] = &ipodData{}
+		It("stores and removes an admin's name for a tribe, renaming it in the cache", func() {
+			tribes := []ipodTribe{{ID: 0, Name: "2000s Alternative", autoName: "2000s Alternative", Ipods: []int{2, 3}}}
+			ipodDataCache.entries["test"] = &ipodCacheEntry{data: &ipodData{
+				tribes: ipodTribes{tribes: tribes}, network: ipodNetwork{Tribes: tribes},
+			}}
+			DeferCleanup(func() { delete(ipodDataCache.entries, "test") })
+			cached := func() *ipodData { return ipodDataCache.entries["test"].data }
+
 			Expect(rename(ctx, `{"name": " The Sad Kids ", "ipods": [2, 3]}`).Code).To(Equal(http.StatusNoContent))
 			Expect(api.tribeOverrides(ctx)).To(Equal([]tribeOverride{{Name: "The Sad Kids", Ipods: []int{2, 3}}}))
-			Expect(ipodDataCache.entries).To(BeEmpty(), "the cache is dropped, so the name shows")
+			Expect(cached().tribes.tribes[0].Name).To(Equal("The Sad Kids"))
+			Expect(cached().tribes.tribes[0].Custom).To(BeTrue())
+			Expect(cached().network.Tribes[0].Name).To(Equal("The Sad Kids"))
+			Expect(tribes[0].Name).To(Equal("2000s Alternative"), "data being read is not changed")
 
 			Expect(rename(ctx, `{"name": "", "ipods": [2, 3]}`).Code).To(Equal(http.StatusNoContent))
 			Expect(api.tribeOverrides(ctx)).To(BeEmpty())
+			Expect(cached().tribes.tribes[0].Name).To(Equal("2000s Alternative"))
 		})
 
 		It("rejects bad requests and non-admins", func() {

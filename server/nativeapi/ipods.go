@@ -132,6 +132,7 @@ type ipodSongSummary struct {
 // ipodData is everything the iPod endpoints need, computed once and cached
 type ipodData struct {
 	createdAt time.Time
+	version   string
 	stats     []model.IpodStats
 	counts    []model.IpodArtistCount
 	totals    ipodTotals
@@ -142,14 +143,32 @@ type ipodData struct {
 	radio     *radioIndex
 }
 
-// ipodCache is keyed by DataVersion, so users who can access the same iPods share an entry,
-// and entries are reloaded after a scan
+// ipodCache holds the data of each set of iPods users can access (users with the same access
+// share an entry). Computing it reads every song, which takes a while on large servers, so once an
+// entry has data it is always served right away: when it is outdated (after a scan, or after
+// ipodCacheTTL), it is recomputed in the background. Only the very first load waits, and
+// concurrent requests wait for that same load
 type ipodCache struct {
 	mu      sync.Mutex
-	entries map[string]*ipodData
+	entries map[string]*ipodCacheEntry
 }
 
-var ipodDataCache = &ipodCache{entries: map[string]*ipodData{}}
+type ipodCacheEntry struct {
+	data       *ipodData
+	err        error
+	loading    chan struct{} // Closed when the first load is done
+	refreshing bool
+}
+
+var ipodDataCache = &ipodCache{entries: map[string]*ipodCacheEntry{}}
+
+// ipodAccessKey is the part of a DataVersion identifying the iPods a user can access
+func ipodAccessKey(version string) string {
+	if i := strings.Index(version, "|"); i >= 0 {
+		return version[:i]
+	}
+	return version
+}
 
 func (api *Router) addIpodRoutes(r chi.Router) {
 	r.Route("/ipods", func(r chi.Router) {
@@ -162,22 +181,75 @@ func (api *Router) addIpodRoutes(r chi.Router) {
 	})
 }
 
-// loadIpodData returns the cached data for the iPods the current user can access, loading
-// it from the DB if missing, expired, or if the libraries changed since it was loaded
+// loadIpodData returns the data for the iPods the current user can access. See ipodCache
 func (api *Router) loadIpodData(ctx context.Context) (*ipodData, error) {
+	version, err := api.ds.Ipod(ctx).DataVersion()
+	if err != nil {
+		return nil, err
+	}
+	access := ipodAccessKey(version)
+	c := ipodDataCache
+
+	c.mu.Lock()
+	e, ok := c.entries[access]
+	switch {
+	case ok && e.data != nil:
+		outdated := e.data.version != version || time.Since(e.data.createdAt) >= ipodCacheTTL
+		if outdated && !e.refreshing {
+			e.refreshing = true
+			go api.refreshIpodData(context.WithoutCancel(ctx), access, e)
+		}
+		d := e.data
+		c.mu.Unlock()
+		return d, nil
+	case ok:
+		// The first load is running: wait for it
+		loading := e.loading
+		c.mu.Unlock()
+		<-loading
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		return e.data, e.err
+	}
+	e = &ipodCacheEntry{loading: make(chan struct{})}
+	c.entries[access] = e
+	c.mu.Unlock()
+
+	d, err := api.computeIpodData(ctx)
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e.data, e.err = d, err
+	close(e.loading)
+	if err != nil {
+		delete(c.entries, access) // Try again on the next request
+	}
+	return d, err
+}
+
+// refreshIpodData recomputes outdated data in the background, while the old data is still served
+func (api *Router) refreshIpodData(ctx context.Context, access string, e *ipodCacheEntry) {
+	d, err := api.computeIpodData(ctx)
+	c := ipodDataCache
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	e.refreshing = false
+	if err != nil {
+		log.Error(ctx, "Error refreshing iPod data", err)
+		return
+	}
+	e.data = d
+}
+
+// computeIpodData reads the iPods' songs and artists, and computes everything the iPod features show
+func (api *Router) computeIpodData(ctx context.Context) (*ipodData, error) {
+	start := time.Now()
 	repo := api.ds.Ipod(ctx)
 	version, err := repo.DataVersion()
 	if err != nil {
 		return nil, err
 	}
-
-	ipodDataCache.mu.Lock()
-	defer ipodDataCache.mu.Unlock()
-	if d, ok := ipodDataCache.entries[version]; ok && time.Since(d.createdAt) < ipodCacheTTL {
-		return d, nil
-	}
-
-	d := &ipodData{createdAt: time.Now()}
+	d := &ipodData{createdAt: time.Now(), version: version}
 	if d.stats, err = repo.Stats(); err != nil {
 		return nil, err
 	}
@@ -224,12 +296,8 @@ func (api *Router) loadIpodData(ctx context.Context) (*ipodData, error) {
 		d.totals.Hours += s.TotalDuration / 3600
 	}
 
-	for k, e := range ipodDataCache.entries {
-		if time.Since(e.createdAt) >= ipodCacheTTL {
-			delete(ipodDataCache.entries, k)
-		}
-	}
-	ipodDataCache.entries[version] = d
+	log.Info(ctx, "Loaded iPod data", "ipods", len(d.stats), "songs", d.totals.Songs,
+		"tribes", len(d.tribes.tribes), "elapsed", time.Since(start))
 	return d, nil
 }
 
@@ -880,10 +948,7 @@ func (api *Router) renameIpodTribe(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	// Tribes are computed when loading the iPod data: drop the cache so the new name shows
-	ipodDataCache.mu.Lock()
-	ipodDataCache.entries = map[string]*ipodData{}
-	ipodDataCache.mu.Unlock()
+	renameCachedTribes(overrides)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -906,5 +971,23 @@ func upsertTribeOverride(overrides []tribeOverride, o tribeOverride) []tribeOver
 		return append(overrides, o)
 	default:
 		return overrides
+	}
+}
+
+// renameCachedTribes applies tribe names to the cached data, without recomputing it. The cached
+// data is replaced by an updated copy, as requests may be reading the current one
+func renameCachedTribes(overrides []tribeOverride) {
+	c := ipodDataCache
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for _, e := range c.entries {
+		if e.data == nil {
+			continue
+		}
+		d := *e.data
+		d.tribes.tribes = slices.Clone(d.tribes.tribes)
+		applyTribeOverrides(d.tribes.tribes, overrides)
+		d.network.Tribes = d.tribes.tribes
+		e.data = &d
 	}
 }
