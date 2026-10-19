@@ -1,23 +1,24 @@
 // The steps of the UI tour. Each one points at the element marked data-tour="<target>" (none: the
 // step is centred), and is left out when that element isn't on screen. With "opens", the tour
-// clicks that element's button first (a menu holding the target), and closes it afterwards. "since" is the tour version
-// the step was added in: users who saw an older version only see the newer steps
-export const TOUR_VERSION = 2
+// clicks that element's button first (a menu holding the target), and closes it afterwards.
+//
+// Users see the whole tour until they tick "Don't show this again", which saves TOUR_VERSION.
+// Raising it shows the tour to everyone again
+export const TOUR_VERSION = 3
 
 export const TOUR_STEPS = [
-  { key: 'welcome', since: 1 },
-  { key: 'ipodSelector', target: 'ipodSelector', since: 1 },
-  { key: 'search', target: 'search', since: 1 },
-  { key: 'facts', target: 'facts', since: 1 },
-  { key: 'network', target: 'network', since: 1 },
-  { key: 'shuffle', target: 'shuffle', since: 1 },
-  { key: 'radio', target: 'radio', since: 1 },
-  { key: 'radioPage', target: 'radioPage', since: 2 },
-  { key: 'nowPlaying', target: 'nowPlaying', since: 1 },
-  { key: 'player', target: 'player', since: 1 },
-  { key: 'userMenu', target: 'userMenu', since: 1 },
+  { key: 'welcome' },
+  { key: 'ipodSelector', target: 'ipodSelector' },
+  { key: 'search', target: 'search' },
+  { key: 'facts', target: 'facts' },
+  { key: 'network', target: 'network' },
+  { key: 'shuffle', target: 'shuffle' },
+  { key: 'radio', target: 'radio' },
+  { key: 'radioPage', target: 'radioPage' },
+  { key: 'nowPlaying', target: 'nowPlaying' },
+  { key: 'player', target: 'player' },
   // In the user menu, which the tour opens for it
-  { key: 'takeTour', target: 'takeTour', opens: 'userMenu', since: 2 },
+  { key: 'takeTour', target: 'takeTour', opens: 'userMenu' },
 ]
 
 export const tourTarget = (target) =>
@@ -33,8 +34,5 @@ export const isStepAvailable = (step) => {
   return rect.width > 0 && rect.height > 0
 }
 
-// The steps to show: all of them when replaying, otherwise those newer than the version seen
-export const stepsToShow = (seenVersion, replay = false) =>
-  TOUR_STEPS.filter(
-    (step) => (replay || step.since > seenVersion) && isStepAvailable(step),
-  )
+// The steps that can show now
+export const stepsToShow = () => TOUR_STEPS.filter(isStepAvailable)

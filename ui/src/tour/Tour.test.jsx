@@ -167,6 +167,27 @@ describe('<Tour />', () => {
     expect(screen.queryByText('take the tour')).toBeNull()
   })
 
+  it('shows again next visit when "Don\'t show this again" is unticked', async () => {
+    render(<Page />)
+    await waitForStart()
+    const checkbox = screen.getByRole('checkbox')
+    expect(checkbox).toBeChecked()
+    fireEvent.click(checkbox)
+    await act(async () => {
+      fireEvent.click(screen.getByText('tour.skip'))
+    })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(savedVersion).toBe(0)
+    expect(localStorage.getItem(TOUR_VERSION_KEY)).toBeNull()
+  })
+
+  it('shows to people who saw an older version of the tour', async () => {
+    savedVersion = TOUR_VERSION - 1
+    render(<Page />)
+    await waitForStart()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
   it('is remembered when skipped, with Esc too', async () => {
     render(<Page />)
     await waitForStart()
@@ -232,9 +253,8 @@ describe('stepsToShow', () => {
   })
   afterEach(() => vi.restoreAllMocks())
 
-  it('shows only steps newer than the version seen, unless replaying', () => {
-    expect(stepsToShow(TOUR_VERSION)).toEqual([])
-    const keys = stepsToShow(TOUR_VERSION, true).map((s) => s.key)
+  it('leaves out the steps whose element is not on screen', () => {
+    const keys = stepsToShow().map((s) => s.key)
     expect(keys).toEqual(['welcome', 'search'])
   })
 })

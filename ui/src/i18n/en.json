@@ -841,6 +841,7 @@
     "back": "Back",
     "skip": "Skip",
     "done": "Done",
+    "dontShowAgain": "Don't show this again",
     "steps": {
       "welcome": {
         "title": "Welcome to the iPod archive",
@@ -881,10 +882,6 @@
       "player": {
         "title": "Where a song comes from",
         "text": "The player shows which iPod the song comes from. Click the title to open its album on that iPod."
-      },
-      "userMenu": {
-        "title": "Make it yours",
-        "text": "Your settings are here: themes, iPod-style fonts and more."
       },
       "takeTour": {
         "title": "Take the tour again",
