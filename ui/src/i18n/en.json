@@ -842,6 +842,10 @@
     "skip": "Skip",
     "done": "Done",
     "steps": {
+      "welcome": {
+        "title": "Welcome to the iPod archive",
+        "text": "Every library here is someone's real iPod. This quick tour shows you how to explore them. You can take it again any time from the user menu."
+      },
       "ipodSelector": {
         "title": "Pick your iPods",
         "text": "Choose which iPods you browse. Albums, artists and songs only show what's on the iPods you pick, or on all of them."

@@ -9,11 +9,7 @@ import { useTranslate } from 'react-admin'
 import { Button, Paper, Popper, Typography } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { httpClient } from '../dataProvider'
-import {
-  WELCOME_CLOSED_EVENT,
-  WELCOME_TITLE,
-  WelcomeContent,
-} from '../dialogs/WelcomeDialog'
+import { WELCOME_CLOSED_EVENT } from '../dialogs/WelcomeDialog'
 import { TOUR_VERSION, stepsToShow, tourTarget } from './steps'
 import {
   START_TOUR_EVENT,
@@ -114,11 +110,8 @@ export const Tour = () => {
   const open = steps.length > 0
   const step = steps[index]
 
-  // afterWelcome: the welcome dialog was just shown, so the tour doesn't repeat it
-  const show = useCallback((seenVersion, replay, afterWelcome = false) => {
-    const list = stepsToShow(seenVersion, replay).filter(
-      (s) => !(afterWelcome && s.key === 'welcome'),
-    )
+  const show = useCallback((seenVersion, replay) => {
+    const list = stepsToShow(seenVersion, replay)
     setIndex(0)
     setSteps(list)
   }, [])
@@ -127,10 +120,10 @@ export const Tour = () => {
   useEffect(() => {
     let cancelled = false
     let timer
-    const start = (afterWelcome) => {
+    const start = () => {
       timer = setTimeout(() => {
         loadVersion().then((seen) => {
-          if (!cancelled && seen < TOUR_VERSION) show(seen, false, afterWelcome)
+          if (!cancelled && seen < TOUR_VERSION) show(seen, false)
         })
       }, TOUR_START_DELAY)
     }
@@ -140,11 +133,11 @@ export const Tour = () => {
     } catch (e) {
       // No storage: no welcome dialog either
     }
-    const onWelcomeClosed = () => start(true)
+    const onWelcomeClosed = () => start()
     if (welcomeOpen) {
       window.addEventListener(WELCOME_CLOSED_EVENT, onWelcomeClosed)
     } else {
-      start(false)
+      start()
     }
     return () => {
       cancelled = true
@@ -219,14 +212,11 @@ export const Tour = () => {
   if (!open || !step) return null
 
   const last = index === steps.length - 1
-  // The welcome is the community's own words and sad iPod, as in the welcome dialog
-  const welcome = step.key === 'welcome'
-  const title = welcome ? WELCOME_TITLE : t(`steps.${step.key}.title`)
   const bubble = (
     <Paper
       elevation={8}
       role="dialog"
-      aria-label={title}
+      aria-label={t(`steps.${step.key}.title`)}
       className={`${classes.bubble} ${anchor ? '' : classes.centred}`}
     >
       {steps.length > 1 && (
@@ -234,14 +224,12 @@ export const Tour = () => {
           {t('progress', { current: index + 1, total: steps.length })}
         </Typography>
       )}
-      <Typography variant="subtitle1">{title}</Typography>
-      {welcome ? (
-        <WelcomeContent />
-      ) : (
-        <Typography variant="body2" color="textSecondary">
-          {t(`steps.${step.key}.text`)}
-        </Typography>
-      )}
+      <Typography variant="subtitle1">
+        {t(`steps.${step.key}.title`)}
+      </Typography>
+      <Typography variant="body2" color="textSecondary">
+        {t(`steps.${step.key}.text`)}
+      </Typography>
       <div className={classes.actions}>
         {!last && (
           <Button size="small" onClick={finish}>

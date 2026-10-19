@@ -10,7 +10,7 @@ import {
 } from './tourEvents'
 import { TOUR_STEPS, TOUR_VERSION, stepsToShow } from './steps'
 import { httpClient } from '../dataProvider'
-import { WELCOME_CLOSED_EVENT, WELCOME_TITLE } from '../dialogs/WelcomeDialog'
+import { WELCOME_CLOSED_EVENT } from '../dialogs/WelcomeDialog'
 
 vi.mock('../dataProvider', () => ({ httpClient: vi.fn() }))
 
@@ -95,7 +95,7 @@ describe('<Tour />', () => {
   it('shows on a first visit, one step at a time, leaving out what is not on screen', async () => {
     render(<Page />)
     await waitForStart()
-    expect(title()).toBe(WELCOME_TITLE)
+    expect(title()).toBe('tour.steps.welcome.title')
     const total = TOUR_STEPS.length - 1 // The player isn't on screen
     expect(screen.getByText(`tour.progress:1/${total}`)).toBeInTheDocument()
 
@@ -103,7 +103,7 @@ describe('<Tour />', () => {
     expect(title()).toBe('tour.steps.ipodSelector.title')
     expect(screen.getByTestId('tour-spotlight')).toBeInTheDocument()
     fireEvent.click(screen.getByText('tour.back'))
-    expect(title()).toBe(WELCOME_TITLE)
+    expect(title()).toBe('tour.steps.welcome.title')
 
     for (let i = 1; i < total; i++) {
       fireEvent.click(screen.getByText('tour.next'))
@@ -137,7 +137,7 @@ describe('<Tour />', () => {
     fireEvent.keyDown(window, { key: 'ArrowRight' })
     expect(title()).toBe('tour.steps.ipodSelector.title')
     fireEvent.keyDown(window, { key: 'ArrowLeft' })
-    expect(title()).toBe(WELCOME_TITLE)
+    expect(title()).toBe('tour.steps.welcome.title')
   })
 
   it('does not show again once seen, but can be replayed', async () => {
@@ -147,12 +147,7 @@ describe('<Tour />', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
 
     act(() => startTour())
-    // The welcome dialog's own words and sad iPod
-    expect(title()).toBe(WELCOME_TITLE)
-    expect(screen.getByAltText('Sad iPod')).toBeInTheDocument()
-    expect(
-      screen.getByText(/This collection is made up of real iPods/),
-    ).toBeInTheDocument()
+    expect(title()).toBe('tour.steps.welcome.title')
   })
 
   it('waits for the welcome dialog to close', async () => {
@@ -165,8 +160,7 @@ describe('<Tour />', () => {
       window.dispatchEvent(new Event(WELCOME_CLOSED_EVENT))
     })
     await waitForStart()
-    // The dialog was the welcome: the tour doesn't repeat it
-    expect(title()).toBe('tour.steps.ipodSelector.title')
+    expect(title()).toBe('tour.steps.welcome.title')
   })
 
   it('uses the version saved in the browser when the server is unreachable', async () => {

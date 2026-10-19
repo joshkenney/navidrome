@@ -31,28 +31,9 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-export const WELCOME_TITLE = 'Welcome to the iPod Repair NYC community!'
-
-// The sad iPod and the welcome text, also shown by the tour's first step
-export const WelcomeContent = () => {
-  const classes = useStyles()
-  return (
-    <div className={classes.content}>
-      <img src={sadIpod} alt="Sad iPod" className={classes.image} />
-      <Typography className={classes.text}>
-        This collection is made up of real iPods. Each iPod is the music someone
-        carried around in their pocket.
-      </Typography>
-      <Typography>
-        If you would like to contribute your iPod&apos;s collection, email{' '}
-        <Link href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</Link>.
-      </Typography>
-    </div>
-  )
-}
-
 // Shown once after each successful login (flag set by authProvider.login)
 export const WelcomeDialog = () => {
+  const classes = useStyles()
   const [open, setOpen] = useState(
     () => localStorage.getItem('show-welcome') === 'true',
   )
@@ -65,9 +46,19 @@ export const WelcomeDialog = () => {
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle onClose={handleClose}>{WELCOME_TITLE}</DialogTitle>
-      <DialogContent dividers>
-        <WelcomeContent />
+      <DialogTitle onClose={handleClose}>
+        Welcome to the iPod Repair NYC community!
+      </DialogTitle>
+      <DialogContent dividers className={classes.content}>
+        <img src={sadIpod} alt="Sad iPod" className={classes.image} />
+        <Typography className={classes.text}>
+          This collection is made up of real iPods. Each iPod is the music
+          someone carried around in their pocket.
+        </Typography>
+        <Typography>
+          If you would like to contribute your iPod&apos;s collection, email{' '}
+          <Link href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</Link>.
+        </Typography>
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} color="primary" variant="contained">
