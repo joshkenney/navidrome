@@ -742,7 +742,9 @@
       "counts": "%{songs} songs · %{artists} artists",
       "closest": "Closest iPods",
       "browse": "Browse this iPod",
-      "resetView": "Show all iPods"
+      "resetView": "Show all iPods",
+      "search": "Find an iPod",
+      "noMatch": "No iPod with that name"
     },
     "match": {
       "tab": "Find your iPod",

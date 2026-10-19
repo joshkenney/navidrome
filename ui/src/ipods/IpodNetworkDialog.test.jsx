@@ -244,4 +244,35 @@ describe('<IpodNetworkDialog />', () => {
       expect(filter({ id: 3 })).toBe(false)
     })
   })
+
+  describe('search', () => {
+    it('selects and zooms to the iPod picked in the search box', async () => {
+      renderDialog()
+      await waitFor(() =>
+        expect(screen.getByText("node-Bob's iPod")).toBeInTheDocument(),
+      )
+      const input = screen.getByLabelText('ipods.network.search')
+      fireEvent.change(input, { target: { value: 'bob' } })
+      fireEvent.click(await screen.findByRole('option', { name: "Bob's iPod" }))
+
+      expect(screen.getByText('ipods.network.browse')).toBeInTheDocument()
+      const filter = camera.zoomToFit.mock.calls.at(-1)[2]
+      expect(filter({ id: 2 })).toBe(true)
+      expect(filter({ id: 3 })).toBe(false)
+    })
+
+    it('only suggests iPods matching what was typed', async () => {
+      renderDialog()
+      await waitFor(() =>
+        expect(screen.getByText("node-Bob's iPod")).toBeInTheDocument(),
+      )
+      fireEvent.change(screen.getByLabelText('ipods.network.search'), {
+        target: { value: 'car' },
+      })
+      expect(
+        await screen.findByRole('option', { name: "Carol's iPod" }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('option', { name: "Bob's iPod" })).toBeNull()
+    })
+  })
 })

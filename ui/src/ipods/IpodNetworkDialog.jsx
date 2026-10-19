@@ -56,6 +56,7 @@ const useStyles = makeStyles((theme) => ({
     flexShrink: 0,
     [theme.breakpoints.down('sm')]: { width: '100%' },
   },
+  search: { marginBottom: theme.spacing(2) },
   resetView: {
     position: 'absolute',
     top: theme.spacing(1),
@@ -187,6 +188,10 @@ const NetworkTab = ({ network, selectedId, onSelect, onBrowse }) => {
     [network],
   )
   const maxSongs = Math.max(1, ...network.nodes.map((n) => n.songCount))
+  const sortedNodes = useMemo(
+    () => [...network.nodes].sort((a, b) => a.name.localeCompare(b.name)),
+    [network],
+  )
   const selected = network.nodes.find((n) => n.id === selectedId)
   const neighborIds = useMemo(() => {
     const ids = new Set()
@@ -369,6 +374,23 @@ const NetworkTab = ({ network, selectedId, onSelect, onBrowse }) => {
         )}
       </div>
       <div className={classes.side}>
+        <Autocomplete
+          className={classes.search}
+          options={sortedNodes}
+          value={selected || null}
+          getOptionLabel={(n) => n.name}
+          getOptionSelected={(a, b) => a.id === b.id}
+          onChange={(_, node) => onSelect(node ? node.id : null)}
+          noOptionsText={translate('ipods.network.noMatch')}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              variant="outlined"
+              size="small"
+              label={translate('ipods.network.search')}
+            />
+          )}
+        />
         <IpodDetails
           node={selected}
           network={network}
