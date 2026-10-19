@@ -47,6 +47,11 @@ describe('useUiFont', () => {
     expect(headings).toContain('.songDetails')
     expect(headings).toContain('.MuiDrawer-root .MuiChip-label')
     expect(headings).toContain('font-synthesis: none')
+    // Comments are styled as headings, but keep the body font
+    const bodyText = css
+      .split('}')
+      .find((rule) => rule.includes('.ndBodyText.ndBodyText'))
+    expect(bodyText).toContain('font-family: "Source Sans 3"')
   })
 
   it('switches back to the theme font', () => {

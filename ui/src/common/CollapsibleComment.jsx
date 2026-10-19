@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Typography, Collapse } from '@material-ui/core'
+import { BODY_TEXT_CLASS } from '../fonts/uiFonts'
 import { makeStyles } from '@material-ui/core/styles'
 import AnchorMe from './Linkify'
 import clsx from 'clsx'
@@ -56,7 +57,11 @@ export const CollapsibleComment = ({ record }) => {
         lines.length > 1 && classes.pointerCursor,
       )}
     >
-      <Typography variant={'h6'} onClick={handleExpandClick}>
+      <Typography
+        variant={'h6'}
+        className={BODY_TEXT_CLASS}
+        onClick={handleExpandClick}
+      >
         {formatted}
       </Typography>
     </Collapse>

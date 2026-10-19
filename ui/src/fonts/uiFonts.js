@@ -61,6 +61,11 @@ const HEADINGS = [
   '.songDetails',
 ]
 
+// Text styled as a heading that is really body text, like album comments: it keeps the body font.
+// The class is doubled to outweigh the headings rule
+export const BODY_TEXT_CLASS = 'ndBodyText'
+const BODY_TEXT = `.${BODY_TEXT_CLASS}.${BODY_TEXT_CLASS}`
+
 export const UI_FONTS = {
   // Chicago for headings and labels, Source Sans 3 for everything else (lists, details, numbers)
   ipod: {
@@ -91,6 +96,10 @@ export const uiFontStylesheet = (id) => {
       font-family: ${font.headings.family} !important;
       font-synthesis: none;
       letter-spacing: 0.02em;
+    }
+    ${BODY_TEXT}, ${BODY_TEXT} * {
+      font-family: ${font.body.family} !important;
+      letter-spacing: normal;
     }
   `
   }
