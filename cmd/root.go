@@ -183,6 +183,7 @@ func pidHashChanged(ds model.DataStore) (bool, error) {
 func runInitialScan(ctx context.Context) func() error {
 	return func() error {
 		ds := CreateDataStore()
+		mergeNestedLibraries(ctx, ds)
 		fullScanRequired, err := ds.Property(ctx).DefaultGet(consts.FullScanAfterMigrationFlagKey, "0")
 		if err != nil {
 			return err
@@ -223,6 +224,41 @@ func runInitialScan(ctx context.Context) func() error {
 			log.Debug(ctx, "Initial scan not needed")
 		}
 		return nil
+	}
+}
+
+// mergeNestedLibraries merges the tracks that combined libraries (like a "Music Library" holding
+// every iPod's folder) imported from their nested libraries, and grants access to the nested
+// libraries. It only needs the DB, so existing duplicates are cleaned up without a rescan
+func mergeNestedLibraries(ctx context.Context, ds model.DataStore) {
+	err := ds.WithTx(func(tx model.DataStore) error {
+		merged, err := tx.Library(ctx).MergeNestedLibraries()
+		if err != nil {
+			return err
+		}
+		if err := tx.Library(ctx).SyncNestedAccess(); err != nil {
+			return err
+		}
+		if merged == 0 {
+			return nil
+		}
+		log.Info(ctx, "Merged tracks of combined libraries into their nested libraries", "tracks", merged)
+		if err := tx.GC(ctx); err != nil {
+			return err
+		}
+		libs, err := tx.Library(ctx).GetAll()
+		if err != nil {
+			return err
+		}
+		for _, lib := range libs {
+			if err := tx.Library(ctx).RefreshStats(lib.ID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}, "merge nested libraries")
+	if err != nil {
+		log.Error(ctx, "Error merging nested libraries", err)
 	}
 }
 

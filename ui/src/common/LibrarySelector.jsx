@@ -16,6 +16,7 @@ import {
 } from '@material-ui/core'
 import { ExpandMore, ExpandLess, LibraryMusic } from '@material-ui/icons'
 import { setSelectedLibraries, setUserLibraries } from '../actions'
+import { withoutCombinedLibraries } from './combinedLibraries'
 import { useRefreshOnEvents } from './useRefreshOnEvents'
 
 const useStyles = makeStyles((theme) => ({
@@ -86,7 +87,7 @@ const LibrarySelector = () => {
     if (userId) {
       try {
         const { data } = await dataProvider.getOne('user', { id: userId })
-        const libraries = data.libraries || []
+        const libraries = withoutCombinedLibraries(data.libraries || [])
         dispatch(setUserLibraries(libraries))
       } catch (error) {
         // eslint-disable-next-line no-console

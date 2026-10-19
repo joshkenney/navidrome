@@ -125,6 +125,10 @@ ON CONFLICT (user_id, library_id) DO NOTHING;`,
 	if _, err = r.executeSQL(sql); err != nil {
 		return fmt.Errorf("failed to assign library to admin users: %w", err)
 	}
+	// A library inside a combined library goes to everyone who can access the combined one
+	if err = r.SyncNestedAccess(); err != nil {
+		return fmt.Errorf("failed to assign nested library access: %w", err)
+	}
 
 	libLock.Lock()
 	defer libLock.Unlock()

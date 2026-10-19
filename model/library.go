@@ -1,6 +1,8 @@
 package model
 
 import (
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/navidrome/navidrome/utils/slice"
@@ -38,6 +40,43 @@ func (l Libraries) IDs() []int {
 	return slice.Map(l, func(lib Library) int { return lib.ID })
 }
 
+// Contains reports whether the other library's folder is inside this library's folder. A
+// library containing others (like a "Music Library" holding every iPod's folder) would import
+// their files a second time, so the scanner skips those folders and users see the contained
+// libraries instead
+func (l Library) Contains(other Library) bool {
+	if l.ID == other.ID {
+		return false
+	}
+	parent := filepath.Clean(l.Path)
+	if !strings.HasSuffix(parent, string(filepath.Separator)) {
+		parent += string(filepath.Separator)
+	}
+	return strings.HasPrefix(filepath.Clean(other.Path), parent)
+}
+
+// Nested returns the libraries whose folders are inside the given library's folder
+func (l Libraries) Nested(parent Library) Libraries {
+	var nested Libraries
+	for _, lib := range l {
+		if parent.Contains(lib) {
+			nested = append(nested, lib)
+		}
+	}
+	return nested
+}
+
+// Combined returns the libraries that contain other libraries
+func (l Libraries) Combined() Libraries {
+	var combined Libraries
+	for _, lib := range l {
+		if len(l.Nested(lib)) > 0 {
+			combined = append(combined, lib)
+		}
+	}
+	return combined
+}
+
 type LibraryRepository interface {
 	Get(id int) (*Library, error)
 	// GetPath returns the path of the library with the given ID.
@@ -58,4 +97,8 @@ type LibraryRepository interface {
 	ScanEnd(id int) error
 	ScanInProgress() (bool, error)
 	RefreshStats(id int) error
+
+	// Libraries containing other libraries (see Library.Contains)
+	SyncNestedAccess() error
+	MergeNestedLibraries() (int, error)
 }

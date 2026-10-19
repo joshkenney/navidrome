@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -20,10 +21,14 @@ import (
 func (api *Router) GetMusicFolders(r *http.Request) (*responses.Subsonic, error) {
 	libraries := getUserAccessibleLibraries(r.Context())
 
-	folders := make([]responses.MusicFolder, len(libraries))
-	for i, f := range libraries {
-		folders[i].Id = int32(f.ID)
-		folders[i].Name = f.Name
+	// Libraries containing other libraries hold no tracks of their own (see Library.Contains)
+	combined := model.Libraries(libraries).Combined()
+	folders := make([]responses.MusicFolder, 0, len(libraries))
+	for _, f := range libraries {
+		if slices.ContainsFunc(combined, func(c model.Library) bool { return c.ID == f.ID }) {
+			continue
+		}
+		folders = append(folders, responses.MusicFolder{Id: int32(f.ID), Name: f.Name})
 	}
 	response := newResponse()
 	response.MusicFolders = &responses.MusicFolders{Folders: folders}

@@ -31,7 +31,9 @@ type scanState struct {
 	progress          chan<- *ProgressInfo
 	fullScan          bool
 	changesDetected   atomic.Bool
+	mergedNested      atomic.Bool      // Tracks were merged from a combined library, so GC must cover all libraries
 	libraries         model.Libraries  // Store libraries list for consistency across phases
+	allLibraries      model.Libraries  // All libraries, including the ones not being scanned
 	targets           map[int][]string // Optional: map[libraryID][]folderPaths for selective scans
 	totalLibraryCount int              // Total number of libraries (unfiltered), for cross-library move detection
 }
@@ -75,6 +77,7 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 		return
 	}
 	state.totalLibraryCount = len(allLibs)
+	state.allLibraries = allLibs
 
 	if len(targets) > 0 {
 		// Selective scan: filter libraries and build targets map
@@ -153,6 +156,10 @@ func (s *scannerImpl) scanFolders(ctx context.Context, fullScan bool, targets []
 
 		// Final Steps (cannot be parallelized):
 
+		// Merge tracks imported by combined libraries into the libraries inside them, and grant
+		// access to those libraries
+		s.runMergeNestedLibraries(ctx, &state),
+
 		// Run GC if there were any changes (Remove dangling tracks, empty albums and artists, and orphan annotations)
 		s.runGC(ctx, &state),
 
@@ -227,6 +234,23 @@ func (s *scannerImpl) prepareLibrariesForScan(ctx context.Context, state *scanSt
 	return nil
 }
 
+func (s *scannerImpl) runMergeNestedLibraries(ctx context.Context, state *scanState) func() error {
+	return func() error {
+		return s.ds.WithTx(func(tx model.DataStore) error {
+			merged, err := tx.Library(ctx).MergeNestedLibraries()
+			if err != nil {
+				log.Error(ctx, "Scanner: Error merging nested libraries", err)
+				return fmt.Errorf("merging nested libraries: %w", err)
+			}
+			if merged > 0 {
+				state.changesDetected.Store(true)
+				state.mergedNested.Store(true)
+			}
+			return tx.Library(ctx).SyncNestedAccess()
+		}, "scanner: merge nested libraries")
+	}
+}
+
 func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error {
 	return func() error {
 		state.sendProgress(&ProgressInfo{ForceUpdate: true})
@@ -236,7 +260,7 @@ func (s *scannerImpl) runGC(ctx context.Context, state *scanState) func() error 
 
 				// For selective scans, extract library IDs to scope GC operations
 				var libraryIDs []int
-				if state.isSelectiveScan() {
+				if state.isSelectiveScan() && !state.mergedNested.Load() {
 					libraryIDs = slices.Collect(maps.Keys(state.targets))
 					log.Debug(ctx, "Scanner: Running selective GC", "libraryIDs", libraryIDs)
 				}
@@ -317,6 +341,14 @@ func (s *scannerImpl) runUpdateLibraries(ctx context.Context, state *scanState) 
 					}
 				} else {
 					log.Debug(ctx, "Scanner: No changes detected, skipping library stats refresh", "lib", lib.Name)
+				}
+			}
+			// Combined libraries lose tracks when they are merged, even if they were not scanned
+			if state.mergedNested.Load() {
+				for _, lib := range state.allLibraries.Combined() {
+					if err := tx.Library(ctx).RefreshStats(lib.ID); err != nil {
+						return fmt.Errorf("refreshing library stats: %w", err)
+					}
 				}
 			}
 			log.Debug(ctx, "Scanner: Updated libraries after scan", "elapsed", time.Since(start), "numLibraries", len(state.libraries))

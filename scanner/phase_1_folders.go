@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"path"
+	"path/filepath"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -37,7 +38,7 @@ func createPhaseFolders(ctx context.Context, state *scanState, ds model.DataStor
 			targetFolders = state.targets[lib.ID]
 		}
 
-		job, err := newScanJob(ctx, ds, cw, lib, state.fullScan, targetFolders)
+		job, err := newScanJob(ctx, ds, cw, lib, state.fullScan, targetFolders, state.allLibraries.Nested(lib))
 		if err != nil {
 			log.Error(ctx, "Scanner: Error creating scan context", "lib", lib.Name, err)
 			state.sendError(err)
@@ -55,11 +56,12 @@ type scanJob struct {
 	cw            artwork.CacheWarmer
 	lastUpdates   map[string]model.FolderUpdateInfo // Holds last update info for all (DB) folders in this library
 	targetFolders []string                          // Specific folders to scan (including all descendants)
+	nestedRoots   map[string]string                 // Root folders of libraries nested in this one, and their names
 	lock          sync.Mutex
 	numFolders    atomic.Int64
 }
 
-func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullScan bool, targetFolders []string) (*scanJob, error) {
+func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer, lib model.Library, fullScan bool, targetFolders []string, nested model.Libraries) (*scanJob, error) {
 	// Get folder updates, optionally filtered to specific target folders
 	lastUpdates, err := ds.Folder(ctx).GetFolderUpdateInfo(lib, targetFolders...)
 	if err != nil {
@@ -82,13 +84,35 @@ func newScanJob(ctx context.Context, ds model.DataStore, cw artwork.CacheWarmer,
 	// the DB may have FullScanInProgress=false, but we need it true for isOutdated() to work correctly.
 	lib.FullScanInProgress = lib.FullScanInProgress || fullScan
 
+	// Folders of other libraries inside this one (e.g. iPods inside a "Music Library") are
+	// imported by those libraries only, so their files are not stored twice
+	nestedRoots := map[string]string{}
+	for _, n := range nested {
+		rel, err := filepath.Rel(lib.Path, n.Path)
+		if err == nil {
+			nestedRoots[filepath.ToSlash(rel)] = n.Name
+		}
+	}
+
 	return &scanJob{
 		lib:           lib,
 		fs:            fsys,
 		cw:            cw,
 		lastUpdates:   lastUpdates,
 		targetFolders: targetFolders,
+		nestedRoots:   nestedRoots,
 	}, nil
+}
+
+// nestedLibrary returns the name of the library that owns the given folder, if the folder is
+// (inside) the root of a library nested in this job's library
+func (j *scanJob) nestedLibrary(folder string) (string, bool) {
+	for dir := path.Clean(folder); dir != "." && dir != "/" && dir != ""; dir = path.Dir(dir) {
+		if name, ok := j.nestedRoots[dir]; ok {
+			return name, true
+		}
+	}
+	return "", false
 }
 
 // popLastUpdate retrieves and removes the last update info for the given folder ID

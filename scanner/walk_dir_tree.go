@@ -32,6 +32,11 @@ func walkDirTree(ctx context.Context, job *scanJob, targetFolders ...string) (<-
 				return
 			}
 
+			if name, ok := job.nestedLibrary(folderPath); ok {
+				log.Debug(ctx, "Scanner: Skipping target folder, it belongs to another library", "path", folderPath, "library", name)
+				continue
+			}
+
 			// Check if target folder exists before walking it
 			// If it doesn't exist (e.g., deleted between watcher detection and scan execution),
 			// skip it so it remains in job.lastUpdates and gets handled in following steps
@@ -134,6 +139,12 @@ func loadDir(ctx context.Context, job *scanJob, dirPath string, checker *IgnoreC
 		if err != nil {
 			log.Warn(ctx, "Scanner: Invalid symlink", "dir", entryPath, err)
 			continue
+		}
+		if isDir {
+			if name, ok := job.nestedRoots[entryPath]; ok {
+				log.Trace(ctx, "Scanner: Skipping folder, it belongs to another library", "path", entryPath, "library", name)
+				continue
+			}
 		}
 		if isDir && !isDirIgnored(entry.Name()) && isDirReadable(ctx, job.fs, entryPath) {
 			children = append(children, entryPath)

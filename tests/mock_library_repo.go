@@ -143,6 +143,14 @@ func (m *MockLibraryRepo) ScanEnd(id int) error {
 	return nil
 }
 
+func (m *MockLibraryRepo) SyncNestedAccess() error {
+	return nil
+}
+
+func (m *MockLibraryRepo) MergeNestedLibraries() (int, error) {
+	return 0, nil
+}
+
 func (m *MockLibraryRepo) ScanInProgress() (bool, error) {
 	if m.Err != nil {
 		return false, m.Err

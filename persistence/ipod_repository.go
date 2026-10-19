@@ -3,8 +3,6 @@ package persistence
 import (
 	"context"
 	"errors"
-	"path/filepath"
-	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/consts"
@@ -48,40 +46,18 @@ func (r *ipodRepository) mediaFiles(columns ...string) (SelectBuilder, error) {
 	return r.applyLibraryFilter(sq, "mf"), nil
 }
 
-type dbLibraryPath struct {
-	ID   int    `db:"id"`
-	Path string `db:"path"`
-}
-
 // combinedLibraryIDs returns the libraries whose folder contains another library's folder
 func (r *ipodRepository) combinedLibraryIDs() ([]int, error) {
 	if r.loaded {
 		return r.combined, nil
 	}
-	var libs []dbLibraryPath
+	var libs model.Libraries
 	if err := ignoreNotFound(r.queryAll(Select("id", "path").From("library"), &libs)); err != nil {
 		return nil, err
 	}
-	r.combined = findCombinedLibraries(libs)
+	r.combined = libs.Combined().IDs()
 	r.loaded = true
 	return r.combined, nil
-}
-
-func findCombinedLibraries(libs []dbLibraryPath) []int {
-	var combined []int
-	for _, parent := range libs {
-		prefix := filepath.Clean(parent.Path)
-		if !strings.HasSuffix(prefix, string(filepath.Separator)) {
-			prefix += string(filepath.Separator)
-		}
-		for _, child := range libs {
-			if child.ID != parent.ID && strings.HasPrefix(filepath.Clean(child.Path), prefix) {
-				combined = append(combined, parent.ID)
-				break
-			}
-		}
-	}
-	return combined
 }
 
 func ignoreNotFound(err error) error {

@@ -160,6 +160,9 @@ func (r *userRepository) Put(u *model.User) error {
 		if _, err := r.executeSQL(sql); err != nil {
 			return fmt.Errorf("failed to assign default libraries to new user: %w", err)
 		}
+		if err := r.syncNestedAccess(); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -472,8 +475,18 @@ func (r *userRepository) SetUserLibraries(userID string, libraryIDs []int) error
 		for _, libID := range libraryIDs {
 			insert = insert.Values(userID, libID)
 		}
-		_, err := r.executeSQL(insert)
-		return err
+		if _, err := r.executeSQL(insert); err != nil {
+			return err
+		}
+		return r.syncNestedAccess()
+	}
+	return nil
+}
+
+// syncNestedAccess grants access to the libraries inside the combined libraries a user can access
+func (r *userRepository) syncNestedAccess() error {
+	if err := NewLibraryRepository(r.ctx, r.db).SyncNestedAccess(); err != nil {
+		return fmt.Errorf("failed to assign nested library access: %w", err)
 	}
 	return nil
 }
