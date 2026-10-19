@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useDispatch } from 'react-redux'
-import { Link, useDataProvider, useNotify, useTranslate } from 'react-admin'
+import {
+  Link,
+  useDataProvider,
+  useNotify,
+  usePermissions,
+  useTranslate,
+} from 'react-admin'
 import {
   Button,
   Card,
@@ -30,6 +36,7 @@ import { playIpodRadio } from './radio'
 import { TasteBadge } from './TasteBadge'
 import { tasteLabelOf } from './taste'
 import { tribeColor } from './tribes'
+import { RenameTribeButton } from './RenameTribeButton'
 
 const useStyles = makeStyles((theme) => ({
   button: { color: 'inherit' },
@@ -116,6 +123,7 @@ export const IpodFactsDialog = ({ open, onClose }) => {
   const [error, setError] = useState(false)
   const [myTaste, setMyTaste] = useState(null)
   const browseIpod = useBrowseIpod(onClose)
+  const { permissions } = usePermissions()
 
   const fetchFacts = useCallback(() => {
     setError(false)
@@ -312,6 +320,12 @@ export const IpodFactsDialog = ({ open, onClose }) => {
                               style={{ backgroundColor: tribeColor(tribe.id) }}
                             />
                             {tribe.name}
+                            {permissions === 'admin' && (
+                              <RenameTribeButton
+                                tribe={tribe}
+                                onRenamed={fetchFacts}
+                              />
+                            )}
                           </Typography>
                           <Typography
                             variant="body2"

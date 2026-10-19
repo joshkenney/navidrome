@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 
 	"github.com/navidrome/navidrome/conf"
 	"github.com/navidrome/navidrome/conf/configtest"
@@ -145,5 +146,30 @@ var _ = Describe("iPod Radio endpoint", Ordered, func() {
 		w, resp := radio("songId=a1&drift=a3&liked=a3")
 		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
 		Expect(resp.Songs).ToNot(BeEmpty())
+	})
+
+	Describe("renaming tribes", func() {
+		rename := func(c context.Context, body string) *httptest.ResponseRecorder {
+			r := httptest.NewRequest(http.MethodPut, "/ipods/tribes/name", strings.NewReader(body)).WithContext(c)
+			w := httptest.NewRecorder()
+			adminOnlyMiddleware(http.HandlerFunc(api.renameIpodTribe)).ServeHTTP(w, r)
+			return w
+		}
+
+		It("stores and removes an admin's name for a tribe", func() {
+			ipodDataCache.entries["stale"] = &ipodData{}
+			Expect(rename(ctx, `{"name": " The Sad Kids ", "ipods": [2, 3]}`).Code).To(Equal(http.StatusNoContent))
+			Expect(api.tribeOverrides(ctx)).To(Equal([]tribeOverride{{Name: "The Sad Kids", Ipods: []int{2, 3}}}))
+			Expect(ipodDataCache.entries).To(BeEmpty(), "the cache is dropped, so the name shows")
+
+			Expect(rename(ctx, `{"name": "", "ipods": [2, 3]}`).Code).To(Equal(http.StatusNoContent))
+			Expect(api.tribeOverrides(ctx)).To(BeEmpty())
+		})
+
+		It("rejects bad requests and non-admins", func() {
+			Expect(rename(ctx, `{"name": "x", "ipods": []}`).Code).To(Equal(http.StatusBadRequest))
+			user := request.WithUser(context.Background(), model.User{ID: "u", UserName: "u"})
+			Expect(rename(user, `{"name": "x", "ipods": [2]}`).Code).To(Equal(http.StatusForbidden))
+		})
 	})
 })

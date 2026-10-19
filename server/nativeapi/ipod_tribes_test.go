@@ -3,6 +3,8 @@ package nativeapi
 import (
 	"fmt"
 
+	"github.com/navidrome/navidrome/utils/songkey"
+
 	"github.com/navidrome/navidrome/model"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -12,6 +14,7 @@ var _ = Describe("iPod tribes", func() {
 	var stats []model.IpodStats
 	var counts []model.IpodArtistCount
 	var genres []model.IpodGenreCount
+	var overrides []tribeOverride
 
 	// addIpod adds an iPod with 5 songs by each of the given artists, all of the given genre
 	addIpod := func(lib int, year float64, genre string, artists ...string) {
@@ -24,11 +27,11 @@ var _ = Describe("iPod tribes", func() {
 		}
 	}
 	tribes := func() ipodTribes {
-		return findTribes(stats, counts, genres, ipodSimilarities(stats, counts), computeTasteScores(stats, counts))
+		return findTribes(stats, counts, genres, ipodSimilarities(stats, counts), computeTasteScores(stats, counts), overrides)
 	}
 
 	BeforeEach(func() {
-		stats, counts, genres = nil, nil, nil
+		stats, counts, genres, overrides = nil, nil, nil, nil
 		// Two groups of 4 iPods, sharing artists inside each group but not across, and a loner
 		for lib := 1; lib <= 4; lib++ {
 			addIpod(lib, 2004+float64(lib), "emo", "weezer", "saves the day", "jimmy eat world", fmt.Sprint("emo-extra", lib))
@@ -158,5 +161,71 @@ var _ = Describe("iPod tribes", func() {
 		Expect(titleCase("hip-hop")).To(Equal("Hip-Hop"))
 		Expect(titleCase("classic rock")).To(Equal("Classic Rock"))
 		Expect(titleCase("r&b")).To(Equal("R&B"))
+	})
+
+	Describe("scenes", func() {
+		key := func(name string) string { return songkey.ArtistKey(name) }
+
+		It("names a tribe after the scene of its artists, whatever the genre tags say", func() {
+			stats, counts, genres = nil, nil, nil
+			emo := []string{key("Saves the Day"), key("Brand New"), key("Taking Back Sunday"), key("Get Up Kids")}
+			for lib := 1; lib <= 4; lib++ {
+				addIpod(lib, 2004, "alternative", append(emo, fmt.Sprint("extra", lib))...)
+			}
+			for lib := 5; lib <= 8; lib++ {
+				addIpod(lib, 1972, "rock", "zeppelin", "floyd", "sabbath")
+			}
+			ts := tribes()
+			Expect(ts.tribes[0].Scene).To(Equal("Emo"))
+			Expect(ts.tribes[0].Name).To(Equal("2000s Emo"))
+		})
+
+		It("needs several of the scene's artists", func() {
+			share := map[string]float64{key("Brand New"): 1, key("Saves the Day"): 1}
+			lift := map[string]float64{key("Brand New"): 3, key("Saves the Day"): 3}
+			Expect(sceneOf(share, lift)).To(BeEmpty())
+		})
+
+		It("ignores scene artists found everywhere", func() {
+			share := map[string]float64{key("Blink-182"): 1, key("Green Day"): 1, key("Sum 41"): 1}
+			lift := map[string]float64{key("Blink-182"): 1, key("Green Day"): 1, key("Sum 41"): 1}
+			Expect(sceneOf(share, lift)).To(BeEmpty())
+		})
+	})
+
+	Describe("admin names", func() {
+		It("renames the tribe with mostly the same iPods", func() {
+			overrides = []tribeOverride{{Name: "The Sad Kids", Ipods: []int{1, 2, 3}}}
+			ts := tribes()
+			Expect(ts.tribes[0].Name).To(Equal("The Sad Kids"))
+			Expect(ts.tribes[0].Custom).To(BeTrue())
+			Expect(ts.tribes[1].Custom).To(BeFalse())
+		})
+
+		It("ignores names of tribes that changed too much", func() {
+			overrides = []tribeOverride{{Name: "Old Name", Ipods: []int{1, 20, 21, 22, 23}}}
+			Expect(tribes().tribes[0].Custom).To(BeFalse())
+		})
+
+		It("gives each name to one tribe only", func() {
+			overrides = []tribeOverride{{Name: "Everyone", Ipods: []int{1, 2, 3, 4, 5, 6}}}
+			ts := tribes()
+			named := 0
+			for _, t := range ts.tribes {
+				if t.Custom {
+					named++
+				}
+			}
+			Expect(named).To(BeNumerically("<=", 1))
+		})
+
+		It("adds, replaces and removes names", func() {
+			o := upsertTribeOverride(nil, tribeOverride{Name: "A", Ipods: []int{1, 2}})
+			Expect(o).To(HaveLen(1))
+			o = upsertTribeOverride(o, tribeOverride{Name: "B", Ipods: []int{1, 2, 3}})
+			Expect(o).To(Equal([]tribeOverride{{Name: "B", Ipods: []int{1, 2, 3}}}))
+			o = upsertTribeOverride(o, tribeOverride{Name: "", Ipods: []int{1, 2, 3}})
+			Expect(o).To(BeEmpty())
+		})
 	})
 })

@@ -33,6 +33,9 @@ const (
 	tribeMinIpodsSplit = tribeMinCount * tribeMinSize
 )
 
+// An admin's tribe name follows the tribe while at least this share of its iPods remain
+const tribeOverrideMinOverlap = 0.5
+
 var tribeResolutions = []float64{1.0, 1.25, 1.5, 1.75, 2, 2.5, 3, 4}
 
 // genreSynonyms maps the many spellings of common genres (iTunes and others) to one name
@@ -60,6 +63,8 @@ type ipodTribe struct {
 	Size     int       `json:"size"`
 	Decade   int       `json:"decade,omitempty"`
 	Genre    string    `json:"genre,omitempty"`
+	Scene    string    `json:"scene,omitempty"`
+	Custom   bool      `json:"custom,omitempty"` // Named by an admin
 	Artists  []string  `json:"artists"`
 	Ipods    []int     `json:"ipods"`
 	Examples []ipodRef `json:"examples"`
@@ -244,7 +249,7 @@ func titleCase(s string) string {
 // findTribes groups the iPods into tribes, and names each one after its most distinctive genre,
 // its typical decade and its signature artists
 func findTribes(stats []model.IpodStats, counts []model.IpodArtistCount, genres []model.IpodGenreCount,
-	pairs []ipodPair, taste tasteModel) ipodTribes {
+	pairs []ipodPair, taste tasteModel, overrides []tribeOverride) ipodTribes {
 	result := ipodTribes{tribes: []ipodTribe{}, byIpod: map[int]int{}}
 	membership := chooseCommunities(len(stats), pairs)
 
@@ -307,8 +312,10 @@ func findTribes(stats []model.IpodStats, counts []model.IpodArtistCount, genres 
 			}
 		}
 		var signature []string
+		shares := make(map[string]float64, len(inTribe))
 		for key, c := range inTribe {
 			share := float64(c) / float64(len(members))
+			shares[key] = share
 			t.lift[key] = share / (float64(ipodsWith[key]) / n)
 			if share >= tribeMinArtistShare {
 				signature = append(signature, key)
@@ -324,6 +331,7 @@ func findTribes(stats []model.IpodStats, counts []model.IpodArtistCount, genres 
 		}
 
 		t.Genre = distinctiveGenre(members, stats, genresByIpod, genreTotals, allGenreSongs)
+		t.Scene = sceneOf(shares, t.lift)
 
 		// Decade: the median of the members' average years
 		var years []float64
@@ -360,7 +368,62 @@ func findTribes(stats []model.IpodStats, counts []model.IpodArtistCount, genres 
 		usedNames[t.Name] = true
 		result.tribes = append(result.tribes, t)
 	}
+	applyTribeOverrides(result.tribes, overrides)
 	return result
+}
+
+// tribeOverride is a name an admin gave to a tribe, remembered with the tribe's iPods
+type tribeOverride struct {
+	Name  string `json:"name"`
+	Ipods []int  `json:"ipods"`
+}
+
+// tribeOverlap is the Jaccard similarity of two sets of iPods
+func tribeOverlap(a, b []int) float64 {
+	inA := make(map[int]bool, len(a))
+	for _, id := range a {
+		inA[id] = true
+	}
+	shared := 0
+	for _, id := range b {
+		if inA[id] {
+			shared++
+		}
+	}
+	union := len(a) + len(b) - shared
+	if union == 0 {
+		return 0
+	}
+	return float64(shared) / float64(union)
+}
+
+// applyTribeOverrides gives tribes the names admins chose. A name follows its tribe across rescans
+// as long as at least half of the iPods are the same; each name is given to one tribe only
+func applyTribeOverrides(tribes []ipodTribe, overrides []tribeOverride) {
+	type match struct {
+		tribe, override int
+		overlap         float64
+	}
+	var matches []match
+	for t := range tribes {
+		for o, override := range overrides {
+			if overlap := tribeOverlap(tribes[t].Ipods, override.Ipods); overlap >= tribeOverrideMinOverlap {
+				matches = append(matches, match{tribe: t, override: o, overlap: overlap})
+			}
+		}
+	}
+	slices.SortFunc(matches, func(a, b match) int {
+		return cmp.Or(cmp.Compare(b.overlap, a.overlap), cmp.Compare(a.tribe, b.tribe), cmp.Compare(a.override, b.override))
+	})
+	usedTribe, usedOverride := map[int]bool{}, map[int]bool{}
+	for _, m := range matches {
+		if usedTribe[m.tribe] || usedOverride[m.override] {
+			continue
+		}
+		usedTribe[m.tribe], usedOverride[m.override] = true, true
+		tribes[m.tribe].Name = overrides[m.override].Name
+		tribes[m.tribe].Custom = true
+	}
 }
 
 // distinctiveGenre returns the genre (or two) that sets the tribe apart: common among its songs,
@@ -403,6 +466,10 @@ func distinctiveGenre(members []int, stats []model.IpodStats, genresByIpod map[i
 
 func tribeName(t ipodTribe) string {
 	switch {
+	case t.Scene != "" && t.Decade > 0:
+		return fmt.Sprintf("%ds %s", t.Decade, t.Scene)
+	case t.Scene != "":
+		return t.Scene
 	case t.Genre != "" && t.Decade > 0:
 		return fmt.Sprintf("%ds %s", t.Decade, t.Genre)
 	case t.Genre != "":

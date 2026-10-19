@@ -803,7 +803,12 @@
       "member": "Tribe: %{name}",
       "size": "%{smart_count} iPod |||| %{smart_count} iPods",
       "youFit": "You'd fit in: %{name}",
-      "examples": "For example"
+      "examples": "For example",
+      "rename": "Rename tribe",
+      "renameTitle": "Rename %{name}",
+      "newName": "Name",
+      "reset": "Use automatic name",
+      "save": "Save"
     },
     "shuffle": {
       "all": "Shuffle all iPods",

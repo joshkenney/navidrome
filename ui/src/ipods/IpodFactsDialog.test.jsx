@@ -10,6 +10,7 @@ import { playIpodRadio } from './radio'
 
 const getOne = vi.fn()
 const redirect = vi.fn()
+const mockPermissions = { value: 'admin' }
 
 vi.mock('../dataProvider', () => ({
   httpClient: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock('react-admin', async (importOriginal) => {
     useDataProvider: () => ({ getOne }),
     useNotify: () => vi.fn(),
     useRedirect: () => redirect,
+    usePermissions: () => ({ permissions: mockPermissions.value }),
     // eslint-disable-next-line react/display-name
     Link: React.forwardRef(({ to, children, ...props }, ref) => (
       <a href={to} ref={ref} {...props}>
@@ -99,6 +101,7 @@ const facts = {
       taste: 64,
       artists: ['Saves the Day'],
       examples: [{ id: 2, name: "Bob's iPod" }],
+      ipods: [1, 2],
     },
   ],
   uniqueGems: [
@@ -264,5 +267,40 @@ describe('<IpodFactsDialog />', () => {
     expect(screen.getByText('2000s Emo')).toBeInTheDocument()
     expect(screen.getByText('Saves the Day')).toBeInTheDocument()
     expect(screen.getByText('ipods.tribes.youFit')).toBeInTheDocument()
+  })
+
+  it('lets admins rename a tribe', async () => {
+    renderDialog()
+    await waitFor(() =>
+      expect(screen.getByLabelText('ipods.tribes.rename')).toBeInTheDocument(),
+    )
+    fireEvent.click(screen.getByLabelText('ipods.tribes.rename'))
+    fireEvent.change(screen.getByLabelText('ipods.tribes.newName'), {
+      target: { value: 'The Sad Kids' },
+    })
+    fireEvent.click(screen.getByText('ipods.tribes.save'))
+    await waitFor(() =>
+      expect(httpClient).toHaveBeenCalledWith(
+        '/api/ipods/tribes/name',
+        expect.objectContaining({ method: 'PUT' }),
+      ),
+    )
+    const [, options] = httpClient.mock.calls.find(
+      ([url]) => url === '/api/ipods/tribes/name',
+    )
+    expect(JSON.parse(options.body)).toEqual({
+      name: 'The Sad Kids',
+      ipods: [1, 2],
+    })
+  })
+
+  it('hides renaming from other users', async () => {
+    mockPermissions.value = 'user'
+    renderDialog()
+    await waitFor(() =>
+      expect(screen.getByText('ipods.tribes.title')).toBeInTheDocument(),
+    )
+    expect(screen.queryByLabelText('ipods.tribes.rename')).toBeNull()
+    mockPermissions.value = 'admin'
   })
 })

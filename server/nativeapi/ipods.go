@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -157,6 +158,7 @@ func (api *Router) addIpodRoutes(r chi.Router) {
 		r.Get("/match", api.getIpodMatch)
 		r.Get("/radio", api.getIpodRadio)
 		r.Get("/taste/me", api.getMyTaste)
+		r.With(adminOnlyMiddleware).Put("/tribes/name", api.renameIpodTribe)
 	})
 }
 
@@ -201,7 +203,7 @@ func (api *Router) loadIpodData(ctx context.Context) (*ipodData, error) {
 	}
 	pairs := ipodSimilarities(d.stats, d.counts)
 	d.network = networkFromPairs(d.stats, d.counts, pairs)
-	d.tribes = findTribes(d.stats, d.counts, genres, pairs, d.taste)
+	d.tribes = findTribes(d.stats, d.counts, genres, pairs, d.taste, api.tribeOverrides(ctx))
 	d.network.Tribes = d.tribes.tribes
 	for i, n := range d.network.Nodes {
 		t := d.taste.byIpod[n.ID]
@@ -842,4 +844,67 @@ func (api *Router) getMyTaste(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(ctx, w, myTaste{ipodTaste: t, Tribe: d.tribes.userTribe(plays)})
+}
+
+// tribeNamesKey is the property holding the tribe names chosen by admins
+const tribeNamesKey = "IpodTribeNames"
+
+func (api *Router) tribeOverrides(ctx context.Context) []tribeOverride {
+	value, err := api.ds.Property(ctx).DefaultGet(tribeNamesKey, "[]")
+	if err != nil {
+		log.Error(ctx, "Error loading tribe names", err)
+		return nil
+	}
+	var overrides []tribeOverride
+	if err := json.Unmarshal([]byte(value), &overrides); err != nil {
+		log.Error(ctx, "Error reading tribe names", err)
+		return nil
+	}
+	return overrides
+}
+
+// renameIpodTribe sets (or, with an empty name, removes) the name of the tribe made of the given
+// iPods. Admins only
+func (api *Router) renameIpodTribe(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var body tribeOverride
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || len(body.Ipods) == 0 {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	body.Name = strings.TrimSpace(body.Name)
+	overrides := upsertTribeOverride(api.tribeOverrides(ctx), body)
+	value, _ := json.Marshal(overrides)
+	if err := api.ds.Property(ctx).Put(tribeNamesKey, string(value)); err != nil {
+		log.Error(ctx, "Error saving tribe names", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	// Tribes are computed when loading the iPod data: drop the cache so the new name shows
+	ipodDataCache.mu.Lock()
+	ipodDataCache.entries = map[string]*ipodData{}
+	ipodDataCache.mu.Unlock()
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// upsertTribeOverride replaces the name of the override most similar to the given iPods, or adds
+// one. An empty name removes the override
+func upsertTribeOverride(overrides []tribeOverride, o tribeOverride) []tribeOverride {
+	best, bestOverlap := -1, 0.0
+	for i, existing := range overrides {
+		if overlap := tribeOverlap(existing.Ipods, o.Ipods); overlap >= tribeOverrideMinOverlap && overlap > bestOverlap {
+			best, bestOverlap = i, overlap
+		}
+	}
+	switch {
+	case best >= 0 && o.Name == "":
+		return slices.Delete(overrides, best, best+1)
+	case best >= 0:
+		overrides[best] = o
+		return overrides
+	case o.Name != "":
+		return append(overrides, o)
+	default:
+		return overrides
+	}
 }
