@@ -69,6 +69,7 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
   return (
     <Link
       to={linkTo}
+      data-tour="player"
       className={className}
       ref={dragSongRef}
       onClick={() =>

@@ -187,6 +187,8 @@ func (api *Router) addIpodRoutes(r chi.Router) {
 		r.Get("/radio/history", api.getRadioHistory)
 		r.Post("/radio/history", api.addRadioHistory)
 		r.Delete("/radio/history", api.deleteRadioHistory)
+		r.Get("/tour", api.getTourVersion)
+		r.Put("/tour", api.putTourVersion)
 		r.Get("/taste/me", api.getMyTaste)
 		r.With(adminOnlyMiddleware).Put("/tribes/name", api.renameIpodTribe)
 	})
@@ -1172,4 +1174,41 @@ func (api *Router) deleteRadioHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(ctx, w, history)
+}
+
+// tourVersionKey is the user prop holding the last version of the UI tour the user saw, so the tour
+// shows once per user, whatever the device
+const tourVersionKey = "TourVersion"
+
+type tourVersion struct {
+	Version int `json:"version"`
+}
+
+func (api *Router) getTourVersion(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user, _ := request.UserFrom(ctx)
+	value, err := api.ds.UserProps(ctx).DefaultGet(user.ID, tourVersionKey, "0")
+	if err != nil {
+		log.Error(ctx, "Error loading tour version", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	version, _ := strconv.Atoi(value)
+	writeJSON(ctx, w, tourVersion{Version: version})
+}
+
+func (api *Router) putTourVersion(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	var body tourVersion
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Version < 0 {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	user, _ := request.UserFrom(ctx)
+	if err := api.ds.UserProps(ctx).Put(user.ID, tourVersionKey, strconv.Itoa(body.Version)); err != nil {
+		log.Error(ctx, "Error saving tour version", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(ctx, w, body)
 }

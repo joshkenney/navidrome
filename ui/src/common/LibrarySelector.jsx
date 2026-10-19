@@ -212,6 +212,7 @@ const LibrarySelector = () => {
   return (
     <Box className={classes.root}>
       <Chip
+        data-tour="ipodSelector"
         icon={<LibraryMusic />}
         label={displayText}
         onClick={handleToggle}

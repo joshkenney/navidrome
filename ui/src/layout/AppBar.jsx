@@ -12,7 +12,12 @@ import {
   usePermissions,
   getResources,
 } from 'react-admin'
-import { MdInfo, MdPerson, MdSupervisorAccount } from 'react-icons/md'
+import {
+  MdHelpOutline,
+  MdInfo,
+  MdPerson,
+  MdSupervisorAccount,
+} from 'react-icons/md'
 import { useSelector } from 'react-redux'
 import { makeStyles, MenuItem, ListItemIcon, Divider } from '@material-ui/core'
 import ViewListIcon from '@material-ui/icons/ViewList'
@@ -27,7 +32,7 @@ import {
   IpodRadioButton,
   IpodShuffleButton,
 } from '../ipods'
-import { FeatureTips } from './FeatureTips'
+import { Tour, startTour } from '../tour'
 import { schedulePrefetch } from '../ipods/ipodDataCache'
 import { GlobalSearch } from '../search/GlobalSearch'
 import UserMenu from './UserMenu'
@@ -76,6 +81,35 @@ const AboutMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
 
 AboutMenuItem.displayName = 'AboutMenuItem'
 
+// Replays the UI tour
+const TourMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
+  const classes = useStyles(rest)
+  const translate = useTranslate()
+  const label = translate('tour.menu')
+  const handleClick = () => {
+    onClick && onClick()
+    // Once the menu has closed, so the tour can light up its button
+    setTimeout(startTour, 300)
+  }
+  return (
+    <MenuItem ref={ref} onClick={handleClick} className={classes.root}>
+      <ListItemIcon className={classes.icon}>
+        <MdHelpOutline size={24} />
+      </ListItemIcon>
+      {label}
+    </MenuItem>
+  )
+})
+
+TourMenuItem.displayName = 'TourMenuItem'
+
+// Marks a header element for the tour (see tour/steps.js)
+const TourTarget = ({ name, children }) => (
+  <span data-tour={name} style={{ display: 'inline-flex' }}>
+    {children}
+  </span>
+)
+
 const settingsResources = (resource) =>
   resource.name !== 'user' &&
   resource.hasList &&
@@ -87,7 +121,6 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   const resources = useSelector(getResources)
   const classes = useStyles(rest)
   const { permissions } = usePermissions()
-  const [tipsAnchor, setTipsAnchor] = useState(null)
 
   // Fetch the iPod Facts and Network in the background, so they open at once
   useEffect(() => schedulePrefetch(), [])
@@ -139,32 +172,43 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
-      <span
-        ref={setTipsAnchor}
-        style={{ display: 'inline-flex', alignItems: 'center' }}
-      >
-        <GlobalSearch />
-        <IpodFactsButton />
-        <IpodNetworkButton />
-        <IpodShuffleButton />
-        <IpodRadioButton />
-        {config.enableNowPlaying && <NowPlayingPanel />}
+      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+        <TourTarget name="search">
+          <GlobalSearch />
+        </TourTarget>
+        <TourTarget name="facts">
+          <IpodFactsButton />
+        </TourTarget>
+        <TourTarget name="network">
+          <IpodNetworkButton />
+        </TourTarget>
+        <TourTarget name="shuffle">
+          <IpodShuffleButton />
+        </TourTarget>
+        <TourTarget name="radio">
+          <IpodRadioButton />
+        </TourTarget>
+        {config.enableNowPlaying && (
+          <TourTarget name="nowPlaying">
+            <NowPlayingPanel />
+          </TourTarget>
+        )}
       </span>
-      <FeatureTips
-        anchorEl={tipsAnchor}
-        showNowPlaying={config.enableNowPlaying}
-      />
+      <Tour />
       {config.devActivityPanel && permissions === 'admin' && <ActivityPanel />}
-      <UserMenu {...rest}>
-        <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
-        <Divider />
-        {renderUserMenuItemLink()}
-        {resources
-          .filter(settingsResources)
-          .map((r) => renderSettingsMenuItemLink(r))}
-        <Divider />
-        <AboutMenuItem />
-      </UserMenu>
+      <TourTarget name="userMenu">
+        <UserMenu {...rest}>
+          <PersonalMenu sidebarIsOpen={true} onClick={onClick} />
+          <Divider />
+          {renderUserMenuItemLink()}
+          {resources
+            .filter(settingsResources)
+            .map((r) => renderSettingsMenuItemLink(r))}
+          <Divider />
+          <TourMenuItem />
+          <AboutMenuItem />
+        </UserMenu>
+      </TourTarget>
       <Dialogs />
     </>
   )

@@ -834,30 +834,55 @@
       "warning": "This downloads every song on this iPod as one zip file. It can be several gigabytes and take a while."
     }
   },
-  "featureTips": {
-    "title": "New in the header",
-    "facts": {
-      "title": "iPod Facts",
-      "description": "Fun stats about the iPods: the songs found on the most iPods, iPod twins, superlatives and unique gems."
-    },
-    "ipods": {
-      "title": "iPod Network",
-      "description": "See how all the iPods are connected by the artists they share, the taste tribes they form, how niche each one is, and find the iPods you resonate with most."
-    },
-    "shuffle": {
-      "title": "Shuffle",
-      "description": "Plays a random mix from the iPods picked in the iPod selector, or from all of them."
-    },
-    "radio": {
-      "title": "iPod Radio",
-      "description": "Start a radio from any song: it plays what people carried alongside it on their iPods. Slide from crowd-pleasers to deep cuts."
-    },
-    "nowPlaying": {
-      "title": "Now Playing",
-      "description": "See what others are listening to right now and tune in to listen along."
-    },
-    "dontShowAgain": "Do not show this again",
-    "gotIt": "Got it"
+  "tour": {
+    "menu": "Take the tour",
+    "progress": "%{current} of %{total}",
+    "next": "Next",
+    "back": "Back",
+    "skip": "Skip",
+    "done": "Done",
+    "steps": {
+      "welcome": {
+        "title": "Welcome to the iPod archive",
+        "text": "Every library here is someone's real iPod. This quick tour shows you how to explore them. You can take it again any time from the user menu."
+      },
+      "ipodSelector": {
+        "title": "Pick your iPods",
+        "text": "Choose which iPods you browse. Albums, artists and songs only show what's on the iPods you pick, or on all of them."
+      },
+      "search": {
+        "title": "Search everything",
+        "text": "Find artists, albums, songs, iPods, playlists, genres and your past radios, across every iPod. Press / anywhere to search."
+      },
+      "facts": {
+        "title": "iPod Facts",
+        "text": "The songs found on the most iPods, iPod twins, superlatives, unique gems, and where your own taste fits in."
+      },
+      "network": {
+        "title": "iPod Network",
+        "text": "See how the iPods connect through the artists they share and the tribes they form, and find the iPods closest to your taste. The iPod of the song playing is marked with ♪."
+      },
+      "shuffle": {
+        "title": "Shuffle",
+        "text": "Plays a random mix from the iPods you picked, or from all of them."
+      },
+      "radio": {
+        "title": "iPod Radio",
+        "text": "Start a radio from any song: it plays what people carried alongside it on their iPods, from crowd-pleasers to deep cuts. It's also in every song's menu, and your past radios are on the iPod Radio page."
+      },
+      "nowPlaying": {
+        "title": "Now Playing",
+        "text": "See what others are listening to right now, and tune in to listen along."
+      },
+      "player": {
+        "title": "Where a song comes from",
+        "text": "The player shows which iPod the song comes from. Click the title to open its album on that iPod."
+      },
+      "userMenu": {
+        "title": "Make it yours",
+        "text": "Your settings are here: themes, iPod-style fonts and more. Come back here to take this tour again."
+      }
+    }
   },
   "nowPlaying": {
     "title": "Now Playing",

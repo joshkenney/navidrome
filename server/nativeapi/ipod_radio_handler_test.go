@@ -190,6 +190,37 @@ var _ = Describe("iPod Radio endpoint", Ordered, func() {
 		})
 	})
 
+	Describe("tour version", func() {
+		get := func(c context.Context) int {
+			r := httptest.NewRequest(http.MethodGet, "/ipods/tour", nil).WithContext(c)
+			w := httptest.NewRecorder()
+			api.getTourVersion(w, r)
+			Expect(w.Code).To(Equal(http.StatusOK))
+			var v tourVersion
+			Expect(json.Unmarshal(w.Body.Bytes(), &v)).To(Succeed())
+			return v.Version
+		}
+		put := func(c context.Context, body string) int {
+			r := httptest.NewRequest(http.MethodPut, "/ipods/tour", strings.NewReader(body)).WithContext(c)
+			w := httptest.NewRecorder()
+			api.putTourVersion(w, r)
+			return w.Code
+		}
+
+		It("remembers the last tour version each user saw", func() {
+			other := request.WithUser(context.Background(), model.User{ID: "other-user", UserName: "other"})
+			Expect(get(ctx)).To(Equal(0))
+			Expect(put(ctx, `{"version": 2}`)).To(Equal(http.StatusOK))
+			Expect(get(ctx)).To(Equal(2))
+			Expect(get(other)).To(Equal(0))
+		})
+
+		It("rejects bad versions", func() {
+			Expect(put(ctx, `{"version": -1}`)).To(Equal(http.StatusBadRequest))
+			Expect(put(ctx, `nope`)).To(Equal(http.StatusBadRequest))
+		})
+	})
+
 	Describe("radio history", func() {
 		call := func(method, query, body string) []radioHistoryEntry {
 			r := httptest.NewRequest(method, "/ipods/radio/history"+query, strings.NewReader(body)).WithContext(ctx)

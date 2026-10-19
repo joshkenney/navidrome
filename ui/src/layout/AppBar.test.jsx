@@ -1,11 +1,12 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, beforeEach, vi } from 'vitest'
 import { Provider } from 'react-redux'
 import { createStore, combineReducers } from 'redux'
 import { activityReducer } from '../reducers'
 import AppBar from './AppBar'
 import config from '../config'
+import { startTour } from '../tour'
 
 let store
 
@@ -27,6 +28,10 @@ vi.mock('../ipods', () => ({
 }))
 vi.mock('../search/GlobalSearch', () => ({
   GlobalSearch: () => <div data-testid="global-search" />,
+}))
+vi.mock('../tour', () => ({
+  Tour: () => <div data-testid="tour" />,
+  startTour: vi.fn(),
 }))
 vi.mock('./ActivityPanel', () => ({
   default: () => <div data-testid="activity-panel" />,
@@ -83,5 +88,29 @@ describe('<AppBar />', () => {
     expect(screen.getByTestId('ipod-network-button')).toBeInTheDocument()
     expect(screen.getByTestId('ipod-radio-button')).toBeInTheDocument()
     expect(screen.getByTestId('ipod-shuffle-button')).toBeInTheDocument()
+  })
+
+  it('marks the header buttons for the tour, and replays it from the user menu', () => {
+    vi.useFakeTimers()
+    render(
+      <Provider store={store}>
+        <AppBar />
+      </Provider>,
+    )
+    expect(screen.getByTestId('tour')).toBeInTheDocument()
+    for (const target of [
+      'search',
+      'facts',
+      'network',
+      'shuffle',
+      'radio',
+      'userMenu',
+    ]) {
+      expect(document.querySelector(`[data-tour="${target}"]`)).toBeTruthy()
+    }
+    fireEvent.click(screen.getByText('tour.menu'))
+    vi.advanceTimersByTime(300) // Once the menu has closed
+    expect(startTour).toHaveBeenCalled()
+    vi.useRealTimers()
   })
 })
