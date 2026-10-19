@@ -6,15 +6,7 @@ import React, {
   useState,
 } from 'react'
 import { useTranslate } from 'react-admin'
-import {
-  Button,
-  Checkbox,
-  FormControlLabel,
-  Paper,
-  Popper,
-  Portal,
-  Typography,
-} from '@material-ui/core'
+import { Button, Paper, Popper, Portal, Typography } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { httpClient } from '../dataProvider'
 import { WELCOME_CLOSED_EVENT } from '../dialogs/WelcomeDialog'
@@ -75,7 +67,6 @@ const useStyles = makeStyles((theme) => ({
     marginTop: theme.spacing(2),
   },
   grow: { flex: 1 },
-  dontShowAgain: { marginTop: theme.spacing(1), marginBottom: 0 },
 }))
 
 const readLocalVersion = () => {
@@ -122,8 +113,6 @@ export const Tour = () => {
   const [steps, setSteps] = useState([])
   const [index, setIndex] = useState(0)
   const [rect, setRect] = useState(null)
-  // Ticked by default: unticked, the tour shows again on the next visit
-  const [dontShowAgain, setDontShowAgain] = useState(true)
   const t = (key, opts) => translate(`tour.${key}`, opts)
 
   const open = steps.length > 0
@@ -131,7 +120,6 @@ export const Tour = () => {
 
   const show = useCallback(() => {
     setIndex(0)
-    setDontShowAgain(true)
     setSteps(stepsToShow())
   }, [])
 
@@ -204,8 +192,8 @@ export const Tour = () => {
 
   const finish = useCallback(() => {
     setSteps([])
-    if (dontShowAgain) saveVersion(TOUR_VERSION)
-  }, [dontShowAgain])
+    saveVersion(TOUR_VERSION)
+  }, [])
   const next = useCallback(() => {
     if (index + 1 >= steps.length) finish()
     else setIndex(index + 1)
@@ -261,17 +249,6 @@ export const Tour = () => {
       <Typography variant="body2" color="textSecondary">
         {t(`steps.${step.key}.text`)}
       </Typography>
-      <FormControlLabel
-        className={classes.dontShowAgain}
-        control={
-          <Checkbox
-            size="small"
-            checked={dontShowAgain}
-            onChange={(e) => setDontShowAgain(e.target.checked)}
-          />
-        }
-        label={<Typography variant="body2">{t('dontShowAgain')}</Typography>}
-      />
       <div className={classes.actions}>
         {!last && (
           <Button size="small" onClick={finish}>

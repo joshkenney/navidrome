@@ -2,8 +2,8 @@
 // step is centred), and is left out when that element isn't on screen. With "opens", the tour
 // clicks that element's button first (a menu holding the target), and closes it afterwards.
 //
-// Users see the whole tour until they tick "Don't show this again", which saves TOUR_VERSION.
-// Raising it shows the tour to everyone again
+// Every user sees the whole tour once, after logging in or opening the app: finishing or skipping it
+// saves TOUR_VERSION for them, on the server. Raising it shows the tour to everyone again
 export const TOUR_VERSION = 3
 
 export const TOUR_STEPS = [

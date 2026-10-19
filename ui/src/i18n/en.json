@@ -841,7 +841,6 @@
     "back": "Back",
     "skip": "Skip",
     "done": "Done",
-    "dontShowAgain": "Don't show this again",
     "steps": {
       "welcome": {
         "title": "Welcome to the iPod archive",
