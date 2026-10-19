@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/navidrome/navidrome/conf"
@@ -31,20 +32,91 @@ func AlbumCoverFilename(albumID string, auto bool, ext string) string {
 	return albumID + ext
 }
 
+// albumCovers indexes the album covers folder, which can hold a cover for each of hundreds of
+// thousands of albums: the artwork code checks it for every album image served. The folder is
+// read again only when it changed (its modification time), or when told so by RecordAlbumCover
+var albumCovers = struct {
+	sync.Mutex
+	dir     string
+	dirTime time.Time
+	loaded  bool
+	files   map[string]string // "<albumID>" or "<albumID>.auto" -> file name
+}{}
+
+func albumCoversDir() string {
+	return filepath.Join(conf.Server.DataFolder, consts.ArtworkFolder, consts.EntityAlbum)
+}
+
+// coverIndexKey returns the index key of a cover file name, or "" if it isn't a cover
+func coverIndexKey(name string) string {
+	ext := filepath.Ext(name)
+	key := strings.TrimSuffix(name, ext)
+	if ext == "" || key == "" || strings.HasSuffix(name, ".tmp") {
+		return ""
+	}
+	return key
+}
+
+// loadAlbumCovers reads the folder again if it changed. Call with albumCovers locked
+func loadAlbumCovers() {
+	dir := albumCoversDir()
+	info, err := os.Stat(dir)
+	if err != nil {
+		albumCovers.files, albumCovers.loaded, albumCovers.dir, albumCovers.dirTime = map[string]string{}, true, dir, time.Time{}
+		return
+	}
+	if albumCovers.loaded && albumCovers.dir == dir && info.ModTime().Equal(albumCovers.dirTime) {
+		return
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	files := make(map[string]string, len(entries))
+	for _, e := range entries {
+		if key := coverIndexKey(e.Name()); key != "" && !e.IsDir() {
+			files[key] = e.Name()
+		}
+	}
+	albumCovers.files, albumCovers.loaded, albumCovers.dir, albumCovers.dirTime = files, true, dir, info.ModTime()
+}
+
+// RecordAlbumCover updates the index after a cover file was written (or removed, when gone),
+// without reading the whole folder again
+func RecordAlbumCover(path string) {
+	albumCovers.Lock()
+	defer albumCovers.Unlock()
+	loadAlbumCovers()
+	name := filepath.Base(path)
+	key := coverIndexKey(name)
+	if key == "" {
+		return
+	}
+	if _, err := os.Stat(path); err == nil {
+		albumCovers.files[key] = name
+	} else if albumCovers.files[key] == name {
+		delete(albumCovers.files, key)
+	}
+	if info, err := os.Stat(albumCoversDir()); err == nil {
+		albumCovers.dirTime = info.ModTime()
+	}
+}
+
 // AlbumCoverPath returns the path of an album's cover in the data folder, or "" if it has none.
 // auto selects the cover found by the cover finder instead of the one set by an admin
 func AlbumCoverPath(albumID string, auto bool) string {
-	if albumID == "" || strings.ContainsAny(albumID, `*?[\/`) {
+	if albumID == "" {
 		return ""
 	}
-	prefix := AlbumCoverFilename(albumID, auto, ".")
-	matches, _ := filepath.Glob(UploadedImagePath(consts.EntityAlbum, prefix+"*"))
-	for _, path := range matches {
-		ext := strings.TrimPrefix(filepath.Base(path), prefix)
-		// "<id>.*" also matches "<id>.auto.jpg", which isn't a cover set by an admin
-		if ext != "" && !strings.Contains(ext, ".") {
-			return path
-		}
+	key := albumID
+	if auto {
+		key += "." + autoCoverTag
+	}
+	albumCovers.Lock()
+	defer albumCovers.Unlock()
+	loadAlbumCovers()
+	if name, ok := albumCovers.files[key]; ok {
+		return filepath.Join(albumCoversDir(), name)
 	}
 	return ""
 }

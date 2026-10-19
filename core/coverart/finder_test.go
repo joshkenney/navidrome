@@ -29,6 +29,19 @@ type fakeFolders struct {
 
 func (f fakeFolders) GetAll(...model.QueryOptions) ([]model.Folder, error) { return f.folders, nil }
 
+// pagedAlbums honours Max and Offset, like the database
+type pagedAlbums struct {
+	*tests.MockAlbumRepo
+	pages int
+}
+
+func (p *pagedAlbums) GetAll(qo ...model.QueryOptions) (model.Albums, error) {
+	p.pages++
+	all, _ := p.MockAlbumRepo.GetAll(qo...)
+	o := qo[0]
+	return all[min(o.Offset, len(all)):min(o.Offset+o.Max, len(all))], nil
+}
+
 type iTunesResult struct {
 	CollectionName string `json:"collectionName"`
 	ArtistName     string `json:"artistName"`
@@ -245,6 +258,20 @@ var _ = Describe("Finder", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(sum.Missed).To(Equal(0))
 			Expect(props.Data[missesKey]).To(Equal("{}"))
+		})
+
+		It("reads the albums a page at a time", func() {
+			many := make(model.Albums, albumPageSize+10)
+			for i := range many {
+				many[i] = model.Album{ID: fmt.Sprintf("al-%04d", i), Name: "[Unknown Album]"}
+			}
+			albums.SetData(many)
+			paged := &pagedAlbums{MockAlbumRepo: albums}
+			ds.MockedAlbum = paged
+			sum, err := finder.Run(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(sum.Skipped).To(Equal(len(many)))
+			Expect(paged.pages).To(Equal(2))
 		})
 
 		It("stops while a scan is running", func() {

@@ -51,10 +51,13 @@ func (api *Router) uploadAlbumImage() http.HandlerFunc {
 		if err != nil {
 			return err
 		}
-		_, err = api.imgUpload.SetImage(ctx, consts.EntityAlbum, al.ID, "", model.AlbumCoverPath(al.ID, false), reader, ext)
+		old := model.AlbumCoverPath(al.ID, false)
+		filename, err := api.imgUpload.SetImage(ctx, consts.EntityAlbum, al.ID, "", old, reader, ext)
 		if err != nil {
 			return err
 		}
+		model.RecordAlbumCover(old)
+		model.RecordAlbumCover(model.UploadedImagePath(consts.EntityAlbum, filename))
 		return api.ds.Album(ctx).TouchCover(al.ID)
 	})
 }
@@ -71,10 +74,12 @@ func (api *Router) deleteAlbumImage() http.HandlerFunc {
 			if err := api.imgUpload.RemoveImage(ctx, manual); err != nil {
 				return err
 			}
+			model.RecordAlbumCover(manual)
 		} else if found := model.AlbumCoverPath(al.ID, true); found != "" {
 			if err := api.imgUpload.RemoveImage(ctx, found); err != nil {
 				return err
 			}
+			model.RecordAlbumCover(found)
 			if err := coverart.Reject(ctx, api.ds, al.ID); err != nil {
 				return err
 			}

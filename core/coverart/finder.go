@@ -17,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -36,7 +37,11 @@ const (
 	missesKey     = "CoverFinderMisses"
 	retryMissesIn = 30 * 24 * time.Hour
 	maxImageSize  = 10 << 20
-	lookupTimeout = 10 * time.Second
+	// Albums (and folders) read at a time
+	albumPageSize = 500
+	// Misses are saved every this many lookups, and when a run ends
+	saveMissesEvery = 200
+	lookupTimeout   = 10 * time.Second
 )
 
 // errNotConfigured marks a source that can't be used, which doesn't count as searched
@@ -96,26 +101,23 @@ func (f *Finder) Run(ctx context.Context) (Summary, error) {
 	}
 	defer f.running.Store(false)
 
-	albums, err := f.albumsWithoutCover(ctx)
-	if err != nil {
-		return sum, err
-	}
 	misses := f.loadMisses(ctx)
 	start := f.now()
-	log.Info(ctx, "Cover finder: looking up albums without a cover", "albums", len(albums))
+	log.Info(ctx, "Cover finder: looking up albums without a cover")
 
-	for i, al := range albums {
+	stopped, lookedUp := false, 0
+	err := f.forEachAlbumWithoutCover(ctx, func(al model.Album) bool {
 		if ctx.Err() != nil || f.IsScanning() {
-			log.Info(ctx, "Cover finder: stopped early, will continue next run", "remaining", len(albums)-i)
-			break
+			stopped = true
+			return false
 		}
 		if tried, ok := misses[al.ID]; ok && f.now().Sub(tried) < retryMissesIn {
 			sum.Skipped++
-			continue
+			return true
 		}
 		if songkey.AlbumKey(al.Name) == "" {
 			sum.Skipped++
-			continue
+			return true
 		}
 		found, err := f.FindAlbum(ctx, al)
 		switch {
@@ -128,12 +130,19 @@ func (f *Finder) Run(ctx context.Context) (Summary, error) {
 			sum.Missed++
 			misses[al.ID] = f.now()
 		}
-		if (sum.Found+sum.Missed)%20 == 0 {
+		if lookedUp++; lookedUp%saveMissesEvery == 0 {
 			f.saveMisses(ctx, misses)
 		}
 		f.pause(ctx)
-	}
+		return true
+	})
 	f.saveMisses(ctx, misses)
+	if err != nil {
+		return sum, err
+	}
+	if stopped {
+		log.Info(ctx, "Cover finder: stopped for a scan, or shutting down. The next run continues")
+	}
 	log.Info(ctx, "Cover finder: done", "found", sum.Found, "missed", sum.Missed, "skipped", sum.Skipped,
 		"elapsed", time.Since(start))
 	return sum, nil
@@ -380,37 +389,87 @@ func saveAutoCover(albumID string, data []byte, ext string) error {
 	}
 	if old := model.AlbumCoverPath(albumID, true); old != "" && old != path {
 		_ = os.Remove(old)
+		model.RecordAlbumCover(old)
 	}
-	return os.Rename(tmp, path)
+	if err := os.Rename(tmp, path); err != nil {
+		return err
+	}
+	model.RecordAlbumCover(path)
+	return nil
 }
 
-// albumsWithoutCover returns the albums the artwork code has no cover for: no art embedded in
-// their songs, no image in their folders matching CoverArtPriority, and no cover in the data folder
-func (f *Finder) albumsWithoutCover(ctx context.Context) (model.Albums, error) {
-	albums, err := f.ds.Album(ctx).GetAll(model.QueryOptions{
-		Filters: squirrel.And{squirrel.Eq{"embed_art_path": ""}, squirrel.Eq{"album.missing": false}},
-	})
-	if err != nil {
-		return nil, err
-	}
-	folders, err := f.ds.Folder(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"folder.missing": false}})
-	if err != nil {
-		return nil, err
-	}
-	byID := make(map[string]model.Folder, len(folders))
-	for _, folder := range folders {
-		byID[folder.ID] = folder
-	}
+// forEachAlbumWithoutCover calls fn for each album the artwork code has no cover for (no art
+// embedded in its songs, no image in its folders matching CoverArtPriority, no cover in the data
+// folder), until fn returns false. Albums are read a page at a time, as there can be hundreds of
+// thousands of them
+func (f *Finder) forEachAlbumWithoutCover(ctx context.Context, fn func(model.Album) bool) error {
 	patterns := coverFilePatterns()
+	filter := squirrel.And{squirrel.Eq{"embed_art_path": ""}, squirrel.Eq{"album.missing": false}}
+	for offset := 0; ; offset += albumPageSize {
+		albums, err := f.ds.Album(ctx).GetAll(model.QueryOptions{
+			Filters: filter, Sort: "album.id", Max: albumPageSize, Offset: offset,
+		})
+		if err != nil {
+			return err
+		}
+		folders, err := f.foldersOf(ctx, albums)
+		if err != nil {
+			return err
+		}
+		for _, al := range albums {
+			if hasCoverFile(al, folders, patterns) || model.AlbumCoverKind(al.ID) != "" {
+				continue
+			}
+			if !fn(al) {
+				return nil
+			}
+		}
+		if len(albums) < albumPageSize {
+			return nil
+		}
+	}
+}
 
-	var result model.Albums
+// foldersOf returns the folders of the albums, and the parents of multi-folder albums' folders
+func (f *Finder) foldersOf(ctx context.Context, albums model.Albums) (map[string]model.Folder, error) {
+	folders := map[string]model.Folder{}
+	var ids []string
 	for _, al := range albums {
-		if hasCoverFile(al, byID, patterns) || model.AlbumCoverKind(al.ID) != "" {
+		ids = append(ids, al.FolderIDs...)
+	}
+	if err := f.loadFolders(ctx, folders, ids); err != nil {
+		return nil, err
+	}
+	var parents []string
+	for _, al := range albums {
+		if len(al.FolderIDs) < 2 {
 			continue
 		}
-		result = append(result, al)
+		for _, id := range al.FolderIDs {
+			if p := folders[id].ParentID; p != "" {
+				if _, ok := folders[p]; !ok {
+					parents = append(parents, p)
+				}
+			}
+		}
 	}
-	return result, nil
+	return folders, f.loadFolders(ctx, folders, parents)
+}
+
+func (f *Finder) loadFolders(ctx context.Context, folders map[string]model.Folder, ids []string) error {
+	ids = slices.Compact(slices.Sorted(slices.Values(ids)))
+	for chunk := range slices.Chunk(ids, albumPageSize) {
+		list, err := f.ds.Folder(ctx).GetAll(model.QueryOptions{
+			Filters: squirrel.And{squirrel.Eq{"folder.id": chunk}, squirrel.Eq{"folder.missing": false}},
+		})
+		if err != nil {
+			return err
+		}
+		for _, folder := range list {
+			folders[folder.ID] = folder
+		}
+	}
+	return nil
 }
 
 // coverFilePatterns returns the file name patterns of CoverArtPriority ("cover.*", "folder.*")
