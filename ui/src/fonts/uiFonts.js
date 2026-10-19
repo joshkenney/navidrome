@@ -54,7 +54,11 @@ const HEADINGS = [
   '.MuiButton-label',
   '.MuiTableCell-head',
   '.MuiListSubheader-root',
+  // The iPod selector at the top of the sidebar
+  '.MuiDrawer-root .MuiChip-label',
+  // The player's song title, artist and album
   '.songTitle',
+  '.songDetails',
 ]
 
 export const UI_FONTS = {

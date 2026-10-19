@@ -44,6 +44,8 @@ describe('useUiFont', () => {
     expect(headings).toContain('.MuiDialogTitle-root')
     expect(headings).toContain('.MuiButton-label *')
     expect(headings).toContain('.songTitle')
+    expect(headings).toContain('.songDetails')
+    expect(headings).toContain('.MuiDrawer-root .MuiChip-label')
     expect(headings).toContain('font-synthesis: none')
   })
 
