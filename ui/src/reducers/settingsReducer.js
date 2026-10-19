@@ -2,12 +2,14 @@ import {
   SET_NOTIFICATIONS_STATE,
   SET_OMITTED_FIELDS,
   SET_TOGGLEABLE_FIELDS,
+  SET_UI_FONT,
 } from '../actions'
 
 const initialState = {
   notifications: false,
   toggleableFields: {},
   omittedFields: {},
+  font: 'default',
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
@@ -33,6 +35,11 @@ export const settingsReducer = (previousState = initialState, payload) => {
           ...previousState.omittedFields,
           ...data,
         },
+      }
+    case SET_UI_FONT:
+      return {
+        ...previousState,
+        font: data,
       }
     default:
       return previousState

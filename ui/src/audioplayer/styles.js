@@ -12,9 +12,11 @@ const useStyle = makeStyles(
         opacity: 1,
       },
     },
+    // The desktop bar is 80px tall and holds three lines plus the progress bar, so lines are tight
     songInfo: {
       display: 'block',
-      marginTop: '2px',
+      marginTop: '1px',
+      lineHeight: '16px',
     },
     songAlbum: {
       fontStyle: 'italic',
@@ -46,6 +48,13 @@ const useStyle = makeStyles(
         display: 'flex',
         flexDirection: 'column',
       },
+      '& .progress-bar-content .audio-title': {
+        lineHeight: '18px',
+      },
+      '& .music-player-panel .panel-content .progress-bar-content .audio-main':
+        {
+          marginTop: '2px',
+        },
       '& .play-mode-title': {
         'pointer-events': 'none',
       },

@@ -61,7 +61,9 @@ export const IpodShuffleButton = () => {
 
   return (
     <Tooltip title={title}>
-      <span>
+      {/* The span lets the tooltip work while the button is disabled. As a flex box it doesn't
+          add a text baseline gap under the button, which pushed it out of line with the others */}
+      <span style={{ display: 'inline-flex' }}>
         <IconButton
           className={classes.button}
           onClick={handleClick}

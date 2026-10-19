@@ -620,6 +620,8 @@
       "name": "Personal",
       "options": {
         "theme": "Theme",
+        "font": "Font",
+        "fontDefault": "Theme default",
         "language": "Language",
         "defaultView": "Default View",
         "desktop_notifications": "Desktop Notifications",

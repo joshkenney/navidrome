@@ -129,7 +129,10 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
 
   return (
     <>
-      <span ref={setTipsAnchor} style={{ display: 'inline-flex' }}>
+      <span
+        ref={setTipsAnchor}
+        style={{ display: 'inline-flex', alignItems: 'center' }}
+      >
         <GlobalSearch />
         <IpodFactsButton />
         <IpodNetworkButton />

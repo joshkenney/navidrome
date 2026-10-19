@@ -3,6 +3,7 @@ import { Card } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { SelectLanguage } from './SelectLanguage'
 import { SelectTheme } from './SelectTheme'
+import { SelectFont } from './SelectFont'
 import { SelectDefaultView } from './SelectDefaultView'
 import { NotificationsToggle } from './NotificationsToggle'
 import { LastfmScrobbleToggle } from './LastfmScrobbleToggle'
@@ -24,6 +25,7 @@ const Personal = () => {
       <Title title={'Navidrome - ' + translate('menu.personal.name')} />
       <SimpleForm toolbar={null} variant={'outlined'}>
         <SelectTheme />
+        <SelectFont />
         <SelectLanguage />
         <SelectDefaultView />
         {config.enableReplayGain && <ReplayGainToggle />}
