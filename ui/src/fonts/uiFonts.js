@@ -1,6 +1,9 @@
 // Typefaces that can replace the theme's font across the whole UI (Personal > Font). The files
 // are served from public/fonts
+// "Theme default": the theme's own font
 export const DEFAULT_FONT = 'default'
+// The font everyone starts with, until they pick another in Personal > Font
+export const DEFAULT_UI_FONT = 'ipod'
 
 const FALLBACK = 'system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif'
 

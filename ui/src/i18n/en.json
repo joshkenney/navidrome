@@ -868,7 +868,11 @@
       },
       "radio": {
         "title": "iPod Radio",
-        "text": "Start a radio from any song: it plays what people carried alongside it on their iPods, from crowd-pleasers to deep cuts. It's also in every song's menu, and your past radios are on the iPod Radio page."
+        "text": "Start a radio from any song: it plays songs from that iPod as well as related iPods, from crowd-pleasers to deep cuts."
+      },
+      "radioPage": {
+        "title": "Your past radios",
+        "text": "Your past radios are stored here, so you can play them again."
       },
       "nowPlaying": {
         "title": "Now Playing",
@@ -880,7 +884,11 @@
       },
       "userMenu": {
         "title": "Make it yours",
-        "text": "Your settings are here: themes, iPod-style fonts and more. Come back here to take this tour again."
+        "text": "Your settings are here: themes, iPod-style fonts and more."
+      },
+      "takeTour": {
+        "title": "Take the tour again",
+        "text": "Come back here any time to take this tour again."
       }
     }
   },

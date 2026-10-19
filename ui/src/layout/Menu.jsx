@@ -70,6 +70,7 @@ const Menu = ({ dense = false }) => {
   const renderIpodRadioMenuItemLink = () => (
     <MenuItemLink
       key="ipod-radio"
+      data-tour="radioPage"
       to="/ipod-radio"
       activeClassName={classes.active}
       primaryText={translate('ipods.radio.title')}

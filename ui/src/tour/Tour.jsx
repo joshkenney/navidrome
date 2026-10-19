@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react'
 import { useTranslate } from 'react-admin'
-import { Button, Paper, Popper, Typography } from '@material-ui/core'
+import { Button, Paper, Popper, Portal, Typography } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { httpClient } from '../dataProvider'
 import { WELCOME_CLOSED_EVENT } from '../dialogs/WelcomeDialog'
@@ -19,6 +19,13 @@ import {
 } from './tourEvents'
 
 const PADDING = 6
+export const MENU_OPEN_DELAY = 350
+
+// Closes the menus the tour opened, the way a click outside them does
+const closeMenus = () =>
+  document
+    .querySelectorAll('.MuiPopover-root .MuiBackdrop-root')
+    .forEach((backdrop) => backdrop.click())
 
 const useStyles = makeStyles((theme) => ({
   // Blocks the app while the tour shows; the spotlight is drawn on top
@@ -28,16 +35,17 @@ const useStyles = makeStyles((theme) => ({
     zIndex: theme.zIndex.modal,
   },
   dim: { background: 'rgba(0, 0, 0, 0.6)' },
+  // Above menus the tour opens, so they are dimmed too, except the lit-up item
   spotlight: {
     position: 'fixed',
-    zIndex: theme.zIndex.modal,
+    zIndex: theme.zIndex.modal + 1,
     borderRadius: 8,
     boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.6)',
     pointerEvents: 'none',
     transition: 'all 250ms ease-in-out',
     '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
   },
-  popper: { zIndex: theme.zIndex.modal + 1 },
+  popper: { zIndex: theme.zIndex.modal + 2 },
   bubble: {
     width: 340,
     maxWidth: 'calc(100vw - 32px)',
@@ -49,7 +57,7 @@ const useStyles = makeStyles((theme) => ({
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
-    zIndex: theme.zIndex.modal + 1,
+    zIndex: theme.zIndex.modal + 2,
     margin: 0,
   },
   actions: {
@@ -152,7 +160,8 @@ export const Tour = () => {
     return () => window.removeEventListener(START_TOUR_EVENT, onStart)
   }, [show])
 
-  // Follows the step's element as the window resizes or scrolls
+  // Follows the step's element as the window resizes or scrolls. For a step inside a menu, opens
+  // the menu first, and closes it when moving on
   useLayoutEffect(() => {
     if (!step?.target) {
       setRect(null)
@@ -162,12 +171,23 @@ export const Tour = () => {
       const el = tourTarget(step.target)
       setRect(el ? rectOf(el) : null)
     }
+    let opened = null
+    if (step.opens) {
+      tourTarget(step.opens)?.querySelector('button')?.click()
+      // Once the menu has appeared
+      opened = setTimeout(update, MENU_OPEN_DELAY)
+    }
     update()
     window.addEventListener('resize', update)
     window.addEventListener('scroll', update, true)
     return () => {
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
+      if (step.opens) {
+        clearTimeout(opened)
+        // After React is done updating: a click during an update is ignored
+        setTimeout(closeMenus, 0)
+      }
     }
   }, [step])
 
@@ -249,8 +269,9 @@ export const Tour = () => {
     </Paper>
   )
 
+  // In a portal, so the dimming covers the whole page whatever holds the tour
   return (
-    <>
+    <Portal>
       <div className={`${classes.blocker} ${anchor ? '' : classes.dim}`} />
       {anchor && (
         <div
@@ -280,7 +301,7 @@ export const Tour = () => {
       ) : (
         bubble
       )}
-    </>
+    </Portal>
   )
 }
 

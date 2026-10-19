@@ -1,7 +1,7 @@
 import React from 'react'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { Tour } from './Tour'
+import { MENU_OPEN_DELAY, Tour } from './Tour'
 import {
   startTour,
   TOUR_START_DELAY,
@@ -25,16 +25,45 @@ const targets = TOUR_STEPS.map((s) => s.target).filter(
   (t) => t && t !== 'player',
 )
 
-const Page = () => (
-  <>
-    {targets.map((t) => (
-      <button key={t} data-tour={t}>
-        {t}
-      </button>
-    ))}
-    <Tour />
-  </>
-)
+// The user menu's button opens a menu holding "Take the tour"
+const onMenu = vi.fn()
+const Page = () => {
+  const [menuOpen, setMenuOpen] = React.useState(false)
+  return (
+    <>
+      {targets
+        .filter((t) => t !== 'userMenu' && t !== 'takeTour')
+        .map((t) => (
+          <button key={t} data-tour={t}>
+            {t}
+          </button>
+        ))}
+      <span data-tour="userMenu">
+        <button
+          onClick={() => {
+            onMenu('open')
+            setMenuOpen(true)
+          }}
+        >
+          user menu
+        </button>
+      </span>
+      {menuOpen && (
+        <div className="MuiPopover-root">
+          <div
+            className="MuiBackdrop-root"
+            onClick={() => {
+              onMenu('close')
+              setMenuOpen(false)
+            }}
+          />
+          <li data-tour="takeTour">take the tour</li>
+        </div>
+      )}
+      <Tour />
+    </>
+  )
+}
 
 describe('<Tour />', () => {
   let savedVersion
@@ -108,13 +137,34 @@ describe('<Tour />', () => {
     for (let i = 1; i < total; i++) {
       fireEvent.click(screen.getByText('tour.next'))
     }
-    expect(title()).toBe('tour.steps.userMenu.title')
+    expect(title()).toBe('tour.steps.takeTour.title')
     expect(screen.queryByText('tour.skip')).toBeNull()
     await act(async () => {
       fireEvent.click(screen.getByText('tour.done'))
     })
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(savedVersion).toBe(TOUR_VERSION)
+  })
+
+  it('opens the user menu to show "Take the tour", and closes it after', async () => {
+    render(<Page />)
+    await waitForStart()
+    while (title() !== 'tour.steps.takeTour.title') {
+      fireEvent.click(screen.getByText('tour.next'))
+    }
+    expect(onMenu).toHaveBeenLastCalledWith('open')
+    await act(async () => {
+      vi.advanceTimersByTime(MENU_OPEN_DELAY)
+    })
+    expect(screen.getByText('take the tour')).toBeInTheDocument()
+    expect(screen.getByTestId('tour-spotlight')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('tour.back'))
+    act(() => {
+      vi.runOnlyPendingTimers()
+    })
+    expect(onMenu).toHaveBeenLastCalledWith('close')
+    expect(screen.queryByText('take the tour')).toBeNull()
   })
 
   it('is remembered when skipped, with Esc too', async () => {

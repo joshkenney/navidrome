@@ -1,7 +1,8 @@
 // The steps of the UI tour. Each one points at the element marked data-tour="<target>" (none: the
-// step is centred), and is left out when that element isn't on screen. "since" is the tour version
+// step is centred), and is left out when that element isn't on screen. With "opens", the tour
+// clicks that element's button first (a menu holding the target), and closes it afterwards. "since" is the tour version
 // the step was added in: users who saw an older version only see the newer steps
-export const TOUR_VERSION = 1
+export const TOUR_VERSION = 2
 
 export const TOUR_STEPS = [
   { key: 'welcome', since: 1 },
@@ -11,9 +12,12 @@ export const TOUR_STEPS = [
   { key: 'network', target: 'network', since: 1 },
   { key: 'shuffle', target: 'shuffle', since: 1 },
   { key: 'radio', target: 'radio', since: 1 },
+  { key: 'radioPage', target: 'radioPage', since: 2 },
   { key: 'nowPlaying', target: 'nowPlaying', since: 1 },
   { key: 'player', target: 'player', since: 1 },
   { key: 'userMenu', target: 'userMenu', since: 1 },
+  // In the user menu, which the tour opens for it
+  { key: 'takeTour', target: 'takeTour', opens: 'userMenu', since: 2 },
 ]
 
 export const tourTarget = (target) =>
@@ -22,7 +26,8 @@ export const tourTarget = (target) =>
 // A step can show when it is centred, or its element is on screen
 export const isStepAvailable = (step) => {
   if (!step.target) return true
-  const el = tourTarget(step.target)
+  // A step inside a menu can show when the menu's button is on screen
+  const el = tourTarget(step.opens || step.target)
   if (!el) return false
   const rect = el.getBoundingClientRect()
   return rect.width > 0 && rect.height > 0

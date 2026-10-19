@@ -92,7 +92,12 @@ const TourMenuItem = forwardRef(({ onClick, ...rest }, ref) => {
     setTimeout(startTour, 300)
   }
   return (
-    <MenuItem ref={ref} onClick={handleClick} className={classes.root}>
+    <MenuItem
+      ref={ref}
+      onClick={handleClick}
+      className={classes.root}
+      data-tour="takeTour"
+    >
       <ListItemIcon className={classes.icon}>
         <MdHelpOutline size={24} />
       </ListItemIcon>

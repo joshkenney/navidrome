@@ -13,7 +13,7 @@ const Probe = () => {
 
 const renderWith = (font) =>
   render(
-    <Provider store={createStore(() => ({ settings: { font } }))}>
+    <Provider store={createStore(() => ({ settings: { uiFont: font } }))}>
       <Probe />
     </Provider>,
   )
@@ -62,8 +62,15 @@ describe('useUiFont', () => {
     expect(overrideStyle()).toBeNull()
   })
 
-  it('keeps the theme font for an unknown or missing setting', () => {
+  it('uses the iPod fonts for users who never picked a font', () => {
     renderWith(undefined)
+    const css = overrideStyle().innerHTML
+    expect(css).toContain('ChicagoFLF')
+    expect(css).toContain('Source Sans 3')
+  })
+
+  it('keeps the theme font for an unknown font', () => {
+    renderWith('comic-sans')
     expect(overrideStyle()).toBeNull()
     expect(uiFontStylesheet('comic-sans')).toBe('')
   })

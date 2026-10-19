@@ -9,7 +9,8 @@ const initialState = {
   notifications: false,
   toggleableFields: {},
   omittedFields: {},
-  font: 'default',
+  // Saved under a new key (it was "font"), so existing users start with the iPod fonts too
+  uiFont: 'ipod',
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
@@ -39,7 +40,7 @@ export const settingsReducer = (previousState = initialState, payload) => {
     case SET_UI_FONT:
       return {
         ...previousState,
-        font: data,
+        uiFont: data,
       }
     default:
       return previousState

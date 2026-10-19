@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
 import { useSelector } from 'react-redux'
-import { DEFAULT_FONT, uiFontStylesheet } from './uiFonts'
+import { DEFAULT_UI_FONT, uiFontStylesheet } from './uiFonts'
 
 const STYLE_ID = 'nd-font-override'
 
 // Applies the font picked in Personal > Font to the whole UI
 export const useUiFont = () => {
-  const font = useSelector((state) => state.settings?.font) || DEFAULT_FONT
+  const font = useSelector((state) => state.settings?.uiFont) ?? DEFAULT_UI_FONT
 
   useEffect(() => {
     let style = document.getElementById(STYLE_ID)
