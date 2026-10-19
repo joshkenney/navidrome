@@ -779,7 +779,8 @@
         "artistFans": "%{from} fans also carry %{artist}",
         "sameArtist": "more from %{artist}",
         "neighbour": "from a similar iPod"
-      }
+      },
+      "standIn": "This song isn't on any iPod yet, so the radio is playing a mix from a similar one"
     },
     "taste": {
       "badge": "Taste %{score} · %{label}",
@@ -794,6 +795,15 @@
         "crateDigger": "Crate digger",
         "deepCuts": "Deep cuts"
       }
+    },
+    "tribes": {
+      "title": "Tribes",
+      "help": "Groups of iPods that share a lot of artists",
+      "freeSpirits": "Free spirits",
+      "member": "Tribe: %{name}",
+      "size": "%{smart_count} iPod |||| %{smart_count} iPods",
+      "youFit": "You'd fit in: %{name}",
+      "examples": "For example"
     }
   },
   "featureTips": {
@@ -804,7 +814,7 @@
     },
     "ipods": {
       "title": "iPod Network",
-      "description": "See how all the iPods are connected by the artists they share, how niche each one's taste is, and find the iPods you resonate with most."
+      "description": "See how all the iPods are connected by the artists they share, the taste tribes they form, how niche each one is, and find the iPods you resonate with most."
     },
     "radio": {
       "title": "iPod Radio",

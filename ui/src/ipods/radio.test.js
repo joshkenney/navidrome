@@ -84,4 +84,23 @@ describe('iPod Radio client', () => {
     expect(Object.keys(action.data)).toEqual(['c'])
     expect(getRadioSession().trackIds.has('c')).toBe(true)
   })
+
+  it('keeps going from the stand-in seed when the song is on no iPod', async () => {
+    httpClient.mockResolvedValue({
+      status: 200,
+      json: {
+        seed: song('seed'),
+        radioSeedId: 'stand-in',
+        seedFallback: true,
+        songs: [song('a')],
+        reasons: {},
+      },
+    })
+    await playIpodRadio(dispatch, notify, { songId: 'seed' })
+    expect(notify).toHaveBeenCalledWith('ipods.radio.standIn', 'info')
+    expect(Object.keys(dispatch.mock.calls[0][0].data)).toEqual(['seed', 'a'])
+
+    await extendRadio(dispatch, ['seed', 'a'])
+    expect(url()).toContain('songId=stand-in')
+  })
 })

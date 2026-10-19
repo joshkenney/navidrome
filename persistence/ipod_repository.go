@@ -260,3 +260,25 @@ func (r *ipodRepository) UserArtistPlays() ([]model.IpodArtistPlays, error) {
 		return model.IpodArtistPlays(p)
 	}), nil
 }
+
+type dbIpodGenreCount struct {
+	LibraryID int    `db:"library_id"`
+	Genre     string `db:"genre"`
+	SongCount int    `db:"song_count"`
+}
+
+func (r *ipodRepository) GenreCounts() ([]model.IpodGenreCount, error) {
+	sq, err := r.mediaFiles("mf.library_id", "lower(trim(mf.genre)) AS genre", "count(*) AS song_count")
+	if err != nil {
+		return nil, err
+	}
+	sq = sq.Where("trim(mf.genre) != ''").GroupBy("mf.library_id", "lower(trim(mf.genre))")
+
+	var rows []dbIpodGenreCount
+	if err := ignoreNotFound(r.queryAll(sq, &rows)); err != nil {
+		return nil, err
+	}
+	return slice.Map(rows, func(g dbIpodGenreCount) model.IpodGenreCount {
+		return model.IpodGenreCount(g)
+	}), nil
+}

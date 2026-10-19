@@ -93,12 +93,17 @@ export const playIpodRadio = async (
     return
   }
   const seed = json.seed
+  const radioSeedId = json.radioSeedId || seed.id
   const others = json.songs.filter((s) => s.id !== seed.id)
+  if (json.seedFallback) {
+    notify('ipods.radio.standIn', 'info')
+  }
   if (keepPlaying) {
     const { songData, ids } = processSongsForPlayback(others)
     dispatch(playNext(songData, ids))
     startRadioSession({
       seed,
+      radioSeedId,
       adventure,
       trackIds: [seed.id, ...ids],
       reasons: json.reasons,
@@ -106,7 +111,13 @@ export const playIpodRadio = async (
   } else {
     const { songData, ids } = processSongsForPlayback([seed, ...others])
     dispatch(playTracks(songData, ids))
-    startRadioSession({ seed, adventure, trackIds: ids, reasons: json.reasons })
+    startRadioSession({
+      seed,
+      radioSeedId,
+      adventure,
+      trackIds: ids,
+      reasons: json.reasons,
+    })
   }
 }
 
@@ -115,7 +126,7 @@ export const extendRadio = async (dispatch, queuedIds) => {
   const current = getRadioSession()
   if (!current) return
   const json = await fetchIpodRadio({
-    songId: current.seed.id,
+    songId: current.radioSeedId || current.seed.id,
     adventure: current.adventure,
     exclude: queuedIds,
   })

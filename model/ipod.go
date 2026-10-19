@@ -55,6 +55,13 @@ type IpodArtistCount struct {
 	SongCount  int    `json:"songCount"`
 }
 
+// IpodGenreCount is the number of songs of a genre on an iPod
+type IpodGenreCount struct {
+	LibraryID int
+	Genre     string // Lowercase
+	SongCount int
+}
+
 // IpodArtistPlays is how many times the current user played songs by an artist (by Key)
 type IpodArtistPlays struct {
 	Key   string
@@ -81,6 +88,8 @@ type IpodRepository interface {
 	ArtistKeys(artistIDs []string) (map[string]string, error)
 	// UserArtistPlays returns the current user's play counts per artist Key
 	UserArtistPlays() ([]IpodArtistPlays, error)
+	// GenreCounts returns the number of songs per genre on each iPod
+	GenreCounts() ([]IpodGenreCount, error)
 	// DataVersion identifies the iPods the current user can access and their state. It changes
 	// whenever a scan finishes or a library is added, changed or removed
 	DataVersion() (string, error)

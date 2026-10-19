@@ -275,4 +275,49 @@ describe('<IpodNetworkDialog />', () => {
       expect(screen.queryByRole('option', { name: "Bob's iPod" })).toBeNull()
     })
   })
+
+  describe('tribes', () => {
+    const withTribes = {
+      ...network,
+      nodes: network.nodes.map((n) => ({ ...n, tribe: n.id === 3 ? -1 : 0 })),
+      tribes: [
+        { id: 0, name: '2000s Emo', size: 2, artists: [], ipods: [1, 2] },
+      ],
+    }
+
+    beforeEach(() => {
+      httpClient.mockImplementation(() => Promise.resolve({ json: withTribes }))
+    })
+
+    it('lists the tribes and the free spirits in a legend', async () => {
+      renderDialog()
+      await waitFor(() =>
+        expect(screen.getByText('2000s Emo · 2')).toBeInTheDocument(),
+      )
+      expect(
+        screen.getByText('ipods.tribes.freeSpirits · 1'),
+      ).toBeInTheDocument()
+    })
+
+    it("zooms to a tribe's iPods when its chip is clicked", async () => {
+      renderDialog()
+      await waitFor(() =>
+        expect(screen.getByText('2000s Emo · 2')).toBeInTheDocument(),
+      )
+      fireEvent.click(screen.getByText('2000s Emo · 2'))
+      const filter = camera.zoomToFit.mock.calls.at(-1)[2]
+      expect(filter({ id: 1 })).toBe(true)
+      expect(filter({ id: 2 })).toBe(true)
+      expect(filter({ id: 3 })).toBe(false)
+    })
+
+    it("shows an iPod's tribe on its card", async () => {
+      renderDialog()
+      await waitFor(() =>
+        expect(screen.getByText("node-Alice's iPod")).toBeInTheDocument(),
+      )
+      fireEvent.click(screen.getByText("node-Alice's iPod"))
+      expect(screen.getByText('ipods.tribes.member')).toBeInTheDocument()
+    })
+  })
 })

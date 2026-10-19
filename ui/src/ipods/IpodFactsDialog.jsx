@@ -29,6 +29,7 @@ import { useBrowseIpod } from './useBrowseIpod'
 import { playIpodRadio } from './radio'
 import { TasteBadge } from './TasteBadge'
 import { tasteLabelOf } from './taste'
+import { tribeColor } from './tribes'
 
 const useStyles = makeStyles((theme) => ({
   button: { color: 'inherit' },
@@ -47,6 +48,15 @@ const useStyles = makeStyles((theme) => ({
     color: theme.palette.text.secondary,
   },
   chips: { display: 'flex', flexWrap: 'wrap', gap: theme.spacing(0.5) },
+  dot: {
+    display: 'inline-block',
+    width: 10,
+    height: 10,
+    borderRadius: '50%',
+    marginRight: theme.spacing(0.75),
+  },
+  tribeCard: { height: '100%' },
+  tribeLine: { marginTop: theme.spacing(1) },
   center: {
     display: 'flex',
     justifyContent: 'center',
@@ -184,6 +194,18 @@ export const IpodFactsDialog = ({ open, onClose }) => {
                   {translate('ipods.taste.yours')}:{' '}
                 </Typography>
                 <TasteBadge score={myTaste.taste} label={myTaste.tasteLabel} />
+                {myTaste.tribe && (
+                  <Typography variant="body2" component="span">
+                    {' '}
+                    <span
+                      className={classes.dot}
+                      style={{ backgroundColor: tribeColor(myTaste.tribe.id) }}
+                    />
+                    {translate('ipods.tribes.youFit', {
+                      name: myTaste.tribe.name,
+                    })}
+                  </Typography>
+                )}
               </div>
             )}
 
@@ -274,6 +296,65 @@ export const IpodFactsDialog = ({ open, onClose }) => {
                     </div>
                   </CardContent>
                 </Card>
+              </Section>
+            )}
+
+            {facts.tribes?.length > 0 && (
+              <Section title={translate('ipods.tribes.title')}>
+                <Grid container spacing={2}>
+                  {facts.tribes.map((tribe) => (
+                    <Grid item xs={12} sm={6} md={4} key={tribe.id}>
+                      <Card variant="outlined" className={classes.tribeCard}>
+                        <CardContent>
+                          <Typography variant="subtitle1">
+                            <span
+                              className={classes.dot}
+                              style={{ backgroundColor: tribeColor(tribe.id) }}
+                            />
+                            {tribe.name}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            color="textSecondary"
+                            gutterBottom
+                          >
+                            {translate('ipods.tribes.size', {
+                              smart_count: tribe.size,
+                            })}
+                          </Typography>
+                          <TasteBadge
+                            score={tribe.taste}
+                            label={tasteLabelOf(tribe.taste)}
+                          />
+                          {tribe.artists.length > 0 && (
+                            <div
+                              className={`${classes.chips} ${classes.tribeLine}`}
+                            >
+                              {tribe.artists.map((name) => (
+                                <Chip key={name} size="small" label={name} />
+                              ))}
+                            </div>
+                          )}
+                          {tribe.examples?.length > 0 && (
+                            <Typography
+                              variant="body2"
+                              component="div"
+                              className={classes.tribeLine}
+                            >
+                              {translate('ipods.tribes.examples')}:{' '}
+                              {tribe.examples.map((ipod, i) => (
+                                <React.Fragment key={ipod.id}>
+                                  {i > 0 && ', '}
+                                  <IpodLink ipod={ipod} onBrowse={browseIpod} />
+                                </React.Fragment>
+                              ))}
+                            </Typography>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
               </Section>
             )}
 

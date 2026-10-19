@@ -174,6 +174,22 @@ var _ = Describe("IpodRepository", func() {
 		Expect(totals.TopDecade).To(Equal(1980))
 	})
 
+	It("counts songs per genre per iPod, leaving out combined libraries", func() {
+		db := GetDBXBuilder()
+		_, err := db.NewQuery("UPDATE media_file SET genre = 'Emo' WHERE id IN ('ipod-4', 'ipod-5', 'ipod-12')").Execute()
+		Expect(err).ToNot(HaveOccurred())
+		_, err = db.NewQuery("UPDATE media_file SET genre = ' emo ' WHERE id = 'ipod-6'").Execute()
+		Expect(err).ToNot(HaveOccurred())
+
+		genres, err := adminRepo.GenreCounts()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(genres).To(ContainElements(
+			model.IpodGenreCount{LibraryID: lib2, Genre: "emo", SongCount: 1},
+			model.IpodGenreCount{LibraryID: lib3, Genre: "emo", SongCount: 2},
+		))
+		Expect(genres).ToNot(ContainElement(HaveField("LibraryID", lib4)))
+	})
+
 	It("counts the current user's plays per artist", func() {
 		db := GetDBXBuilder()
 		_, err := db.NewQuery(`INSERT INTO annotation (user_id, item_id, item_type, play_count)

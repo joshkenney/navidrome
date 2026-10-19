@@ -91,6 +91,16 @@ const facts = {
     sharedCount: 7,
     sharedArtists: ['Weezer', 'Blur'],
   },
+  tribes: [
+    {
+      id: 0,
+      name: '2000s Emo',
+      size: 12,
+      taste: 64,
+      artists: ['Saves the Day'],
+      examples: [{ id: 2, name: "Bob's iPod" }],
+    },
+  ],
   uniqueGems: [
     {
       id: 'song-2',
@@ -135,7 +145,11 @@ describe('<IpodFactsDialog />', () => {
       Promise.resolve({
         json:
           url === '/api/ipods/taste/me'
-            ? { taste: 83, tasteLabel: 'deepCuts' }
+            ? {
+                taste: 83,
+                tasteLabel: 'deepCuts',
+                tribe: { id: 0, name: '2000s Emo' },
+              }
             : facts,
       }),
     )
@@ -240,5 +254,15 @@ describe('<IpodFactsDialog />', () => {
     fireEvent.click(screen.getAllByLabelText('ipods.facts.radio')[0])
     expect(onClose).toHaveBeenCalled()
     expect(playIpodRadio.mock.calls[0][2]).toEqual({ songId: 'song-1' })
+  })
+
+  it('lists the tribes and the one the user fits in', async () => {
+    renderDialog()
+    await waitFor(() =>
+      expect(screen.getByText('ipods.tribes.title')).toBeInTheDocument(),
+    )
+    expect(screen.getByText('2000s Emo')).toBeInTheDocument()
+    expect(screen.getByText('Saves the Day')).toBeInTheDocument()
+    expect(screen.getByText('ipods.tribes.youFit')).toBeInTheDocument()
   })
 })

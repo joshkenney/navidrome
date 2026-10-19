@@ -31,6 +31,7 @@ import { useBrowseIpod } from './useBrowseIpod'
 import { uniqueArtists } from './artistKey'
 import { TasteBadge } from './TasteBadge'
 import { tasteLabelOf } from './taste'
+import { FREE_SPIRITS, tribeColor } from './tribes'
 
 const GRAPH_HEIGHT = 520
 const FOCUS_MS = 800
@@ -59,6 +60,21 @@ const useStyles = makeStyles((theme) => ({
     [theme.breakpoints.down('sm')]: { width: '100%' },
   },
   search: { marginBottom: theme.spacing(2) },
+  legend: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: theme.spacing(0.5),
+    marginBottom: theme.spacing(1),
+  },
+  dot: {
+    display: 'inline-block',
+    width: 10,
+    height: 10,
+    borderRadius: '50%',
+    marginRight: theme.spacing(0.75),
+    verticalAlign: 'middle',
+  },
+  tribeLink: { cursor: 'pointer', marginTop: theme.spacing(1) },
   tasteLine: { marginTop: theme.spacing(1) },
   resetView: {
     position: 'absolute',
@@ -105,10 +121,15 @@ const useWidth = () => {
 
 const edgeEnd = (end) => (typeof end === 'object' ? end.id : end)
 
+const tribeName = (network, tribeId, translate) =>
+  tribeId == null || tribeId < 0
+    ? translate('ipods.tribes.freeSpirits')
+    : network.tribes?.find((t) => t.id === tribeId)?.name || ''
+
 const prefersReducedMotion = () =>
   !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-const IpodDetails = ({ node, network, onSelect, onBrowse }) => {
+const IpodDetails = ({ node, network, onSelect, onSelectTribe, onBrowse }) => {
   const classes = useStyles()
   const translate = useTranslate()
   const t = (key, opts) => translate(`ipods.network.${key}`, opts)
@@ -138,6 +159,19 @@ const IpodDetails = ({ node, network, onSelect, onBrowse }) => {
           })}
         </Typography>
         <TasteBadge score={node.taste} label={node.tasteLabel} />
+        <Typography
+          variant="body2"
+          className={classes.tribeLink}
+          onClick={() => onSelectTribe(node.tribe ?? FREE_SPIRITS)}
+        >
+          <span
+            className={classes.dot}
+            style={{ backgroundColor: tribeColor(node.tribe) }}
+          />
+          {translate('ipods.tribes.member', {
+            name: tribeName(network, node.tribe, translate),
+          })}
+        </Typography>
         {node.deepCuts?.length > 0 && (
           <Typography variant="body2" className={classes.tasteLine}>
             <strong>{translate('ipods.taste.deepCuts')}:</strong>{' '}
@@ -186,7 +220,14 @@ const IpodDetails = ({ node, network, onSelect, onBrowse }) => {
   )
 }
 
-const NetworkTab = ({ network, selectedId, onSelect, onBrowse }) => {
+const NetworkTab = ({
+  network,
+  selectedId,
+  onSelect,
+  tribeId,
+  onSelectTribe,
+  onBrowse,
+}) => {
   const classes = useStyles()
   const theme = useTheme()
   const translate = useTranslate()
@@ -219,9 +260,27 @@ const NetworkTab = ({ network, selectedId, onSelect, onBrowse }) => {
     return ids
   }, [network, selectedId])
 
-  const hasSelection = selectedId != null
-  const inFocus = (id) =>
-    !hasSelection || id === selectedId || neighborIds.has(id)
+  const highlightTribe = selectedId == null && tribeId != null
+  const nodeTribe = (n) => n.tribe ?? FREE_SPIRITS
+  const tribeIds = useMemo(
+    () =>
+      new Set(
+        network.nodes
+          .filter((n) => (n.tribe ?? FREE_SPIRITS) === tribeId)
+          .map((n) => n.id),
+      ),
+    [network, tribeId],
+  )
+  const freeSpirits = network.nodes.filter(
+    (n) => nodeTribe(n) === FREE_SPIRITS,
+  ).length
+  const hasSelection = selectedId != null || highlightTribe
+  const inFocus = (node) => {
+    if (highlightTribe) return nodeTribe(node) === tribeId
+    return (
+      selectedId == null || node.id === selectedId || neighborIds.has(node.id)
+    )
+  }
   const isSelectedEdge = (l) =>
     edgeEnd(l.source) === selectedId || edgeEnd(l.target) === selectedId
 
@@ -231,6 +290,10 @@ const NetworkTab = ({ network, selectedId, onSelect, onBrowse }) => {
     const fg = fgRef.current
     if (!fg) return false
     const ms = (d) => (reducedMotion ? 0 : d)
+    if (selectedId == null && tribeId != null) {
+      fg.zoomToFit(ms(FOCUS_MS), 60, (n) => tribeIds.has(n.id))
+      return true
+    }
     if (selectedId == null) {
       fg.zoomToFit(ms(FIT_MS), 40)
       return true
@@ -248,7 +311,7 @@ const NetworkTab = ({ network, selectedId, onSelect, onBrowse }) => {
       )
     }
     return true
-  }, [graphData, selectedId, neighborIds, reducedMotion])
+  }, [graphData, selectedId, neighborIds, tribeId, tribeIds, reducedMotion])
 
   // Follow the selection, once the initial layout has settled (see onEngineStop)
   useEffect(() => {
@@ -268,15 +331,11 @@ const NetworkTab = ({ network, selectedId, onSelect, onBrowse }) => {
     }
   }
 
-  const nodeColor = (n) => {
-    if (n.id === selectedId) return theme.palette.secondary.main
-    if (neighborIds.has(n.id)) return theme.palette.primary.light
-    return theme.palette.primary.main
-  }
+  const nodeColor = (n) => tribeColor(n.tribe)
 
   const drawNode = (node, ctx, scale) => {
     const radius = 4 + 10 * Math.sqrt(node.songCount / maxSongs)
-    const focused = inFocus(node.id)
+    const focused = inFocus(node)
     ctx.save()
     ctx.globalAlpha = focused ? 1 : DIMMED_ALPHA
 
@@ -314,108 +373,153 @@ const NetworkTab = ({ network, selectedId, onSelect, onBrowse }) => {
 
   const linkColor = (l) => {
     if (!hasSelection) return theme.palette.text.secondary
+    if (highlightTribe) {
+      return tribeIds.has(edgeEnd(l.source)) && tribeIds.has(edgeEnd(l.target))
+        ? tribeColor(tribeId)
+        : alpha(theme.palette.text.secondary, 0.08)
+    }
     return isSelectedEdge(l)
       ? theme.palette.secondary.main
       : alpha(theme.palette.text.secondary, 0.08)
   }
 
   const handleResetView = () => {
-    if (selectedId == null) {
+    if (selectedId == null && tribeId == null) {
       focusCamera()
     } else {
       onSelect(null)
+      onSelectTribe(null)
     }
   }
 
+  const tribes = network.tribes || []
+  const legendChip = (id, name, size) => (
+    <Chip
+      key={id}
+      size="small"
+      clickable
+      variant={tribeId === id ? 'default' : 'outlined'}
+      onClick={() => onSelectTribe(tribeId === id ? null : id)}
+      label={
+        <>
+          <span
+            className={classes.dot}
+            style={{ backgroundColor: tribeColor(id) }}
+          />
+          {`${name} · ${size}`}
+        </>
+      }
+    />
+  )
+
   return (
-    <div className={classes.networkLayout}>
-      <div className={classes.graph} ref={containerRef}>
-        {network.nodes.length === 0 ? (
-          <div className={classes.center}>
-            <Typography color="textSecondary">
-              {translate('ipods.network.empty')}
-            </Typography>
-          </div>
-        ) : (
-          width > 0 && (
-            <>
-              <Tooltip title={translate('ipods.network.resetView')}>
-                <IconButton
-                  size="small"
-                  className={classes.resetView}
-                  aria-label={translate('ipods.network.resetView')}
-                  onClick={handleResetView}
-                >
-                  <MdZoomOutMap size={18} />
-                </IconButton>
-              </Tooltip>
-              <ForceGraph2D
-                ref={fgRef}
-                graphData={graphData}
-                width={width}
-                height={GRAPH_HEIGHT}
-                backgroundColor={theme.palette.background.paper}
-                nodeLabel={(n) => n.name}
-                nodeCanvasObject={drawNode}
-                nodePointerAreaPaint={(node, color, ctx) => {
-                  ctx.beginPath()
-                  ctx.arc(node.x, node.y, 14, 0, 2 * Math.PI)
-                  ctx.fillStyle = color
-                  ctx.fill()
-                }}
-                linkLabel={(l) =>
-                  `${Math.round(l.weight * 100)}% · ${l.sharedArtists.join(', ')}`
-                }
-                linkWidth={(l) => (isSelectedEdge(l) ? 2 : 0.5) + 6 * l.weight}
-                linkColor={linkColor}
-                linkDirectionalParticles={(l) =>
-                  !reducedMotion && isSelectedEdge(l)
-                    ? 2 + Math.round(4 * l.weight)
-                    : 0
-                }
-                linkDirectionalParticleSpeed={0.006}
-                linkDirectionalParticleWidth={3}
-                linkDirectionalParticleColor={() =>
-                  theme.palette.secondary.main
-                }
-                // Keep redrawing while an iPod is selected, for the pulse and particles
-                autoPauseRedraw={!hasSelection || reducedMotion}
-                onNodeClick={(n) => onSelect(n.id)}
-                onNodeHover={handleNodeHover}
-                onBackgroundClick={() => onSelect(null)}
-                onEngineStop={handleEngineStop}
-                cooldownTicks={150}
-              />
-            </>
-          )
-        )}
-      </div>
-      <div className={classes.side}>
-        <Autocomplete
-          className={classes.search}
-          options={sortedNodes}
-          value={selected || null}
-          getOptionLabel={(n) => n.name}
-          getOptionSelected={(a, b) => a.id === b.id}
-          onChange={(_, node) => onSelect(node ? node.id : null)}
-          noOptionsText={translate('ipods.network.noMatch')}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              variant="outlined"
-              size="small"
-              label={translate('ipods.network.search')}
-            />
+    <>
+      {tribes.length > 0 && (
+        <div
+          className={classes.legend}
+          aria-label={translate('ipods.tribes.title')}
+        >
+          {tribes.map((t) => legendChip(t.id, t.name, t.size))}
+          {freeSpirits > 0 &&
+            legendChip(
+              FREE_SPIRITS,
+              translate('ipods.tribes.freeSpirits'),
+              freeSpirits,
+            )}
+        </div>
+      )}
+      <div className={classes.networkLayout}>
+        <div className={classes.graph} ref={containerRef}>
+          {network.nodes.length === 0 ? (
+            <div className={classes.center}>
+              <Typography color="textSecondary">
+                {translate('ipods.network.empty')}
+              </Typography>
+            </div>
+          ) : (
+            width > 0 && (
+              <>
+                <Tooltip title={translate('ipods.network.resetView')}>
+                  <IconButton
+                    size="small"
+                    className={classes.resetView}
+                    aria-label={translate('ipods.network.resetView')}
+                    onClick={handleResetView}
+                  >
+                    <MdZoomOutMap size={18} />
+                  </IconButton>
+                </Tooltip>
+                <ForceGraph2D
+                  ref={fgRef}
+                  graphData={graphData}
+                  width={width}
+                  height={GRAPH_HEIGHT}
+                  backgroundColor={theme.palette.background.paper}
+                  nodeLabel={(n) => n.name}
+                  nodeCanvasObject={drawNode}
+                  nodePointerAreaPaint={(node, color, ctx) => {
+                    ctx.beginPath()
+                    ctx.arc(node.x, node.y, 14, 0, 2 * Math.PI)
+                    ctx.fillStyle = color
+                    ctx.fill()
+                  }}
+                  linkLabel={(l) =>
+                    `${Math.round(l.weight * 100)}% · ${l.sharedArtists.join(', ')}`
+                  }
+                  linkWidth={(l) =>
+                    (isSelectedEdge(l) ? 2 : 0.5) + 6 * l.weight
+                  }
+                  linkColor={linkColor}
+                  linkDirectionalParticles={(l) =>
+                    !reducedMotion && isSelectedEdge(l)
+                      ? 2 + Math.round(4 * l.weight)
+                      : 0
+                  }
+                  linkDirectionalParticleSpeed={0.006}
+                  linkDirectionalParticleWidth={3}
+                  linkDirectionalParticleColor={() =>
+                    theme.palette.secondary.main
+                  }
+                  // Keep redrawing while an iPod is selected, for the pulse and particles
+                  autoPauseRedraw={!hasSelection || reducedMotion}
+                  onNodeClick={(n) => onSelect(n.id)}
+                  onNodeHover={handleNodeHover}
+                  onBackgroundClick={() => onSelect(null)}
+                  onEngineStop={handleEngineStop}
+                  cooldownTicks={150}
+                />
+              </>
+            )
           )}
-        />
-        <IpodDetails
-          node={selected}
-          network={network}
-          onSelect={onSelect}
-          onBrowse={onBrowse}
-        />
+        </div>
+        <div className={classes.side}>
+          <Autocomplete
+            className={classes.search}
+            options={sortedNodes}
+            value={selected || null}
+            getOptionLabel={(n) => n.name}
+            getOptionSelected={(a, b) => a.id === b.id}
+            onChange={(_, node) => onSelect(node ? node.id : null)}
+            noOptionsText={translate('ipods.network.noMatch')}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                variant="outlined"
+                size="small"
+                label={translate('ipods.network.search')}
+              />
+            )}
+          />
+          <IpodDetails
+            node={selected}
+            network={network}
+            onSelect={onSelect}
+            onSelectTribe={onSelectTribe}
+            onBrowse={onBrowse}
+          />
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -564,6 +668,16 @@ export const IpodNetworkDialog = ({ open, onClose }) => {
   const [network, setNetwork] = useState(null)
   const [error, setError] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+  const [tribeId, setTribeId] = useState(null)
+  // Selecting an iPod or a tribe clears the other
+  const selectIpod = useCallback((id) => {
+    setSelectedId(id)
+    setTribeId(null)
+  }, [])
+  const selectTribe = useCallback((id) => {
+    setTribeId(id)
+    setSelectedId(null)
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -610,7 +724,9 @@ export const IpodNetworkDialog = ({ open, onClose }) => {
               <NetworkTab
                 network={network}
                 selectedId={selectedId}
-                onSelect={setSelectedId}
+                onSelect={selectIpod}
+                tribeId={tribeId}
+                onSelectTribe={selectTribe}
                 onBrowse={handleBrowse}
               />
             )}
