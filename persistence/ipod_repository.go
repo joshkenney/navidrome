@@ -74,13 +74,18 @@ type dbIpodSongEntry struct {
 	MediaFileID string `db:"media_file_id"`
 	Title       string `db:"title"`
 	Artist      string `db:"artist"`
+	Podcast     bool   `db:"podcast"`
 }
+
+// podcastExpr matches podcast episodes, like model.IsPodcast
+const podcastExpr = "(lower(coalesce(mf.genre, '')) LIKE '%podcast%' OR '/' || lower(mf.path) LIKE '%/podcasts/%')"
 
 func (r *ipodRepository) SongIndex() ([]model.IpodSongEntry, error) {
 	// Filtering placeholders in HAVING (not WHERE) computes the song key only once per track
 	sq, err := r.mediaFiles(
 		songKeyExpr+" AS song_key", "mf.library_id",
 		"min(mf.id) AS media_file_id", "min(mf.title) AS title", "min(mf.artist) AS artist",
+		"max("+podcastExpr+") AS podcast",
 	)
 	if err != nil {
 		return nil, err

@@ -1,5 +1,10 @@
 package model
 
+import (
+	"path/filepath"
+	"strings"
+)
+
 // Each library in this server is the music collection of one real iPod. The types below
 // back the "iPod facts" and "iPod network" features, which compare libraries with each other.
 
@@ -19,6 +24,14 @@ type IpodSongEntry struct {
 	MediaFileID string
 	Title       string
 	Artist      string
+	Podcast     bool // See IsPodcast
+}
+
+// IsPodcast tells whether a track is a podcast episode: its genre says so (iTunes tags them
+// "Podcast"), or it is in a "Podcasts" folder, as iTunes keeps them
+func IsPodcast(genre, path string) bool {
+	return strings.Contains(strings.ToLower(genre), "podcast") ||
+		strings.Contains("/"+strings.ToLower(filepath.ToSlash(path)), "/podcasts/")
 }
 
 // IpodGem is a song found on exactly one iPod

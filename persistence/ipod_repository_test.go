@@ -39,6 +39,12 @@ var _ = Describe("IpodRepository", func() {
 		return s
 	}
 
+	podcast := func(s model.MediaFile, genre, path string) model.MediaFile {
+		s.Genre, s.Path = genre, path
+		return s
+	}
+	var mediaFiles model.MediaFileRepository
+
 	BeforeEach(func() {
 		db := GetDBXBuilder()
 		for _, lib := range []int{lib2, lib3} {
@@ -89,6 +95,7 @@ var _ = Describe("IpodRepository", func() {
 		})
 
 		adminRepo = NewIpodRepository(ctx, db)
+		mediaFiles = mr
 	})
 
 	// iPodsWith returns the iPods each song (by key) is found on
@@ -126,6 +133,25 @@ var _ = Describe("IpodRepository", func() {
 		keys, err := adminRepo.ArtistKeys([]string{spillCanvas.ID, spillCanvasLower.ID, "missing"})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(keys).To(Equal(map[string]string{spillCanvas.ID: "spill canvas", spillCanvasLower.ID: "spill canvas"}))
+	})
+
+	It("flags podcast episodes, by genre or folder", func() {
+		// Tagged as podcasts, or in iTunes' Podcasts folder
+		for _, s := range []model.MediaFile{
+			podcast(ipodSong("ipod-18", lib2, "Ipod Episode One", artistKraftwerk), "Podcast", "Show/Episode One.mp3"),
+			podcast(ipodSong("ipod-19", lib3, "Ipod Episode Two", artistKraftwerk), "", "iTunes Media/Podcasts/Show/Two.mp3"),
+		} {
+			Expect(mediaFiles.Put(&s)).To(Succeed())
+		}
+		entries, err := adminRepo.SongIndex()
+		Expect(err).ToNot(HaveOccurred())
+		podcasts := map[string]bool{}
+		for _, e := range entries {
+			podcasts[e.Title] = e.Podcast
+		}
+		Expect(podcasts).To(HaveKeyWithValue("Ipod Episode One", true))
+		Expect(podcasts).To(HaveKeyWithValue("Ipod Episode Two", true))
+		Expect(podcasts).To(HaveKeyWithValue("Ipod Pair Song", false))
 	})
 
 	It("recognises unknown artists by name, whatever their ID", func() {
