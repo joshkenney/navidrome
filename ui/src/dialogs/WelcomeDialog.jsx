@@ -52,8 +52,8 @@ export const WelcomeDialog = () => {
       <DialogContent dividers className={classes.content}>
         <img src={sadIpod} alt="Sad iPod" className={classes.image} />
         <Typography className={classes.text}>
-          This library is made up of collections from real iPods. Each library
-          is the music someone carried around in their pocket.
+          This collection is made up of real iPods. Each iPod is the music
+          someone carried around in their pocket.
         </Typography>
         <Typography>
           If you would like to contribute your iPod&apos;s collection, email{' '}

@@ -21,7 +21,7 @@ export const PathField = (props) => {
   const hasFolderId = !!record.folderId
   const tooltipTitle = hasFolderId
     ? 'Browse folder'
-    : 'Run a library scan to enable folder browsing'
+    : 'Run an iPod scan to enable folder browsing'
 
   const handleBrowse = () => {
     if (hasFolderId) {

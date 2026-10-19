@@ -68,7 +68,7 @@ describe('<SelectLibraryInput />', () => {
     })
 
     render(<SelectLibraryInput onChange={mockOnChange} value={[]} />)
-    expect(screen.getByText('No libraries available')).not.toBeNull()
+    expect(screen.getByText('No iPods available')).not.toBeNull()
   })
 
   it('should render libraries when available', () => {

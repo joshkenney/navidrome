@@ -53,7 +53,7 @@ const EmptyLibraryMessage = () => {
 
   return (
     <div className={classes.emptyMessage}>
-      <Typography variant="body2">No libraries available</Typography>
+      <Typography variant="body2">No iPods available</Typography>
     </div>
   )
 }
