@@ -185,4 +185,76 @@ var _ = Describe("iPod Radio", func() {
 			}
 		})
 	})
+
+	Describe("several seeds and listener reactions", func() {
+		var idx *radioIndex
+		BeforeEach(func() {
+			var entries []model.IpodSongEntry
+			// The anchor is on iPods 1-2, a song the listener played through on iPods 3-4
+			for lib := 1; lib <= 2; lib++ {
+				entries = append(entries, entry("Anchor", "anchor", lib), entry("Near Anchor", "a-pal", lib))
+			}
+			for lib := 3; lib <= 4; lib++ {
+				entries = append(entries, entry("Played", "played", lib), entry("Near Played", "p-pal", lib))
+			}
+			// A song on the iPods of both seeds
+			for lib := 1; lib <= 4; lib++ {
+				entries = append(entries, entry("Bridge", "bridge", lib))
+			}
+			idx = build(entries)
+		})
+
+		firstPicks := func(seeds []radioSeed, bias map[int32]float64) map[string]int {
+			res := map[string]int{}
+			for i := range 100 {
+				o := opts(1)
+				o.rng = rand.New(rand.NewPCG(uint64(i), 11))
+				o.bias = bias
+				res[titles(idx, idx.recommendFrom(seeds, o))[0]]++
+			}
+			return res
+		}
+
+		It("favors songs related to all the seeds", func() {
+			seeds := []radioSeed{
+				{song: idx.songOf("Anchor|anchor"), artist: -1, weight: 0.5},
+				{song: idx.songOf("Played|played"), artist: -1, weight: 1},
+			}
+			picks := firstPicks(seeds, nil)
+			Expect(picks["Bridge|bridge"]).To(BeNumerically(">", picks["Near Anchor|a-pal"]))
+			Expect(picks["Near Played|p-pal"]).To(BeNumerically(">", 0), "the station drifts towards the played song")
+		})
+
+		It("plays skipped artists much less, and liked ones more", func() {
+			seeds := []radioSeed{{song: idx.songOf("Anchor|anchor"), artist: -1, weight: 1}}
+			before := firstPicks(seeds, nil)
+
+			bridge := idx.songs[idx.songOf("Bridge|bridge")].artist
+			skipped := firstPicks(seeds, map[int32]float64{bridge: radioRepeatSkipBias})
+			Expect(skipped["Bridge|bridge"]).To(BeNumerically("<", before["Bridge|bridge"]))
+
+			pal := idx.songs[idx.songOf("Near Anchor|a-pal")].artist
+			liked := firstPicks(seeds, map[int32]float64{pal: radioMaxLikeBias})
+			Expect(liked["Near Anchor|a-pal"]).To(BeNumerically(">", before["Near Anchor|a-pal"]))
+		})
+
+		It("turns reactions into artist multipliers", func() {
+			played, bridge := idx.songOf("Played|played"), idx.songOf("Bridge|bridge")
+			bias := radioBias(idx, []int32{played}, []int32{bridge, bridge})
+			Expect(bias[idx.songs[played].artist]).To(Equal(radioLikeBias))
+			Expect(bias[idx.songs[bridge].artist]).To(Equal(radioRepeatSkipBias))
+		})
+
+		It("drifts from recent songs, but not from skipped artists", func() {
+			anchor, played, bridge := idx.songOf("Anchor|anchor"), idx.songOf("Played|played"), idx.songOf("Bridge|bridge")
+			bias := radioBias(idx, nil, []int32{bridge})
+			seeds := radioSeeds(idx, anchor, -1, []int32{bridge, played}, bias)
+			Expect(seeds).To(HaveLen(2))
+			Expect(seeds[0]).To(Equal(radioSeed{song: anchor, artist: -1, weight: radioAnchorWeight}))
+			Expect(seeds[1].song).To(Equal(played))
+			Expect(seeds[1].weight).To(Equal(radioDriftWeights[0]))
+
+			Expect(radioSeeds(idx, anchor, -1, nil, nil)[0].weight).To(Equal(1.0))
+		})
+	})
 })

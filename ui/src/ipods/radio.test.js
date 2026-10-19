@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { httpClient } from '../dataProvider'
 import {
+  classifyListen,
   extendRadio,
+  noteRadioProgress,
+  recordRadioListen,
   fetchIpodRadio,
   getRadioSession,
   playIpodRadio,
@@ -102,5 +105,39 @@ describe('iPod Radio client', () => {
 
     await extendRadio(dispatch, ['seed', 'a'])
     expect(url()).toContain('songId=stand-in')
+  })
+
+  it('tells listened-through songs from skipped ones', () => {
+    expect(classifyListen({ currentTime: 200, duration: 240 })).toBe('listened')
+    expect(classifyListen({ currentTime: 10, duration: 240 })).toBe('skipped')
+    expect(classifyListen({ currentTime: 60, duration: 240 })).toBe('neutral')
+    // A short song left early is a skip only while under half of it was played
+    expect(classifyListen({ currentTime: 20, duration: 30 })).toBe('neutral')
+    expect(classifyListen(undefined)).toBe('skipped')
+  })
+
+  it('drifts towards listened songs, avoids skipped ones and never repeats the session', async () => {
+    await playIpodRadio(dispatch, notify, { songId: 'seed' })
+    noteRadioProgress('a', 230, 240)
+    recordRadioListen('a')
+    noteRadioProgress('b', 5, 240)
+    recordRadioListen('b')
+    expect(getRadioSession().listened).toEqual(['a'])
+    expect(getRadioSession().skipped).toEqual(['b'])
+
+    await extendRadio(dispatch, ['b'])
+    expect(url()).toContain('songId=seed')
+    expect(url()).toContain('drift=a')
+    expect(url()).toContain('liked=a')
+    expect(url()).toContain('skipped=b')
+    // Every song of the session is excluded, not only the ones still queued
+    expect(url()).toContain('exclude=seed&exclude=a&exclude=b')
+  })
+
+  it('ignores songs that are not part of the radio', async () => {
+    await playIpodRadio(dispatch, notify, { songId: 'seed' })
+    noteRadioProgress('other', 5, 240)
+    recordRadioListen('other')
+    expect(getRadioSession().skipped).toEqual([])
   })
 })

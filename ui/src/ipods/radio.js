@@ -5,7 +5,10 @@ import { addTracks, playNext, playTracks } from '../actions'
 import { processSongsForPlayback } from '../common/playbackActions'
 
 const ADVENTURE_KEY = 'ipod-radio-adventure'
-export const RADIO_BATCH = 20
+export const RADIO_BATCH = 10
+const MAX_EXCLUDE = 500
+const MAX_REACTIONS = 20
+const MAX_DRIFT = 3
 
 // The current radio session: its seed song, the "Mainstream - Deep cuts" setting, the tracks it
 // added to the queue and why each one was picked. Kept outside Redux, as it is not persisted
@@ -17,7 +20,53 @@ const emit = () => listeners.forEach((listener) => listener(session))
 export const getRadioSession = () => session
 
 export const startRadioSession = (data) => {
-  session = { ...data, trackIds: new Set(data.trackIds), reasons: data.reasons }
+  session = {
+    ...data,
+    trackIds: new Set(data.trackIds),
+    reasons: data.reasons,
+    listened: [],
+    skipped: [],
+  }
+  progress.clear()
+  emit()
+}
+
+// How far each radio song was played, to tell listened-through songs from skipped ones
+const progress = new Map()
+
+export const noteRadioProgress = (trackId, currentTime, duration) => {
+  if (session?.trackIds.has(trackId)) {
+    progress.set(trackId, { currentTime, duration })
+  }
+}
+
+// A song played (almost) to the end was liked; one left within 30 seconds, before its middle,
+// was skipped
+export const classifyListen = ({ currentTime = 0, duration = 0 } = {}) => {
+  const played = duration > 0 ? currentTime / duration : 0
+  if (played >= 0.7) return 'listened'
+  if (currentTime < 30 && played < 0.5) return 'skipped'
+  return 'neutral'
+}
+
+// Records how a radio song was received, once the player moved on from it
+export const recordRadioListen = (trackId) => {
+  if (!session?.trackIds.has(trackId)) return
+  const kind = classifyListen(progress.get(trackId))
+  progress.delete(trackId)
+  if (kind === 'neutral') return
+  const without = (list) => list.filter((id) => id !== trackId)
+  session = {
+    ...session,
+    listened:
+      kind === 'listened'
+        ? [...without(session.listened), trackId]
+        : without(session.listened),
+    skipped:
+      kind === 'skipped'
+        ? [...without(session.skipped), trackId]
+        : without(session.skipped),
+  }
   emit()
 }
 
@@ -68,6 +117,9 @@ export const fetchIpodRadio = async ({
   songId,
   adventure = 0,
   exclude = [],
+  drift = [],
+  liked = [],
+  skipped = [],
   count = RADIO_BATCH,
 }) => {
   const params = new URLSearchParams()
@@ -75,6 +127,9 @@ export const fetchIpodRadio = async ({
   params.set('adventure', adventure)
   params.set('count', count)
   exclude.forEach((id) => params.append('exclude', id))
+  drift.forEach((id) => params.append('drift', id))
+  liked.forEach((id) => params.append('liked', id))
+  skipped.forEach((id) => params.append('skipped', id))
   const { status, json } = await httpClient(`/api/ipods/radio?${params}`)
   if (status === 204 || !json?.seed) return null
   return json
@@ -121,14 +176,24 @@ export const playIpodRadio = async (
   }
 }
 
-// Appends the next radio songs to the queue
+// Appends the next radio songs to the queue. They follow the anchor song and drift towards the
+// songs listened through lately, avoid skipped artists, and never repeat a song of the session
 export const extendRadio = async (dispatch, queuedIds) => {
   const current = getRadioSession()
   if (!current) return
+  const anchor = current.radioSeedId || current.seed.id
   const json = await fetchIpodRadio({
-    songId: current.radioSeedId || current.seed.id,
+    songId: anchor,
     adventure: current.adventure,
-    exclude: queuedIds,
+    exclude: [...new Set([...current.trackIds, ...queuedIds])].slice(
+      -MAX_EXCLUDE,
+    ),
+    drift: [...current.listened]
+      .reverse()
+      .filter((id) => id !== anchor && id !== current.seed.id)
+      .slice(0, MAX_DRIFT),
+    liked: current.listened.slice(-MAX_REACTIONS),
+    skipped: current.skipped.slice(-MAX_REACTIONS),
   })
   const queued = new Set(queuedIds)
   const songs = (json?.songs || []).filter((s) => !queued.has(s.id))

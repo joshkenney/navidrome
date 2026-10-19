@@ -34,6 +34,7 @@ import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
 import { IpodRadioExtender } from '../ipods/IpodRadioExtender'
+import { noteRadioProgress } from '../ipods/radio'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -240,6 +241,7 @@ const Player = () => {
         document.title = 'Navidrome'
       }
 
+      noteRadioProgress(info.trackId, info.currentTime, info.duration)
       const progress = (info.currentTime / info.duration) * 100
       if (isNaN(info.duration) || (progress < 50 && info.currentTime < 240)) {
         return

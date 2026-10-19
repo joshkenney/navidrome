@@ -7,6 +7,7 @@ import { IpodRadioExtender } from './IpodRadioExtender'
 import {
   extendRadio,
   getRadioSession,
+  noteRadioProgress,
   startRadioSession,
   stopRadioSession,
 } from './radio'
@@ -24,12 +25,21 @@ describe('<IpodRadioExtender />', () => {
     stopRadioSession()
   })
 
-  const renderWith = (player) =>
-    render(
-      <Provider store={createStore(() => ({ player }))}>
+  const renderWith = (player) => {
+    let state = { player }
+    const store = createStore((s = state, action) =>
+      action.type === 'SET_PLAYER' ? { player: action.player } : s,
+    )
+    const utils = render(
+      <Provider store={store}>
         <IpodRadioExtender />
       </Provider>,
     )
+    return {
+      ...utils,
+      setPlayer: (p) => store.dispatch({ type: 'SET_PLAYER', player: p }),
+    }
+  }
 
   it('queues more songs when the radio is about to run out', async () => {
     startRadioSession({
@@ -56,5 +66,17 @@ describe('<IpodRadioExtender />', () => {
     })
     expect(getRadioSession()).toBeNull()
     expect(extendRadio).not.toHaveBeenCalled()
+  })
+
+  it('notes a skip when the player moves on early', async () => {
+    const ids = ['a', 'b', 'c', 'd', 'e', 'f']
+    startRadioSession({ seed: { id: 'a' }, adventure: 0, trackIds: ids })
+    const queue = ids.map(item)
+    const { setPlayer } = renderWith({ queue, current: item('b') })
+    noteRadioProgress('b', 4, 200)
+    await act(async () => {
+      setPlayer({ queue, current: item('c') })
+    })
+    expect(getRadioSession().skipped).toEqual(['b'])
   })
 })

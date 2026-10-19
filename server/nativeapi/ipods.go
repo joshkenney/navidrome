@@ -593,7 +593,19 @@ func matchIpods(stats []model.IpodStats, counts []model.IpodArtistCount, artistI
 	return result
 }
 
-const radioMaxExclude = 500
+const (
+	radioMaxExclude     = 500
+	radioMaxDrift       = 3
+	radioMaxReactions   = 20
+	radioAnchorWeight   = 0.5
+	radioLikeBias       = 1.3
+	radioMaxLikeBias    = 1.6
+	radioSkipBias       = 0.3
+	radioRepeatSkipBias = 0.15
+)
+
+// Weights of the drift seeds, from the most recently played
+var radioDriftWeights = []float64{1.0, 0.7, 0.5}
 
 type ipodRadioResponse struct {
 	Seed *model.MediaFile `json:"seed"`
@@ -620,6 +632,12 @@ func (api *Router) getIpodRadio(w http.ResponseWriter, r *http.Request) {
 	adventure = max(-1, min(1, adventure))
 	exclude, _ := p.Strings("exclude")
 	exclude = exclude[max(0, len(exclude)-radioMaxExclude):]
+	drift, _ := p.Strings("drift")
+	drift = drift[:min(radioMaxDrift, len(drift))]
+	liked, _ := p.Strings("liked")
+	liked = liked[max(0, len(liked)-radioMaxReactions):]
+	skipped, _ := p.Strings("skipped")
+	skipped = skipped[max(0, len(skipped)-radioMaxReactions):]
 
 	d, err := api.loadIpodData(ctx)
 	if err != nil {
@@ -669,22 +687,31 @@ func (api *Router) getIpodRadio(w http.ResponseWriter, r *http.Request) {
 		radioSeedID = idx.songs[seed].rep
 	}
 
-	excluded := map[int32]bool{}
-	if len(exclude) > 0 {
-		queued, err := mfRepo.GetAll(model.QueryOptions{Filters: squirrel.Eq{"media_file.id": exclude}})
+	// Songs already queued, and the listener's reactions, all resolved with a single query
+	songOf := map[string]int32{}
+	if ids := slices.Concat(exclude, drift, liked, skipped); len(ids) > 0 {
+		files, err := mfRepo.GetAll(model.QueryOptions{Filters: squirrel.Eq{"media_file.id": slices.Compact(slices.Sorted(slices.Values(ids)))}})
 		if err != nil {
-			log.Error(ctx, "Error loading queued songs", err)
+			log.Error(ctx, "Error loading radio session songs", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		for _, mf := range queued {
+		for _, mf := range files {
 			if s := idx.songOf(songkey.Key(mf.Title, mf.ArtistID, mf.OrderArtistName)); s >= 0 {
-				excluded[s] = true
+				songOf[mf.ID] = s
 			}
 		}
 	}
+	excluded := map[int32]bool{}
+	for _, id := range exclude {
+		if s, ok := songOf[id]; ok {
+			excluded[s] = true
+		}
+	}
+	bias := radioBias(idx, resolveSongs(songOf, liked), resolveSongs(songOf, skipped))
+	seeds := radioSeeds(idx, seed, seedArtist, resolveSongs(songOf, drift), bias)
 
-	picks := idx.recommend(seed, seedArtist, radioOptions{count: count, adventure: adventure, exclude: excluded, rng: rng})
+	picks := idx.recommendFrom(seeds, radioOptions{count: count, adventure: adventure, exclude: excluded, bias: bias, rng: rng})
 	ids := make([]string, len(picks))
 	reasons := make(map[string]radioReason, len(picks))
 	for i, pick := range picks {
@@ -711,6 +738,60 @@ func (api *Router) getIpodRadio(w http.ResponseWriter, r *http.Request) {
 	writeJSON(ctx, w, ipodRadioResponse{
 		Seed: seedFile, RadioSeedID: radioSeedID, SeedFallback: fallback, Songs: songs, Reasons: reasons,
 	})
+}
+
+func resolveSongs(songOf map[string]int32, ids []string) []int32 {
+	var songs []int32
+	for _, id := range ids {
+		if s, ok := songOf[id]; ok {
+			songs = append(songs, s)
+		}
+	}
+	return songs
+}
+
+// radioBias turns the listener's reactions into artist score multipliers: skipped artists are
+// played much less, artists played through a bit more
+func radioBias(idx *radioIndex, liked, skipped []int32) map[int32]float64 {
+	likes, skips := map[int32]int{}, map[int32]int{}
+	for _, s := range liked {
+		likes[idx.songs[s].artist]++
+	}
+	for _, s := range skipped {
+		skips[idx.songs[s].artist]++
+	}
+	bias := map[int32]float64{}
+	for a, n := range likes {
+		bias[a] = min(radioMaxLikeBias, math.Pow(radioLikeBias, float64(n)))
+	}
+	for a, n := range skips {
+		f := radioSkipBias
+		if n > 1 {
+			f = radioRepeatSkipBias
+		}
+		bias[a] = max(bias[a], 1) * f
+	}
+	return bias
+}
+
+// radioSeeds anchors the radio on its starting song, and lets it drift towards the songs the
+// listener played through recently (most recent first), skipping artists they skip
+func radioSeeds(idx *radioIndex, anchor, anchorArtist int32, drift []int32, bias map[int32]float64) []radioSeed {
+	var drifted []radioSeed
+	for _, s := range drift {
+		if len(drifted) == len(radioDriftWeights) {
+			break
+		}
+		if b, skipped := bias[idx.songs[s].artist]; s == anchor || skipped && b < 1 {
+			continue
+		}
+		drifted = append(drifted, radioSeed{song: s, artist: -1, weight: radioDriftWeights[len(drifted)]})
+	}
+	anchorWeight := 1.0
+	if len(drifted) > 0 {
+		anchorWeight = radioAnchorWeight
+	}
+	return append([]radioSeed{{song: anchor, artist: anchorArtist, weight: anchorWeight}}, drifted...)
 }
 
 // radioSeed finds the seed song in the radio index or, failing that (placeholder titles, songs

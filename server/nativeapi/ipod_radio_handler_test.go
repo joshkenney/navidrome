@@ -124,4 +124,20 @@ var _ = Describe("iPod Radio endpoint", Ordered, func() {
 		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
 		Expect(resp.Songs).ToNot(BeEmpty())
 	})
+
+	It("never queues songs already played in the session", func() {
+		// Skipped songs are part of the session too, so they are also excluded
+		w, resp := radio("songId=a1&count=10&exclude=a2&exclude=bx0&skipped=bx0")
+		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+		Expect(resp.Songs).ToNot(BeEmpty())
+		for _, s := range resp.Songs {
+			Expect(s.Title).ToNot(BeElementOf("Song 2", "Filler 0"), "a song of the session was queued again")
+		}
+	})
+
+	It("accepts drift seeds", func() {
+		w, resp := radio("songId=a1&drift=a3&liked=a3")
+		Expect(w.Code).To(Equal(http.StatusOK), w.Body.String())
+		Expect(resp.Songs).ToNot(BeEmpty())
+	})
 })

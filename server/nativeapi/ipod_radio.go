@@ -190,15 +190,25 @@ type radioPick struct {
 type radioCandidate struct {
 	song      int32
 	score     float64
-	shared    int
-	artistSim float64
+	shared    int     // iPods shared with the seed that contributed the most
+	artistSim float64 // Similarity of the artist with that seed's artist
+	from      int32   // That seed's artist
+	neighbour bool    // Only found through a neighbour iPod of that seed
 }
 
 type radioOptions struct {
 	count     int
 	adventure float64 // -1 (crowd-pleasers) to 1 (deep cuts)
 	exclude   map[int32]bool
+	bias      map[int32]float64 // Artist -> score multiplier, from the listener's skips and likes
 	rng       *rand.Rand
+}
+
+// radioSeed is a song (or, with song < 0, an artist) the radio is based on, and how much it counts
+type radioSeed struct {
+	song   int32
+	artist int32
+	weight float64
 }
 
 // prior favors widely carried songs, or songs by rare artists, depending on the adventure
@@ -211,91 +221,127 @@ func (idx *radioIndex) prior(s int32, adventure float64) float64 {
 	return 0.05*math.Log(1+float64(len(song.ipods)))*(1-adventure) + 0.15*adventure*rarity
 }
 
-// recommend picks songs to play after the seed song. With seed < 0, only the seed artist is used
-func (idx *radioIndex) recommend(seed int32, seedArtist int32, opts radioOptions) []radioPick {
-	if opts.count <= 0 {
-		opts.count = radioDefaultCount
-	}
-	var seedIpods []int32
-	if seed >= 0 {
-		seedIpods = idx.songs[seed].ipods
-		seedArtist = idx.songs[seed].artist
-	}
-	cands := map[int32]*radioCandidate{}
-	candidate := func(s int32) *radioCandidate {
-		c, ok := cands[s]
-		if !ok {
-			c = &radioCandidate{song: s}
-			cands[s] = c
-		}
-		return c
+// seedScores is how strongly the candidate songs relate to one seed
+type seedScores struct {
+	seed      radioSeed
+	ipods     []int32
+	shared    map[int32]int
+	neighbour map[int32]bool
+	artistSim map[int32]float64 // By artist
+}
+
+// scoresFrom finds the songs related to a seed, adding them to the candidates
+func (idx *radioIndex) scoresFrom(seed radioSeed, cands map[int32]bool) seedScores {
+	sc := seedScores{seed: seed, shared: map[int32]int{}, neighbour: map[int32]bool{}, artistSim: map[int32]float64{}}
+	if seed.song >= 0 {
+		sc.ipods = idx.songs[seed.song].ipods
+		sc.seed.artist = idx.songs[seed.song].artist
 	}
 
 	// Songs found on the same iPods as the seed
-	for _, ipod := range seedIpods {
+	for _, ipod := range sc.ipods {
 		for _, s := range idx.ipodSongs[ipod] {
-			candidate(s).shared++
+			sc.shared[s]++
+			cands[s] = true
 		}
 	}
 	// A song found on a single iPod says little about taste: also look at the closest iPods
-	neighbourSongs := map[int32]bool{}
-	if len(seedIpods) == 1 {
-		for _, n := range idx.neighbours[seedIpods[0]] {
+	if len(sc.ipods) == 1 {
+		for _, n := range idx.neighbours[sc.ipods[0]] {
 			for _, s := range idx.ipodSongs[n] {
 				if len(idx.songs[s].ipods) > 1 {
-					candidate(s)
-					neighbourSongs[s] = true
+					sc.neighbour[s] = true
+					cands[s] = true
 				}
 			}
 		}
 	}
 
 	// Artists found on the same iPods as the seed artist
-	artistSim := map[int32]float64{}
-	if seedArtist >= 0 {
-		a := idx.artists[seedArtist]
+	if a := sc.seed.artist; a >= 0 {
+		seedArtist := idx.artists[a]
 		shared := map[int32]int{}
-		for _, ipod := range a.ipods {
+		for _, ipod := range seedArtist.ipods {
 			for _, b := range idx.ipodArtists[ipod] {
-				if b != seedArtist {
+				if b != a {
 					shared[b]++
 				}
 			}
 		}
 		similar := make([]int32, 0, len(shared))
 		for b, n := range shared {
-			artistSim[b] = shrunkCosine(n, len(a.ipods), len(idx.artists[b].ipods))
+			sc.artistSim[b] = shrunkCosine(n, len(seedArtist.ipods), len(idx.artists[b].ipods))
 			similar = append(similar, b)
 		}
 		slices.SortFunc(similar, func(x, y int32) int {
-			return cmp.Or(cmp.Compare(artistSim[y], artistSim[x]), cmp.Compare(x, y))
+			return cmp.Or(cmp.Compare(sc.artistSim[y], sc.artistSim[x]), cmp.Compare(x, y))
 		})
 		for _, b := range similar[:min(radioSimilarArtist, len(similar))] {
 			songs := idx.artists[b].songs
 			for _, s := range songs[:min(radioArtistSongs, len(songs))] {
-				candidate(s)
+				cands[s] = true
 			}
 		}
 		// The seed artist's other songs, so a seed that is on no iPod still plays something
-		for _, s := range a.songs[:min(radioArtistSongs, len(a.songs))] {
-			candidate(s)
+		for _, s := range seedArtist.songs[:min(radioArtistSongs, len(seedArtist.songs))] {
+			cands[s] = true
 		}
 	}
+	return sc
+}
+
+// recommend picks songs to play after the seed song. With seed < 0, only the seed artist is used
+func (idx *radioIndex) recommend(seed int32, seedArtist int32, opts radioOptions) []radioPick {
+	return idx.recommendFrom([]radioSeed{{song: seed, artist: seedArtist, weight: 1}}, opts)
+}
+
+// recommendFrom picks songs related to several seeds, weighted. The first seed is the anchor: the
+// song (or artist) the radio was started from
+func (idx *radioIndex) recommendFrom(seeds []radioSeed, opts radioOptions) []radioPick {
+	if opts.count <= 0 {
+		opts.count = radioDefaultCount
+	}
+	cands := map[int32]bool{}
+	scores := make([]seedScores, len(seeds))
+	totalWeight := 0.0
+	isSeed := map[int32]bool{}
+	for i, seed := range seeds {
+		scores[i] = idx.scoresFrom(seed, cands)
+		totalWeight += seed.weight
+		if seed.song >= 0 {
+			isSeed[seed.song] = true
+		}
+	}
+	anchorArtist := scores[0].seed.artist
 
 	pool := make([]*radioCandidate, 0, len(cands))
-	for s, c := range cands {
-		if s == seed || opts.exclude[s] {
+	for s := range cands {
+		if isSeed[s] || opts.exclude[s] {
 			continue
 		}
 		song := idx.songs[s]
-		songSim := shrunkCosine(c.shared, len(seedIpods), len(song.ipods))
-		if neighbourSongs[s] && songSim == 0 {
-			songSim = 0.25
+		c := &radioCandidate{song: s}
+		total, best := 0.0, -1.0
+		for _, sc := range scores {
+			songSim := shrunkCosine(sc.shared[s], len(sc.ipods), len(song.ipods))
+			neighbour := sc.neighbour[s] && songSim == 0
+			if neighbour {
+				songSim = 0.25
+			}
+			artistSim := sc.artistSim[song.artist]
+			contribution := sc.seed.weight * (0.6*songSim + 0.4*artistSim)
+			total += contribution
+			if contribution > best {
+				best = contribution
+				c.shared, c.artistSim, c.from, c.neighbour = sc.shared[s], artistSim, sc.seed.artist, neighbour
+			}
 		}
-		c.artistSim = artistSim[song.artist]
-		c.score = 0.6*songSim + 0.4*c.artistSim + idx.prior(s, opts.adventure)
-		if song.artist == seedArtist {
+		c.score = total/totalWeight + idx.prior(s, opts.adventure)
+		if song.artist == anchorArtist {
 			c.score *= 0.5
+		}
+		if b, ok := opts.bias[song.artist]; ok {
+			c.score *= b
 		}
 		if c.score > 0 {
 			pool = append(pool, c)
@@ -306,11 +352,11 @@ func (idx *radioIndex) recommend(seed int32, seedArtist int32, opts radioOptions
 	})
 	pool = pool[:min(radioPoolSize, len(pool))]
 
-	return idx.sample(pool, seedArtist, neighbourSongs, opts)
+	return idx.sample(pool, anchorArtist, opts)
 }
 
 // sample draws songs at random, favoring the best scores, while keeping artists apart
-func (idx *radioIndex) sample(pool []*radioCandidate, seedArtist int32, neighbourSongs map[int32]bool, opts radioOptions) []radioPick {
+func (idx *radioIndex) sample(pool []*radioCandidate, anchorArtist int32, opts radioOptions) []radioPick {
 	weights := make([]float64, len(pool))
 	for i, c := range pool {
 		weights[i] = math.Pow(c.score, 1/radioTemperature)
@@ -325,7 +371,7 @@ func (idx *radioIndex) sample(pool []*radioCandidate, seedArtist int32, neighbou
 		if slices.Contains(recent, a) || perArtist[a] >= radioMaxPerArtist {
 			return false
 		}
-		return a != seedArtist || perArtist[a] < opts.count/2
+		return a != anchorArtist || perArtist[a] < opts.count/2
 	}
 
 	for len(picks) < opts.count {
@@ -361,21 +407,21 @@ func (idx *radioIndex) sample(pool []*radioCandidate, seedArtist int32, neighbou
 		if len(recent) > radioArtistGap-1 {
 			recent = recent[1:]
 		}
-		picks = append(picks, radioPick{song: c.song, reason: idx.reasonFor(c, seedArtist, neighbourSongs)})
+		picks = append(picks, radioPick{song: c.song, reason: idx.reasonFor(c, anchorArtist)})
 	}
 	return picks
 }
 
-func (idx *radioIndex) reasonFor(c *radioCandidate, seedArtist int32, neighbourSongs map[int32]bool) radioReason {
+func (idx *radioIndex) reasonFor(c *radioCandidate, anchorArtist int32) radioReason {
 	artist := idx.artists[idx.songs[c.song].artist].name
 	switch {
 	case c.shared >= 2:
 		return radioReason{Type: "sharedIpods", Count: c.shared}
-	case idx.songs[c.song].artist == seedArtist:
+	case idx.songs[c.song].artist == anchorArtist:
 		return radioReason{Type: "sameArtist", Artist: artist}
-	case c.artistSim > 0 && seedArtist >= 0:
-		return radioReason{Type: "artistFans", From: idx.artists[seedArtist].name, Artist: artist}
-	case neighbourSongs[c.song]:
+	case c.artistSim > 0 && c.from >= 0:
+		return radioReason{Type: "artistFans", From: idx.artists[c.from].name, Artist: artist}
+	case c.neighbour:
 		return radioReason{Type: "neighbour"}
 	default:
 		return radioReason{Type: "sharedIpods", Count: max(c.shared, 1)}
