@@ -26,6 +26,7 @@ describe('<FeatureTips />', () => {
     expect(screen.getByText('featureTips.facts.title')).toBeInTheDocument()
     expect(screen.getByText('featureTips.ipods.title')).toBeInTheDocument()
     expect(screen.getByText('featureTips.radio.title')).toBeInTheDocument()
+    expect(screen.getByText('featureTips.shuffle.title')).toBeInTheDocument()
     expect(screen.getByText('featureTips.nowPlaying.title')).toBeInTheDocument()
   })
 

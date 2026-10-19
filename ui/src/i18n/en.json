@@ -804,6 +804,12 @@
       "size": "%{smart_count} iPod |||| %{smart_count} iPods",
       "youFit": "You'd fit in: %{name}",
       "examples": "For example"
+    },
+    "shuffle": {
+      "all": "Shuffle all iPods",
+      "one": "Shuffle %{name}",
+      "some": "Shuffle %{smart_count} selected iPod |||| Shuffle %{smart_count} selected iPods",
+      "empty": "No songs to shuffle"
     }
   },
   "featureTips": {
@@ -815,6 +821,10 @@
     "ipods": {
       "title": "iPod Network",
       "description": "See how all the iPods are connected by the artists they share, the taste tribes they form, how niche each one is, and find the iPods you resonate with most."
+    },
+    "shuffle": {
+      "title": "Shuffle",
+      "description": "Plays a random mix from the iPods picked in the iPod selector, or from all of them."
     },
     "radio": {
       "title": "iPod Radio",
