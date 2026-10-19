@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { Provider } from 'react-redux'
 import { createStore } from 'redux'
-import { IpodNetworkDialog } from './IpodNetworkDialog'
+import { IpodNetworkButton, IpodNetworkDialog } from './IpodNetworkDialog'
 import { httpClient } from '../dataProvider'
 
 const redirect = vi.fn()
@@ -115,10 +115,10 @@ describe('<IpodNetworkDialog />', () => {
     })
   })
 
-  const renderDialog = (onClose = vi.fn()) =>
+  const renderDialog = (onClose = vi.fn(), ipodId) =>
     render(
       <Provider store={store}>
-        <IpodNetworkDialog open onClose={onClose} />
+        <IpodNetworkDialog open onClose={onClose} ipodId={ipodId} />
       </Provider>,
     )
 
@@ -179,6 +179,102 @@ describe('<IpodNetworkDialog />', () => {
     const filter = camera.zoomToFit.mock.calls.at(-1)[2]
     expect(filter({ id: 2 })).toBe(true)
     expect(filter({ id: 3 })).toBe(false)
+  })
+
+  describe('with one iPod selected', () => {
+    const artistUrl = () =>
+      httpClient.mock.calls
+        .map(([url]) => url)
+        .find((url) => url.startsWith('/api/artist'))
+
+    it('opens the network focused on that iPod', async () => {
+      renderDialog(vi.fn(), 1)
+      await waitFor(() => expect(camera.zoomToFit).toHaveBeenCalled())
+      expect(screen.getByText('ipods.network.browse')).toBeInTheDocument()
+      const filter = camera.zoomToFit.mock.calls.at(-1)[2]
+      expect(filter({ id: 1 })).toBe(true)
+      expect(filter({ id: 2 })).toBe(true)
+      expect(filter({ id: 3 })).toBe(false)
+    })
+
+    it("starts Find your iPod from the iPod's top artists, leaving the iPod out", async () => {
+      httpClient.mockImplementation((url) =>
+        Promise.resolve({
+          json: url.startsWith('/api/ipods/match')
+            ? {
+                ...match,
+                matches: [
+                  { ...match.matches[0], id: 1, name: "Alice's iPod" },
+                  ...match.matches,
+                ],
+              }
+            : url.startsWith('/api/artist')
+              ? [{ id: 'ar-1', name: 'Weezer' }]
+              : network,
+        }),
+      )
+      renderDialog(vi.fn(), 1)
+      fireEvent.click(screen.getByText('ipods.match.tab'))
+
+      await waitFor(() =>
+        expect(screen.getByText('Weezer · 12')).toBeInTheDocument(),
+      )
+      const params = new URLSearchParams(artistUrl().split('?')[1])
+      expect(params.get('library_id')).toBe('1')
+      expect(params.get('_sort')).toBe('song_count')
+      expect(params.get('_order')).toBe('DESC')
+      expect(httpClient).toHaveBeenCalledWith('/api/ipods/match?artistId=ar-1')
+      expect(
+        screen.getByText(/Bob's iPod · ipods.match.resonance/),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByText(/Alice's iPod · ipods.match.resonance/),
+      ).toBeNull()
+    })
+
+    it('passes the selected iPod from the header button', async () => {
+      store = createStore((state) => state, {
+        library: {
+          userLibraries: [
+            { id: 1, name: "Alice's iPod" },
+            { id: 2, name: "Bob's iPod" },
+          ],
+          selectedLibraries: [2],
+        },
+      })
+      render(
+        <Provider store={store}>
+          <IpodNetworkButton />
+        </Provider>,
+      )
+      fireEvent.click(screen.getByLabelText('ipods.network.title'))
+      await waitFor(() =>
+        expect(screen.getByText('ipods.network.browse')).toBeInTheDocument(),
+      )
+      const filter = camera.zoomToFit.mock.calls.at(-1)[2]
+      expect(filter({ id: 2 })).toBe(true)
+      expect(filter({ id: 3 })).toBe(false)
+    })
+
+    it('opens on the whole network when several iPods are selected', async () => {
+      store = createStore((state) => state, {
+        library: {
+          userLibraries: [
+            { id: 1, name: "Alice's iPod" },
+            { id: 2, name: "Bob's iPod" },
+          ],
+          selectedLibraries: [1, 2],
+        },
+      })
+      render(
+        <Provider store={store}>
+          <IpodNetworkButton />
+        </Provider>,
+      )
+      fireEvent.click(screen.getByLabelText('ipods.network.title'))
+      await waitFor(() => expect(camera.zoomToFit).toHaveBeenCalled())
+      expect(camera.zoomToFit.mock.calls.at(-1)[2]).toBeUndefined()
+    })
   })
 
   describe('camera', () => {

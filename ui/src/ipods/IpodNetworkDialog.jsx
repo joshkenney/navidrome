@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslate } from 'react-admin'
+import { useSelector } from 'react-redux'
 import ForceGraph2D from 'react-force-graph-2d'
 import {
   Button,
@@ -33,11 +34,13 @@ import { uniqueArtists } from './artistKey'
 import { TasteBadge } from './TasteBadge'
 import { tasteLabelOf } from './taste'
 import { FREE_SPIRITS, tribeColor } from './tribes'
+import { withoutCombinedLibraries } from '../common/combinedLibraries'
 
 const GRAPH_HEIGHT = 520
 const FOCUS_MS = 800
 const FIT_MS = 600
 const DIMMED_ALPHA = 0.15
+const TOP_ARTISTS = 5
 
 const useStyles = makeStyles((theme) => ({
   button: { color: 'inherit' },
@@ -529,7 +532,25 @@ const NetworkTab = ({
   )
 }
 
-export const MatchTab = ({ onSelectIpod }) => {
+// The iPod's artists with the most songs on it
+const fetchTopArtists = (ipodId) => {
+  const query = new URLSearchParams({
+    library_id: ipodId,
+    role: 'albumartist',
+    missing: 'false',
+    _sort: 'song_count',
+    _order: 'DESC',
+    _start: '0',
+    _end: String(TOP_ARTISTS),
+  })
+  return httpClient(`${REST_URL}/artist?${query}`).then(({ json }) =>
+    uniqueArtists(json || []),
+  )
+}
+
+// With an ipodId, the tab starts from that iPod's top artists and lists the other iPods
+// closest to it
+export const MatchTab = ({ onSelectIpod, ipodId }) => {
   const classes = useStyles()
   const translate = useTranslate()
   const [input, setInput] = useState('')
@@ -563,16 +584,42 @@ export const MatchTab = ({ onSelectIpod }) => {
     }
   }, [input])
 
-  const handleMatch = useCallback(() => {
+  const match = useCallback(
+    (chosen) => {
+      setLoading(true)
+      const query = chosen
+        .map((a) => `artistId=${encodeURIComponent(a.id)}`)
+        .join('&')
+      return httpClient(`/api/ipods/match?${query}`)
+        .then(({ json }) =>
+          setResult({
+            ...json,
+            // The iPod itself would always come first
+            matches: json.matches.filter((m) => m.id !== ipodId),
+          }),
+        )
+        .catch(() => setResult({ matches: [], notFound: [] }))
+        .finally(() => setLoading(false))
+    },
+    [ipodId],
+  )
+  const handleMatch = useCallback(() => match(artists), [match, artists])
+
+  useEffect(() => {
+    if (ipodId == null) return
+    let active = true
     setLoading(true)
-    const query = artists
-      .map((a) => `artistId=${encodeURIComponent(a.id)}`)
-      .join('&')
-    httpClient(`/api/ipods/match?${query}`)
-      .then(({ json }) => setResult(json))
-      .catch(() => setResult({ matches: [], notFound: [] }))
-      .finally(() => setLoading(false))
-  }, [artists])
+    fetchTopArtists(ipodId)
+      .then((top) => {
+        if (!active) return
+        setArtists(top)
+        return top.length ? match(top) : setLoading(false)
+      })
+      .catch(() => active && setLoading(false))
+    return () => {
+      active = false
+    }
+  }, [ipodId, match])
 
   const notFoundNames = artists
     .filter((a) => result?.notFound.includes(a.id))
@@ -667,13 +714,14 @@ export const MatchTab = ({ onSelectIpod }) => {
   )
 }
 
-export const IpodNetworkDialog = ({ open, onClose }) => {
+// With an ipodId, the network opens on that iPod, and Find your iPod starts from its top artists
+export const IpodNetworkDialog = ({ open, onClose, ipodId }) => {
   const classes = useStyles()
   const translate = useTranslate()
   const [tab, setTab] = useState(0)
   const [network, setNetwork] = useState(null)
   const [error, setError] = useState(false)
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState(ipodId ?? null)
   const [tribeId, setTribeId] = useState(null)
   // Selecting an iPod or a tribe clears the other
   const selectIpod = useCallback((id) => {
@@ -738,16 +786,33 @@ export const IpodNetworkDialog = ({ open, onClose }) => {
             )}
           </>
         )}
-        {tab === 1 && <MatchTab onSelectIpod={handleSelectIpod} />}
+        {tab === 1 && (
+          <MatchTab onSelectIpod={handleSelectIpod} ipodId={ipodId} />
+        )}
       </DialogContent>
     </Dialog>
   )
+}
+
+// The iPod picked in the library selector, when exactly one is
+const useSelectedIpodId = () => {
+  const { userLibraries = [], selectedLibraries = [] } = useSelector(
+    (state) => state.library || {},
+  )
+  if (selectedLibraries.length !== 1) return undefined
+  const id = Number(selectedLibraries[0])
+  return withoutCombinedLibraries(userLibraries).some(
+    (lib) => Number(lib.id) === id,
+  )
+    ? id
+    : undefined
 }
 
 export const IpodNetworkButton = () => {
   const classes = useStyles()
   const translate = useTranslate()
   const [open, setOpen] = useState(false)
+  const ipodId = useSelectedIpodId()
   const title = translate('ipods.network.title')
 
   return (
@@ -762,7 +827,13 @@ export const IpodNetworkButton = () => {
           <IpodIcon size={20} />
         </IconButton>
       </Tooltip>
-      {open && <IpodNetworkDialog open={open} onClose={() => setOpen(false)} />}
+      {open && (
+        <IpodNetworkDialog
+          open={open}
+          onClose={() => setOpen(false)}
+          ipodId={ipodId}
+        />
+      )}
     </>
   )
 }
