@@ -6,12 +6,17 @@ import { createStore } from 'redux'
 import { IpodFactsDialog } from './IpodFactsDialog'
 import { pickSuperlatives } from './superlatives'
 import { httpClient } from '../dataProvider'
+import { playIpodRadio } from './radio'
 
 const getOne = vi.fn()
 const redirect = vi.fn()
 
 vi.mock('../dataProvider', () => ({
   httpClient: vi.fn(),
+}))
+
+vi.mock('./radio', () => ({
+  playIpodRadio: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('react-admin', async (importOriginal) => {
@@ -42,6 +47,7 @@ const stats = [
     totalDuration: 36000,
     totalSize: 1e9,
     avgYear: 1975,
+    taste: 20,
   },
   {
     id: 2,
@@ -53,6 +59,7 @@ const stats = [
     totalDuration: 18000,
     totalSize: 5e8,
     avgYear: 2004,
+    taste: 90,
   },
 ]
 
@@ -107,12 +114,15 @@ describe('pickSuperlatives', () => {
       newest: "Bob's iPod",
       genres: "Bob's iPod",
       unique: "Bob's iPod",
+      deepest: "Bob's iPod",
+      crowd: "Alice's iPod",
     })
   })
 
   it('skips "most original" when there is only one iPod', () => {
     const keys = pickSuperlatives(stats.slice(0, 1)).map((p) => p.key)
     expect(keys).not.toContain('unique')
+    expect(keys).not.toContain('deepest')
   })
 })
 
@@ -121,7 +131,14 @@ describe('<IpodFactsDialog />', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    httpClient.mockResolvedValue({ json: facts })
+    httpClient.mockImplementation((url) =>
+      Promise.resolve({
+        json:
+          url === '/api/ipods/taste/me'
+            ? { taste: 83, tasteLabel: 'deepCuts' }
+            : facts,
+      }),
+    )
     store = createStore((state = {}, action) =>
       action.type === 'SET_SELECTED_LIBRARIES'
         ? { ...state, selected: action.data }
@@ -200,6 +217,28 @@ describe('<IpodFactsDialog />', () => {
       expect(screen.getByText('ipods.facts.reshuffle')).toBeInTheDocument(),
     )
     fireEvent.click(screen.getByText('ipods.facts.reshuffle'))
-    expect(httpClient).toHaveBeenCalledTimes(2)
+    const factCalls = httpClient.mock.calls.filter(
+      ([url]) => url === '/api/ipods/facts',
+    )
+    expect(factCalls).toHaveLength(2)
+  })
+
+  it("shows the user's own taste", async () => {
+    renderDialog()
+    await waitFor(() =>
+      expect(screen.getByText('ipods.taste.yours:')).toBeInTheDocument(),
+    )
+    expect(screen.getAllByText('ipods.taste.badge').length).toBeGreaterThan(0)
+  })
+
+  it('starts iPod Radio from a duplicate song', async () => {
+    const onClose = vi.fn()
+    renderDialog(onClose)
+    await waitFor(() =>
+      expect(screen.getAllByLabelText('ipods.facts.radio').length).toBe(2),
+    )
+    fireEvent.click(screen.getAllByLabelText('ipods.facts.radio')[0])
+    expect(onClose).toHaveBeenCalled()
+    expect(playIpodRadio.mock.calls[0][2]).toEqual({ songId: 'song-1' })
   })
 })

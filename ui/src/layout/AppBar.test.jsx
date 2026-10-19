@@ -22,6 +22,7 @@ vi.mock('./NowPlayingPanel', () => ({
 vi.mock('../ipods', () => ({
   IpodFactsButton: () => <div data-testid="ipod-facts-button" />,
   IpodNetworkButton: () => <div data-testid="ipod-network-button" />,
+  IpodRadioButton: () => <div data-testid="ipod-radio-button" />,
 }))
 vi.mock('./ActivityPanel', () => ({
   default: () => <div data-testid="activity-panel" />,
@@ -75,5 +76,6 @@ describe('<AppBar />', () => {
     )
     expect(screen.getByTestId('ipod-facts-button')).toBeInTheDocument()
     expect(screen.getByTestId('ipod-network-button')).toBeInTheDocument()
+    expect(screen.getByTestId('ipod-radio-button')).toBeInTheDocument()
   })
 })

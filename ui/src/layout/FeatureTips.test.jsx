@@ -21,10 +21,11 @@ describe('<FeatureTips />', () => {
   const renderTips = (props = {}) =>
     render(<FeatureTips anchorEl={anchor} showNowPlaying {...props} />)
 
-  it('shows the three new features', () => {
+  it('shows the new features', () => {
     renderTips()
     expect(screen.getByText('featureTips.facts.title')).toBeInTheDocument()
     expect(screen.getByText('featureTips.ipods.title')).toBeInTheDocument()
+    expect(screen.getByText('featureTips.radio.title')).toBeInTheDocument()
     expect(screen.getByText('featureTips.nowPlaying.title')).toBeInTheDocument()
   })
 

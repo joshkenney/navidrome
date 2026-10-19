@@ -729,11 +729,14 @@
         "oldest": "Time capsule",
         "newest": "Freshest picks",
         "genres": "Genre explorer",
-        "unique": "Most original"
+        "unique": "Most original",
+        "deepest": "Deepest cuts",
+        "crowd": "Biggest crowd-pleaser"
       },
       "gems": "Unique gems",
       "reshuffle": "Reshuffle",
-      "onlyOn": "Only on %{name}"
+      "onlyOn": "Only on %{name}",
+      "radio": "Start iPod Radio"
     },
     "network": {
       "title": "iPod Network",
@@ -756,6 +759,41 @@
       "resonance": "%{value}% resonance",
       "notFound": "Not on any iPod: %{names}",
       "noMatches": "No iPod has these artists"
+    },
+    "radio": {
+      "title": "iPod Radio",
+      "help": "Plays songs that people carried alongside each other on their iPods.",
+      "start": "Start iPod Radio",
+      "startCurrent": "Start from current song",
+      "surprise": "Surprise me",
+      "stop": "Stop radio",
+      "starting": "Starting iPod Radio...",
+      "nothingFound": "No iPod Radio songs found for this song",
+      "playingFrom": "Radio from \"%{title}\" by %{artist}",
+      "why": "Why this song: %{reason}",
+      "adventure": "How adventurous?",
+      "mainstream": "Crowd-pleasers",
+      "deepCuts": "Deep cuts",
+      "reasons": {
+        "sharedIpods": "carried on %{smart_count} of the same iPod |||| carried on %{smart_count} of the same iPods",
+        "artistFans": "%{from} fans also carry %{artist}",
+        "sameArtist": "more from %{artist}",
+        "neighbour": "from a similar iPod"
+      }
+    },
+    "taste": {
+      "badge": "Taste %{score} · %{label}",
+      "help": "How niche this music is compared to all the iPods: 0 is the most mainstream, 100 the most niche",
+      "yours": "Your taste",
+      "deepCuts": "Deep cuts",
+      "anthems": "Anthems",
+      "labels": {
+        "crowdPleaser": "Crowd-pleaser",
+        "mainstream": "Mainstream",
+        "balanced": "Balanced",
+        "crateDigger": "Crate digger",
+        "deepCuts": "Deep cuts"
+      }
     }
   },
   "featureTips": {
@@ -766,7 +804,11 @@
     },
     "ipods": {
       "title": "iPod Network",
-      "description": "See how all the iPods are connected by the artists they share, and find the iPods you resonate with most."
+      "description": "See how all the iPods are connected by the artists they share, how niche each one's taste is, and find the iPods you resonate with most."
+    },
+    "radio": {
+      "title": "iPod Radio",
+      "description": "Start a radio from any song: it plays what people carried alongside it on their iPods. Slide from crowd-pleasers to deep cuts."
     },
     "nowPlaying": {
       "title": "Now Playing",

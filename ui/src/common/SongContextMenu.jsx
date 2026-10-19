@@ -27,6 +27,7 @@ import config from '../config'
 import { playSimilar } from './playbackActions.js'
 import { formatBytes } from '../utils'
 import { useRedirect } from 'react-admin'
+import { playIpodRadio } from '../ipods/radio'
 
 const useStyles = makeStyles({
   noWrap: {
@@ -101,6 +102,20 @@ export const SongContextMenu = ({
         } catch (e) {
           // eslint-disable-next-line no-console
           console.error('Error starting instant mix:', e)
+          notify('ra.page.error', { type: 'warning' })
+        }
+      },
+    },
+    ipodRadio: {
+      enabled: true,
+      label: translate('ipods.radio.start'),
+      action: async (record) => {
+        notify('ipods.radio.starting', { type: 'info' })
+        try {
+          await playIpodRadio(dispatch, notify, {
+            songId: record.mediaFileId || record.id,
+          })
+        } catch (e) {
           notify('ra.page.error', { type: 'warning' })
         }
       },

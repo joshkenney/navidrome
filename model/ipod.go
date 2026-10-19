@@ -42,6 +42,7 @@ type IpodStats struct {
 	TotalDuration float64 `json:"totalDuration"`
 	TotalSize     int64   `json:"totalSize"`
 	AvgYear       float64 `json:"avgYear"`
+	Taste         int     `json:"taste"`
 }
 
 // IpodArtistCount is the number of songs by an artist on an iPod. Spellings of the same
@@ -52,6 +53,12 @@ type IpodArtistCount struct {
 	ArtistID   string `json:"artistId"`
 	ArtistName string `json:"artistName"`
 	SongCount  int    `json:"songCount"`
+}
+
+// IpodArtistPlays is how many times the current user played songs by an artist (by Key)
+type IpodArtistPlays struct {
+	Key   string
+	Plays int
 }
 
 // IpodTotals holds library-wide numbers that can't be derived from per-iPod stats
@@ -72,6 +79,8 @@ type IpodRepository interface {
 	ArtistCounts() ([]IpodArtistCount, error)
 	// ArtistKeys returns the artist Key (see IpodArtistCount) of each of the given artist IDs
 	ArtistKeys(artistIDs []string) (map[string]string, error)
+	// UserArtistPlays returns the current user's play counts per artist Key
+	UserArtistPlays() ([]IpodArtistPlays, error)
 	// DataVersion identifies the iPods the current user can access and their state. It changes
 	// whenever a scan finishes or a library is added, changed or removed
 	DataVersion() (string, error)

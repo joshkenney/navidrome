@@ -36,6 +36,20 @@ export const pickSuperlatives = (stats) => {
     },
   ]
   if (stats.length > 1) {
+    picks.push(
+      {
+        key: 'deepest',
+        ipod: maxBy(stats, (s) => s.taste),
+        value: (s) => `Taste ${s.taste}`,
+      },
+      {
+        key: 'crowd',
+        ipod: maxBy(stats, (s) => -s.taste),
+        value: (s) => `Taste ${s.taste}`,
+      },
+    )
+  }
+  if (stats.length > 1) {
     picks.push({
       key: 'unique',
       ipod: maxBy(stats, (s) => s.uniqueSongs / (s.distinctSongs || 1)),

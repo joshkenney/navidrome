@@ -15,7 +15,7 @@ import { AboutDialog } from '../dialogs'
 import PersonalMenu from './PersonalMenu'
 import ActivityPanel from './ActivityPanel'
 import NowPlayingPanel from './NowPlayingPanel'
-import { IpodFactsButton, IpodNetworkButton } from '../ipods'
+import { IpodFactsButton, IpodNetworkButton, IpodRadioButton } from '../ipods'
 import { FeatureTips } from './FeatureTips'
 import UserMenu from './UserMenu'
 import config from '../config'
@@ -126,6 +126,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
       <span ref={setTipsAnchor} style={{ display: 'inline-flex' }}>
         <IpodFactsButton />
         <IpodNetworkButton />
+        <IpodRadioButton />
         {config.enableNowPlaying && <NowPlayingPanel />}
       </span>
       <FeatureTips

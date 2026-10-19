@@ -9,7 +9,7 @@ import {
   Typography,
 } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import { FaLightbulb, FaRegCirclePlay } from 'react-icons/fa6'
+import { FaLightbulb, FaRadio, FaRegCirclePlay } from 'react-icons/fa6'
 import { IpodIcon } from '../ipods/IpodIcon'
 import { WELCOME_CLOSED_EVENT } from '../dialogs/WelcomeDialog'
 
@@ -84,6 +84,7 @@ export const FeatureTips = ({ anchorEl, showNowPlaying }) => {
   const tips = [
     { key: 'facts', icon: <FaLightbulb size={18} /> },
     { key: 'ipods', icon: <IpodIcon size={20} /> },
+    { key: 'radio', icon: <FaRadio size={18} /> },
     showNowPlaying && {
       key: 'nowPlaying',
       icon: <FaRegCirclePlay size={18} />,

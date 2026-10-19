@@ -19,13 +19,16 @@ import {
   Typography,
 } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
-import { FaLightbulb, FaPlay, FaShuffle } from 'react-icons/fa6'
+import { FaLightbulb, FaPlay, FaRadio, FaShuffle } from 'react-icons/fa6'
 import { DialogTitle } from '../dialogs/DialogTitle'
 import { DialogContent } from '../dialogs/DialogContent'
 import { httpClient } from '../dataProvider'
 import { setTrack } from '../actions'
 import { pickSuperlatives } from './superlatives'
 import { useBrowseIpod } from './useBrowseIpod'
+import { playIpodRadio } from './radio'
+import { TasteBadge } from './TasteBadge'
+import { tasteLabelOf } from './taste'
 
 const useStyles = makeStyles((theme) => ({
   button: { color: 'inherit' },
@@ -101,6 +104,7 @@ export const IpodFactsDialog = ({ open, onClose }) => {
   const notify = useNotify()
   const [facts, setFacts] = useState(null)
   const [error, setError] = useState(false)
+  const [myTaste, setMyTaste] = useState(null)
   const browseIpod = useBrowseIpod(onClose)
 
   const fetchFacts = useCallback(() => {
@@ -111,8 +115,22 @@ export const IpodFactsDialog = ({ open, onClose }) => {
   }, [])
 
   useEffect(() => {
-    if (open) fetchFacts()
+    if (!open) return
+    fetchFacts()
+    httpClient('/api/ipods/taste/me')
+      .then(({ json }) => setMyTaste(json || null))
+      .catch(() => setMyTaste(null))
   }, [open, fetchFacts])
+
+  const handleRadio = useCallback(
+    (id) => {
+      onClose()
+      playIpodRadio(dispatch, notify, { songId: id }).catch(() =>
+        notify('ra.page.error', 'warning'),
+      )
+    },
+    [dispatch, notify, onClose],
+  )
 
   const handlePlay = useCallback(
     (id) =>
@@ -160,6 +178,14 @@ export const IpodFactsDialog = ({ open, onClose }) => {
                   t('topDecade', { decade: totals.topDecade })}
               </Typography>
             )}
+            {myTaste && (
+              <div className={classes.section}>
+                <Typography variant="body2" component="span">
+                  {translate('ipods.taste.yours')}:{' '}
+                </Typography>
+                <TasteBadge score={myTaste.taste} label={myTaste.tasteLabel} />
+              </div>
+            )}
 
             {facts.topDuplicateSongs.length > 0 && (
               <Section title={t('duplicates')}>
@@ -186,6 +212,16 @@ export const IpodFactsDialog = ({ open, onClose }) => {
                             onClick={() => handlePlay(song.id)}
                           >
                             <FaPlay size={14} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title={t('radio')}>
+                          <IconButton
+                            edge="end"
+                            size="small"
+                            aria-label={t('radio')}
+                            onClick={() => handleRadio(song.id)}
+                          >
+                            <FaRadio size={14} />
                           </IconButton>
                         </Tooltip>
                       </ListItemSecondaryAction>
@@ -253,9 +289,16 @@ export const IpodFactsDialog = ({ open, onClose }) => {
                         <div>
                           <IpodLink ipod={p.ipod} onBrowse={browseIpod} />
                         </div>
-                        <Typography variant="body2" color="textSecondary">
-                          {p.value(p.ipod)}
-                        </Typography>
+                        {p.key === 'deepest' || p.key === 'crowd' ? (
+                          <TasteBadge
+                            score={p.ipod.taste}
+                            label={tasteLabelOf(p.ipod.taste)}
+                          />
+                        ) : (
+                          <Typography variant="body2" color="textSecondary">
+                            {p.value(p.ipod)}
+                          </Typography>
+                        )}
                       </CardContent>
                     </Card>
                   </Grid>
@@ -288,6 +331,18 @@ export const IpodFactsDialog = ({ open, onClose }) => {
                         primary={`${gem.title} — ${gem.artist}`}
                         secondary={t('onlyOn', { name: gem.libraryName })}
                       />
+                      <ListItemSecondaryAction>
+                        <Tooltip title={t('radio')}>
+                          <IconButton
+                            edge="end"
+                            size="small"
+                            aria-label={t('radio')}
+                            onClick={() => handleRadio(gem.id)}
+                          >
+                            <FaRadio size={14} />
+                          </IconButton>
+                        </Tooltip>
+                      </ListItemSecondaryAction>
                     </ListItem>
                   ))}
                 </List>

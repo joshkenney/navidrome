@@ -4,17 +4,21 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
+	"errors"
 	"math"
 	"math/rand/v2"
 	"net/http"
 	"slices"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/Masterminds/squirrel"
 	"github.com/go-chi/chi/v5"
 	"github.com/navidrome/navidrome/log"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/songkey"
 )
 
 const (
@@ -69,10 +73,14 @@ type ipodTwins struct {
 }
 
 type ipodNode struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	SongCount   int    `json:"songCount"`
-	ArtistCount int    `json:"artistCount"`
+	ID          int      `json:"id"`
+	Name        string   `json:"name"`
+	SongCount   int      `json:"songCount"`
+	ArtistCount int      `json:"artistCount"`
+	Taste       int      `json:"taste"`
+	TasteLabel  string   `json:"tasteLabel"`
+	DeepCuts    []string `json:"deepCuts"`
+	Anthems     []string `json:"anthems"`
 }
 
 type ipodEdge struct {
@@ -101,6 +109,7 @@ type ipodMatch struct {
 	Score     float64             `json:"score"`
 	Resonance int                 `json:"resonance"`
 	Matched   []ipodMatchedArtist `json:"matched"`
+	Taste     int                 `json:"taste"`
 }
 
 type ipodMatchResult struct {
@@ -123,6 +132,9 @@ type ipodData struct {
 	counts    []model.IpodArtistCount
 	totals    ipodTotals
 	songs     ipodSongSummary
+	network   ipodNetwork
+	taste     tasteModel
+	radio     *radioIndex
 }
 
 // ipodCache is keyed by DataVersion, so users who can access the same iPods share an entry,
@@ -139,6 +151,8 @@ func (api *Router) addIpodRoutes(r chi.Router) {
 		r.Get("/facts", api.getIpodFacts)
 		r.Get("/network", api.getIpodNetwork)
 		r.Get("/match", api.getIpodMatch)
+		r.Get("/radio", api.getIpodRadio)
+		r.Get("/taste/me", api.getMyTaste)
 	})
 }
 
@@ -173,6 +187,17 @@ func (api *Router) loadIpodData(ctx context.Context) (*ipodData, error) {
 		return nil, err
 	}
 	d.songs = summarizeSongs(entries, d.stats)
+	d.taste = computeTasteScores(d.stats, d.counts)
+	for i := range d.stats {
+		d.stats[i].Taste = d.taste.byIpod[d.stats[i].LibraryID].Score
+	}
+	d.network = buildIpodNetwork(d.stats, d.counts)
+	for i, n := range d.network.Nodes {
+		t := d.taste.byIpod[n.ID]
+		d.network.Nodes[i].Taste, d.network.Nodes[i].TasteLabel = t.Score, t.Label
+		d.network.Nodes[i].DeepCuts, d.network.Nodes[i].Anthems = t.DeepCuts, t.Anthems
+	}
+	d.radio = buildRadioIndex(entries, d.stats, d.counts, d.network.Edges)
 
 	d.totals = ipodTotals{
 		IpodTotals:    *totals,
@@ -278,13 +303,16 @@ func (api *Router) getIpodFacts(w http.ResponseWriter, r *http.Request) {
 		TopSharedArtists:  topSharedArtists(d.counts, ipodTopArtists),
 		Superlatives:      d.stats,
 		UniqueGems:        sampleGems(d.songs.gemPool, ipodGemsCount),
-		Twins:             findIpodTwins(d.stats, d.counts),
+		Twins:             twinsFromEdges(d.stats, d.network.Edges),
 	})
 }
 
 // findIpodTwins returns the two iPods linked by the strongest edge of the network, if any
 func findIpodTwins(stats []model.IpodStats, counts []model.IpodArtistCount) *ipodTwins {
-	edges := buildIpodNetwork(stats, counts).Edges
+	return twinsFromEdges(stats, buildIpodNetwork(stats, counts).Edges)
+}
+
+func twinsFromEdges(stats []model.IpodStats, edges []ipodEdge) *ipodTwins {
 	if len(edges) == 0 {
 		return nil
 	}
@@ -310,7 +338,7 @@ func (api *Router) getIpodNetwork(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(ctx, w, buildIpodNetwork(d.stats, d.counts))
+	writeJSON(ctx, w, d.network)
 }
 
 func (api *Router) getIpodMatch(w http.ResponseWriter, r *http.Request) {
@@ -328,7 +356,11 @@ func (api *Router) getIpodMatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(ctx, w, matchIpods(d.stats, d.counts, artistIDs, keys))
+	result := matchIpods(d.stats, d.counts, artistIDs, keys)
+	for i, m := range result.Matches {
+		result.Matches[i].Taste = d.taste.byIpod[m.ID].Score
+	}
+	writeJSON(ctx, w, result)
 }
 
 func writeJSON(ctx context.Context, w http.ResponseWriter, v any) {
@@ -401,54 +433,79 @@ func artistsByIpod(counts []model.IpodArtistCount) (map[int]map[string]int, map[
 func buildIpodNetwork(stats []model.IpodStats, counts []model.IpodArtistCount) ipodNetwork {
 	sets, artists := artistsByIpod(counts)
 	network := ipodNetwork{Nodes: make([]ipodNode, len(stats)), Edges: []ipodEdge{}}
+
+	// Artist sets as sorted lists of numbers, so comparing two iPods is a fast merge
+	artistIDs := map[string]int32{}
+	var artistKeys []string
+	lists := make([][]int32, len(stats))
 	for i, s := range stats {
 		network.Nodes[i] = ipodNode{ID: s.LibraryID, Name: s.Name, SongCount: s.SongCount, ArtistCount: len(sets[s.LibraryID])}
+		for key := range sets[s.LibraryID] {
+			id, ok := artistIDs[key]
+			if !ok {
+				id = int32(len(artistKeys))
+				artistIDs[key] = id
+				artistKeys = append(artistKeys, key)
+			}
+			lists[i] = append(lists[i], id)
+		}
+		slices.Sort(lists[i])
 	}
 
-	var candidates []ipodEdge
+	type candidate struct {
+		i, j   int
+		shared int
+		weight float64
+	}
+	var candidates []candidate
 	for i := range stats {
 		for j := i + 1; j < len(stats); j++ {
-			a, b := sets[stats[i].LibraryID], sets[stats[j].LibraryID]
-			var shared []string
-			for id := range a {
-				if _, ok := b[id]; ok {
-					shared = append(shared, id)
-				}
-			}
-			union := len(a) + len(b) - len(shared)
-			if len(shared) == 0 || union == 0 {
+			shared := overlap(lists[i], lists[j])
+			union := len(lists[i]) + len(lists[j]) - shared
+			if shared == 0 || union == 0 {
 				continue
 			}
-			weight := float64(len(shared)) / float64(union)
-			if weight < ipodMinEdgeWeight {
-				continue
+			if weight := float64(shared) / float64(union); weight >= ipodMinEdgeWeight {
+				candidates = append(candidates, candidate{i: i, j: j, shared: shared, weight: weight})
 			}
-			// Show the artists both iPods have the most songs by
-			slices.SortFunc(shared, func(x, y string) int {
-				return cmp.Or(cmp.Compare(min(a[y], b[y]), min(a[x], b[x])), cmp.Compare(artists[x].Name, artists[y].Name))
-			})
-			top := make([]string, 0, ipodSharedArtistMax)
-			for _, id := range shared[:min(ipodSharedArtistMax, len(shared))] {
-				top = append(top, artists[id].Name)
-			}
-			candidates = append(candidates, ipodEdge{
-				Source: stats[i].LibraryID, Target: stats[j].LibraryID,
-				Weight: weight, SharedCount: len(shared), SharedArtists: top,
-			})
 		}
 	}
+	slices.SortFunc(candidates, func(x, y candidate) int {
+		return cmp.Or(cmp.Compare(y.weight, x.weight), cmp.Compare(x.i, y.i), cmp.Compare(x.j, y.j))
+	})
 
-	slices.SortFunc(candidates, func(x, y ipodEdge) int { return cmp.Compare(y.Weight, x.Weight) })
 	degree := map[int]int{}
-	for _, e := range candidates {
-		if degree[e.Source] >= ipodMaxEdgesPerNode && degree[e.Target] >= ipodMaxEdgesPerNode {
+	for _, c := range candidates {
+		if degree[c.i] >= ipodMaxEdgesPerNode && degree[c.j] >= ipodMaxEdgesPerNode {
 			continue
 		}
-		degree[e.Source]++
-		degree[e.Target]++
-		network.Edges = append(network.Edges, e)
+		degree[c.i]++
+		degree[c.j]++
+		network.Edges = append(network.Edges, ipodEdge{
+			Source: stats[c.i].LibraryID, Target: stats[c.j].LibraryID,
+			Weight: c.weight, SharedCount: c.shared,
+			SharedArtists: topSharedNames(sets[stats[c.i].LibraryID], sets[stats[c.j].LibraryID], artists),
+		})
 	}
 	return network
+}
+
+// topSharedNames returns the artists both iPods have the most songs by
+func topSharedNames(a, b map[string]int, artists map[string]ipodArtistRef) []string {
+	var shared []string
+	for key := range a {
+		if _, ok := b[key]; ok {
+			shared = append(shared, key)
+		}
+	}
+	slices.SortFunc(shared, func(x, y string) int {
+		return cmp.Or(cmp.Compare(min(a[y], b[y]), min(a[x], b[x])), cmp.Compare(artists[x].Name, artists[y].Name))
+	})
+	top := make([]string, 0, ipodSharedArtistMax)
+	for _, key := range shared[:min(ipodSharedArtistMax, len(shared))] {
+		top = append(top, artists[key].Name)
+	}
+	return top
 }
 
 // matchIpods ranks iPods by how well they match a list of artists. Each matched artist
@@ -509,4 +566,134 @@ func matchIpods(stats []model.IpodStats, counts []model.IpodArtistCount, artistI
 	})
 	result.Matches = result.Matches[:min(ipodMaxMatches, len(result.Matches))]
 	return result
+}
+
+const radioMaxExclude = 500
+
+type ipodRadioResponse struct {
+	Seed    *model.MediaFile       `json:"seed"`
+	Songs   model.MediaFiles       `json:"songs"`
+	Reasons map[string]radioReason `json:"reasons"`
+}
+
+// getIpodRadio returns songs to play after a seed song (songId), or after a random seed when no
+// songId is given. adventure (-1 to 1) favors crowd-pleasers or deep cuts, and exclude lists the
+// songs already queued
+func (api *Router) getIpodRadio(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	p := req.Params(r)
+	songID, _ := p.String("songId")
+	count := min(p.IntOr("count", radioDefaultCount), radioMaxCount)
+	adventure, err := strconv.ParseFloat(p.StringOr("adventure", "0"), 64)
+	if err != nil || math.IsNaN(adventure) {
+		adventure = 0
+	}
+	adventure = max(-1, min(1, adventure))
+	exclude, _ := p.Strings("exclude")
+	exclude = exclude[max(0, len(exclude)-radioMaxExclude):]
+
+	d, err := api.loadIpodData(ctx)
+	if err != nil {
+		log.Error(ctx, "Error loading iPod data", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	idx := d.radio
+	rng := rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))
+	mfRepo := api.ds.MediaFile(ctx)
+
+	seed, seedArtist := int32(-1), int32(-1)
+	var seedFile *model.MediaFile
+	if songID != "" {
+		seedFile, err = mfRepo.Get(songID)
+		if errors.Is(err, model.ErrNotFound) {
+			http.Error(w, "song not found", http.StatusNotFound)
+			return
+		}
+		if err != nil {
+			log.Error(ctx, "Error loading radio seed", "id", songID, err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		seed = idx.songOf(songkey.Key(seedFile.Title, seedFile.ArtistID, seedFile.OrderArtistName))
+		if seed < 0 {
+			// A placeholder song, or one on no iPod: go by its artist only
+			artist := songkey.ArtistKey(seedFile.OrderArtistName)
+			if artist == "" {
+				artist = seedFile.ArtistID
+			}
+			seedArtist = idx.artistOf(artist)
+		}
+	} else if seed = idx.surpriseSeed(adventure, rng); seed >= 0 {
+		seedFile, err = mfRepo.Get(idx.songs[seed].rep)
+		if err != nil {
+			log.Error(ctx, "Error loading radio seed", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+	}
+	if seed < 0 && seedArtist < 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	excluded := map[int32]bool{}
+	if len(exclude) > 0 {
+		queued, err := mfRepo.GetAll(model.QueryOptions{Filters: squirrel.Eq{"media_file.id": exclude}})
+		if err != nil {
+			log.Error(ctx, "Error loading queued songs", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		for _, mf := range queued {
+			if s := idx.songOf(songkey.Key(mf.Title, mf.ArtistID, mf.OrderArtistName)); s >= 0 {
+				excluded[s] = true
+			}
+		}
+	}
+
+	picks := idx.recommend(seed, seedArtist, radioOptions{count: count, adventure: adventure, exclude: excluded, rng: rng})
+	ids := make([]string, len(picks))
+	reasons := make(map[string]radioReason, len(picks))
+	for i, pick := range picks {
+		ids[i] = idx.songs[pick.song].rep
+		reasons[ids[i]] = pick.reason
+	}
+	files, err := mfRepo.GetAll(model.QueryOptions{Filters: squirrel.Eq{"media_file.id": ids}})
+	if err != nil {
+		log.Error(ctx, "Error loading radio songs", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	// Keep the order of the picks
+	byID := make(map[string]model.MediaFile, len(files))
+	for _, f := range files {
+		byID[f.ID] = f
+	}
+	songs := make(model.MediaFiles, 0, len(ids))
+	for _, id := range ids {
+		if f, ok := byID[id]; ok {
+			songs = append(songs, f)
+		}
+	}
+	writeJSON(ctx, w, ipodRadioResponse{Seed: seedFile, Songs: songs, Reasons: reasons})
+}
+
+// getMyTaste places the current user's listening among the iPods' tastes. Returns null until the
+// user has played enough songs by artists found on the iPods
+func (api *Router) getMyTaste(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	d, err := api.loadIpodData(ctx)
+	if err != nil {
+		log.Error(ctx, "Error loading iPod data", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	plays, err := api.ds.Ipod(ctx).UserArtistPlays()
+	if err != nil {
+		log.Error(ctx, "Error loading plays", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(ctx, w, d.taste.userTaste(plays))
 }

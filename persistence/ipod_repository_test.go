@@ -174,6 +174,25 @@ var _ = Describe("IpodRepository", func() {
 		Expect(totals.TopDecade).To(Equal(1980))
 	})
 
+	It("counts the current user's plays per artist", func() {
+		db := GetDBXBuilder()
+		_, err := db.NewQuery(`INSERT INTO annotation (user_id, item_id, item_type, play_count)
+VALUES ({:user}, 'ipod-6', 'media_file', 25), ({:user}, 'ipod-15', 'media_file', 2), ({:user}, 'ipod-14', 'media_file', 3)`).
+			Bind(dbx.Params{"user": adminUser.ID}).Execute()
+		Expect(err).ToNot(HaveOccurred())
+		DeferCleanup(func() {
+			_, _ = db.NewQuery("DELETE FROM annotation WHERE item_id LIKE 'ipod-%'").Execute()
+		})
+
+		plays, err := adminRepo.UserArtistPlays()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(plays).To(ContainElements(
+			model.IpodArtistPlays{Key: "beatles", Plays: 25},
+			// Both spellings of the artist are counted together
+			model.IpodArtistPlays{Key: "spill canvas", Plays: 5},
+		))
+	})
+
 	It("changes the data version when a scan finishes", func() {
 		before, err := adminRepo.DataVersion()
 		Expect(err).ToNot(HaveOccurred())

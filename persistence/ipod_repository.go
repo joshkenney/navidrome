@@ -235,3 +235,28 @@ func (r *ipodRepository) DataVersion() (string, error) {
 	err := r.queryOne(sq, &res)
 	return res.Version, err
 }
+
+type dbArtistPlays struct {
+	Key   string `db:"artist_key"`
+	Plays int    `db:"plays"`
+}
+
+func (r *ipodRepository) UserArtistPlays() ([]model.IpodArtistPlays, error) {
+	user := loggedUser(r.ctx)
+	sq := Select(artistKeyExpr+" AS artist_key", "sum(an.play_count) AS plays").
+		From("annotation an").
+		Join("media_file mf ON mf.id = an.item_id").
+		Join("artist a ON a.id = mf.artist_id").
+		Where(Eq{"an.user_id": user.ID, "an.item_type": "media_file"}).
+		Where(Gt{"an.play_count": 0}).
+		Where(NotEq{"mf.artist_id": consts.UnknownArtistID}).
+		GroupBy("artist_key")
+
+	var rows []dbArtistPlays
+	if err := ignoreNotFound(r.queryAll(sq, &rows)); err != nil {
+		return nil, err
+	}
+	return slice.Map(rows, func(p dbArtistPlays) model.IpodArtistPlays {
+		return model.IpodArtistPlays(p)
+	}), nil
+}

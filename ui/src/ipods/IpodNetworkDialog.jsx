@@ -29,6 +29,8 @@ import { REST_URL } from '../consts'
 import { IpodIcon } from './IpodIcon'
 import { useBrowseIpod } from './useBrowseIpod'
 import { uniqueArtists } from './artistKey'
+import { TasteBadge } from './TasteBadge'
+import { tasteLabelOf } from './taste'
 
 const GRAPH_HEIGHT = 520
 const FOCUS_MS = 800
@@ -57,6 +59,7 @@ const useStyles = makeStyles((theme) => ({
     [theme.breakpoints.down('sm')]: { width: '100%' },
   },
   search: { marginBottom: theme.spacing(2) },
+  tasteLine: { marginTop: theme.spacing(1) },
   resetView: {
     position: 'absolute',
     top: theme.spacing(1),
@@ -106,6 +109,7 @@ const prefersReducedMotion = () =>
   !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
 const IpodDetails = ({ node, network, onSelect, onBrowse }) => {
+  const classes = useStyles()
   const translate = useTranslate()
   const t = (key, opts) => translate(`ipods.network.${key}`, opts)
 
@@ -133,6 +137,19 @@ const IpodDetails = ({ node, network, onSelect, onBrowse }) => {
             artists: node.artistCount,
           })}
         </Typography>
+        <TasteBadge score={node.taste} label={node.tasteLabel} />
+        {node.deepCuts?.length > 0 && (
+          <Typography variant="body2" className={classes.tasteLine}>
+            <strong>{translate('ipods.taste.deepCuts')}:</strong>{' '}
+            {node.deepCuts.join(', ')}
+          </Typography>
+        )}
+        {node.anthems?.length > 0 && (
+          <Typography variant="body2" gutterBottom>
+            <strong>{translate('ipods.taste.anthems')}:</strong>{' '}
+            {node.anthems.join(', ')}
+          </Typography>
+        )}
         {neighbors.length > 0 && (
           <>
             <Typography variant="overline">{t('closest')}</Typography>
@@ -509,6 +526,10 @@ export const MatchTab = ({ onSelectIpod }) => {
                     secondaryTypographyProps={{ component: 'div' }}
                     secondary={
                       <>
+                        <TasteBadge
+                          score={m.taste}
+                          label={tasteLabelOf(m.taste)}
+                        />
                         <LinearProgress
                           variant="determinate"
                           value={m.resonance}

@@ -33,6 +33,7 @@ import { keyMap } from '../hotkeys'
 import keyHandlers from './keyHandlers'
 import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
+import { IpodRadioExtender } from '../ipods/IpodRadioExtender'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -407,6 +408,7 @@ const Player = () => {
         getAudioInstance={setAudioInstance}
       />
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
+      <IpodRadioExtender />
     </ThemeProvider>
   )
 }
