@@ -27,6 +27,7 @@ import {
   useRadioStarting,
 } from './radio'
 import { IpodLabel } from './IpodLabel'
+import { APP_NAME } from '../common/Title'
 
 const useStyles = makeStyles((theme) => ({
   root: { marginTop: theme.spacing(2) },
@@ -100,7 +101,7 @@ const IpodRadioPage = () => {
 
   return (
     <Card className={classes.root}>
-      <Title title={'Navidrome - ' + t('title')} />
+      <Title title={`${APP_NAME} - ` + t('title')} />
       <CardContent>
         <div className={classes.header}>
           <div>

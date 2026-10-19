@@ -10,6 +10,7 @@ import { LastfmScrobbleToggle } from './LastfmScrobbleToggle'
 import { ListenBrainzScrobbleToggle } from './ListenBrainzScrobbleToggle'
 import { ActivitySharingToggle } from './ActivitySharingToggle'
 import config from '../config'
+import { APP_NAME } from '../common/Title'
 import { ReplayGainToggle } from './ReplayGainToggle'
 
 const useStyles = makeStyles({
@@ -22,7 +23,7 @@ const Personal = () => {
 
   return (
     <Card className={classes.root}>
-      <Title title={'Navidrome - ' + translate('menu.personal.name')} />
+      <Title title={`${APP_NAME} - ` + translate('menu.personal.name')} />
       <SimpleForm toolbar={null} variant={'outlined'}>
         <SelectTheme />
         <SelectFont />
