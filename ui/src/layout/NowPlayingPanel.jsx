@@ -28,6 +28,7 @@ import { nowPlayingCountUpdate, setTrack } from '../actions'
 import config from '../config'
 import { IpodLabel } from '../ipods/IpodLabel'
 import { useIpodName } from '../ipods/useIpodName'
+import { useSelectIpod } from '../ipods/useSelectIpod'
 
 // " • [iPod] name", when the iPod of the song is known
 const IpodSuffix = ({ libraryId, libraryName }) => {
@@ -162,13 +163,19 @@ const LiveNowPlayingItem = React.memo(
   ({ nowPlayingEntry, onLinkClick, getArtistLink, onTuneIn }) => {
     const classes = useStyles()
     const translate = useTranslate()
+    const selectIpod = useSelectIpod()
+    // Opening the song's album or artist shows it, even if its iPod is not selected
+    const handleLinkClick = (e) => {
+      selectIpod(nowPlayingEntry.libraryId, nowPlayingEntry.libraryName)
+      onLinkClick(e)
+    }
 
     return (
       <ListItem key={nowPlayingEntry.playerId} className={classes.listItem}>
         <ListItemAvatar>
           <Link
             to={`/album/${nowPlayingEntry.albumId}/show`}
-            onClick={onLinkClick}
+            onClick={handleLinkClick}
           >
             <Avatar
               className={classes.avatar}
@@ -188,7 +195,7 @@ const LiveNowPlayingItem = React.memo(
                     nowPlayingEntry.albumArtistId || nowPlayingEntry.artistId,
                   )}
                   className={classes.artistLink}
-                  onClick={onLinkClick}
+                  onClick={handleLinkClick}
                 >
                   {nowPlayingEntry.albumArtist || nowPlayingEntry.artist}
                 </Link>
@@ -239,6 +246,12 @@ const RecentItem = React.memo(
   ({ entry, onLinkClick, getArtistLink, onPlay }) => {
     const classes = useStyles()
     const translate = useTranslate()
+    const selectIpod = useSelectIpod()
+    // Opening the song's album or artist shows it, even if its iPod is not selected
+    const handleLinkClick = (e) => {
+      selectIpod(entry.libraryId, entry.libraryName)
+      onLinkClick(e)
+    }
 
     const timeAgo = useCallback(() => {
       const diffMs = Date.now() - new Date(entry.submissionTime).getTime()
@@ -255,7 +268,7 @@ const RecentItem = React.memo(
     return (
       <ListItem className={classes.listItem}>
         <ListItemAvatar>
-          <Link to={`/album/${entry.albumId}/show`} onClick={onLinkClick}>
+          <Link to={`/album/${entry.albumId}/show`} onClick={handleLinkClick}>
             <Avatar
               className={classes.avatar}
               src={subsonic.getCoverArtUrl(
@@ -279,7 +292,7 @@ const RecentItem = React.memo(
                 <Link
                   to={getArtistLink(entry.albumArtistId || entry.artistId)}
                   className={classes.artistLink}
-                  onClick={onLinkClick}
+                  onClick={handleLinkClick}
                 >
                   {entry.artist}
                 </Link>

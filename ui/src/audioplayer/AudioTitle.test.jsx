@@ -1,5 +1,7 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
+import { Provider } from 'react-redux'
+import { createStore } from 'redux'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import AudioTitle from './AudioTitle'
 
@@ -88,5 +90,36 @@ describe('<AudioTitle />', () => {
     }
     render(<AudioTitle audioInfo={audioInfo} gainInfo={{}} isMobile={false} />)
     expect(screen.queryByText("Alice's iPod")).toBeNull()
+  })
+
+  it("selects the song's iPod when the song is clicked", () => {
+    const store = createStore(
+      (state, action) =>
+        action.type === 'SET_SELECTED_LIBRARIES'
+          ? { library: { ...state.library, selectedLibraries: action.data } }
+          : state,
+      {
+        library: {
+          userLibraries: [
+            { id: 1, name: 'One' },
+            { id: 3, name: "Alice's iPod" },
+          ],
+          selectedLibraries: [1],
+        },
+      },
+    )
+    const audioInfo = {
+      trackId: 'track-1',
+      song: { ...baseSong, libraryId: 3, libraryName: "Alice's iPod" },
+    }
+    render(
+      <Provider store={store}>
+        <AudioTitle audioInfo={audioInfo} gainInfo={{}} isMobile={false} />
+      </Provider>,
+    )
+    const link = screen.getByRole('link')
+    link.addEventListener('click', (e) => e.preventDefault()) // jsdom can't navigate
+    fireEvent.click(link)
+    expect(store.getState().library.selectedLibraries).toEqual([1, 3])
   })
 })
