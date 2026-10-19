@@ -22,6 +22,7 @@ import {
   IpodShuffleButton,
 } from '../ipods'
 import { FeatureTips } from './FeatureTips'
+import { GlobalSearch } from '../search/GlobalSearch'
 import UserMenu from './UserMenu'
 import config from '../config'
 
@@ -129,6 +130,7 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   return (
     <>
       <span ref={setTipsAnchor} style={{ display: 'inline-flex' }}>
+        <GlobalSearch />
         <IpodFactsButton />
         <IpodNetworkButton />
         <IpodShuffleButton />

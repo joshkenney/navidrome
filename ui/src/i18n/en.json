@@ -828,8 +828,7 @@
       "button": "Download this iPod",
       "title": "Download %{name}?",
       "warning": "This downloads every song on this iPod as one zip file. It can be several gigabytes and take a while."
-    },
-    "fromIpod": "From"
+    }
   },
   "featureTips": {
     "title": "New in the header",
@@ -866,11 +865,27 @@
     "tabRecent": "Recent",
     "recentEmpty": "No recent listens"
   },
+  "search": {
+    "tooltip": "Search everything",
+    "placeholder": "Search artists, albums, songs, iPods, playlists, genres, radios…",
+    "noResults": "Nothing found",
+    "goToAlbum": "Go to album",
+    "groups": {
+      "ipods": "iPods",
+      "artists": "Artists",
+      "albums": "Albums",
+      "songs": "Songs",
+      "playlists": "Playlists",
+      "genres": "Genres",
+      "radios": "iPod Radios"
+    }
+  },
   "help": {
     "title": "Navidrome Hotkeys",
     "hotkeys": {
       "show_help": "Show This Help",
       "toggle_menu": "Toggle Menu Side Bar",
+      "search": "Search everything",
       "toggle_play": "Play / Pause",
       "prev_song": "Previous Song",
       "next_song": "Next Song",

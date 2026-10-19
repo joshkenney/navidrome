@@ -68,9 +68,12 @@ describe('<AudioTitle />', () => {
     )
     expect(screen.getByText("Alice's iPod")).toBeInTheDocument()
     expect(container.querySelector('svg')).not.toBeNull()
-    // First in its line, so the player's ellipsis never hides it
-    const line = screen.getByText('Artist').parentElement
-    expect(line.textContent.startsWith("Alice's iPod")).toBe(true)
+    // On its own third line, after the artist and album line
+    const line = screen.getByText("Alice's iPod").closest('a > span:last-child')
+    expect(line.textContent).toBe("Alice's iPod")
+    expect(screen.getByText('Artist').parentElement.textContent).not.toContain(
+      "Alice's iPod",
+    )
   })
 
   it('shows the iPod on its own line on mobile', () => {

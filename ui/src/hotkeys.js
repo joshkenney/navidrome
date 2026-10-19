@@ -2,6 +2,7 @@ import config from './config'
 const keyMap = {
   SHOW_HELP: { name: 'show_help', sequence: 'shift+?', group: 'Global' },
   TOGGLE_MENU: { name: 'toggle_menu', sequence: 'm', group: 'Global' },
+  SEARCH: { name: 'search', sequence: '/', group: 'Global' },
   TOGGLE_PLAY: { name: 'toggle_play', sequence: 'space', group: 'Player' },
   PREV_SONG: { name: 'prev_song', sequence: 'left', group: 'Player' },
   NEXT_SONG: { name: 'next_song', sequence: 'right', group: 'Player' },

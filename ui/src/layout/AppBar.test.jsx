@@ -25,6 +25,9 @@ vi.mock('../ipods', () => ({
   IpodRadioButton: () => <div data-testid="ipod-radio-button" />,
   IpodShuffleButton: () => <div data-testid="ipod-shuffle-button" />,
 }))
+vi.mock('../search/GlobalSearch', () => ({
+  GlobalSearch: () => <div data-testid="global-search" />,
+}))
 vi.mock('./ActivityPanel', () => ({
   default: () => <div data-testid="activity-panel" />,
 }))
@@ -75,6 +78,7 @@ describe('<AppBar />', () => {
         <AppBar />
       </Provider>,
     )
+    expect(screen.getByTestId('global-search')).toBeInTheDocument()
     expect(screen.getByTestId('ipod-facts-button')).toBeInTheDocument()
     expect(screen.getByTestId('ipod-network-button')).toBeInTheDocument()
     expect(screen.getByTestId('ipod-radio-button')).toBeInTheDocument()

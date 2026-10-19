@@ -56,7 +56,8 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
       ? `/playlist/${song.playlistId}/show`
       : `/album/${song.albumId}/show`
 
-  // The iPod comes first in its line, as the player cuts long lines at the end
+  // On desktop the iPod has its own (third) line; on mobile it starts the artist line, as the
+  // player cuts long lines at the end
   const ipod = !audioInfo.isRadio && (
     <IpodLabel
       libraryId={song.libraryId}
@@ -97,12 +98,14 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
           </span>
         </>
       ) : (
-        <span className={classes.songInfo}>
-          {ipod}
-          <span className={'songArtist'}>{song.artist}</span> -{' '}
-          <span className={'songAlbum'}>{song.album}</span>
-          {song.year ? ` - ${song.year}` : ''}
-        </span>
+        <>
+          <span className={classes.songInfo}>
+            <span className={'songArtist'}>{song.artist}</span> -{' '}
+            <span className={'songAlbum'}>{song.album}</span>
+            {song.year ? ` - ${song.year}` : ''}
+          </span>
+          {ipod && <span className={classes.songInfo}>{ipod}</span>}
+        </>
       )}
     </Link>
   )
