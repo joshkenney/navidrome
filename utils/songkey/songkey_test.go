@@ -26,6 +26,16 @@ var _ = Describe("Key", func() {
 		Entry("no artist", "Hey Ya!", ""),
 	)
 
+	DescribeTable("ignores songs by unknown artists, whatever their ID",
+		func(artistName string) {
+			Expect(Key("Hey Ya!", "some-scanner-id", artistName)).To(BeEmpty())
+		},
+		Entry("Navidrome's unknown artist", "[Unknown Artist]"),
+		Entry("unknown artist", "Unknown Artist"),
+		Entry("unknown", "Unknown"),
+		Entry("various", "Various"),
+	)
+
 	DescribeTable("matches versions of the same song",
 		func(title string) {
 			Expect(Key(title, "a1", "Artist")).To(Equal(Key("Song", "a1", "Artist")))

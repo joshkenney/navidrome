@@ -46,10 +46,28 @@ func Key(title, artistID, artistName string) string {
 		return ""
 	}
 	artist := ArtistKey(artistName)
+	if IsUnknownArtist(artist) {
+		return ""
+	}
 	if artist == "" {
 		artist = artistID
 	}
 	return t + "|" + artist
+}
+
+// UnknownArtistKeys are the artist Keys of tracks without a real artist: Navidrome's
+// "[Unknown Artist]" and what taggers write when they don't know the artist. They are matched
+// by name, as the scanner's ID for "[Unknown Artist]" depends on the configured ID scheme
+var UnknownArtistKeys = []string{ArtistKey(consts.UnknownArtist), "unknown", "various", "unknown artist"}
+
+// IsUnknownArtist tells whether an artist Key is one of the UnknownArtistKeys
+func IsUnknownArtist(key string) bool {
+	for _, k := range UnknownArtistKeys {
+		if key == k {
+			return true
+		}
+	}
+	return false
 }
 
 // ArtistKey matches spellings of the same artist name: "The Spill Canvas" and "Spill Canvas",

@@ -26,6 +26,8 @@ var _ = Describe("IpodRepository", func() {
 	// Two spellings of the same artist, as tagged on different iPods
 	spillCanvas := model.Artist{ID: "ipod-sc1", Name: "The Spill Canvas", OrderArtistName: "spill canvas"}
 	spillCanvasLower := model.Artist{ID: "ipod-sc2", Name: "the spill canvas", OrderArtistName: "the spill canvas"}
+	// The scanner's ID for "[Unknown Artist]" depends on the PID settings: it may not be consts.UnknownArtistID
+	scannedUnknown := model.Artist{ID: "ipod-unknown", Name: consts.UnknownArtist, OrderArtistName: "[unknown artist]"}
 
 	ipodSong := func(id string, libraryID int, title string, artist model.Artist) model.MediaFile {
 		s := mf(model.MediaFile{
@@ -50,7 +52,7 @@ var _ = Describe("IpodRepository", func() {
 
 		ctx := request.WithUser(log.NewContext(context.TODO()), adminUser)
 		ar := NewArtistRepository(ctx, db)
-		for _, a := range []*model.Artist{&unknownArtist, &spillCanvas, &spillCanvasLower} {
+		for _, a := range []*model.Artist{&unknownArtist, &spillCanvas, &spillCanvasLower, &scannedUnknown} {
 			Expect(ar.Put(a)).To(Succeed())
 		}
 		mr := NewMediaFileRepository(ctx, db)
@@ -73,6 +75,9 @@ var _ = Describe("IpodRepository", func() {
 			// The same song, by two spellings of the same artist
 			ipodSong("ipod-14", lib2, "All Over You", spillCanvas),
 			ipodSong("ipod-15", lib3, "All Over You", spillCanvasLower),
+			// Songs by an unknown artist, with the scanner's ID
+			ipodSong("ipod-16", lib2, "Nameless", scannedUnknown),
+			ipodSong("ipod-17", lib3, "Nameless", scannedUnknown),
 		}
 		for i := range songs {
 			Expect(mr.Put(&songs[i])).To(Succeed())
@@ -80,7 +85,7 @@ var _ = Describe("IpodRepository", func() {
 		DeferCleanup(func() {
 			_, _ = db.NewQuery("DELETE FROM media_file WHERE id LIKE 'ipod-%'").Execute()
 			_, _ = db.NewQuery("DELETE FROM library WHERE id IN ({:a}, {:b}, {:c})").Bind(dbx.Params{"a": lib2, "b": lib3, "c": lib4}).Execute()
-			_, _ = db.Delete("artist", dbx.HashExp{"id": []any{unknownArtist.ID, spillCanvas.ID, spillCanvasLower.ID}}).Execute()
+			_, _ = db.Delete("artist", dbx.HashExp{"id": []any{unknownArtist.ID, spillCanvas.ID, spillCanvasLower.ID, scannedUnknown.ID}}).Execute()
 		})
 
 		adminRepo = NewIpodRepository(ctx, db)
@@ -123,6 +128,16 @@ var _ = Describe("IpodRepository", func() {
 		Expect(keys).To(Equal(map[string]string{spillCanvas.ID: "spill canvas", spillCanvasLower.ID: "spill canvas"}))
 	})
 
+	It("recognises unknown artists by name, whatever their ID", func() {
+		entries, err := adminRepo.SongIndex()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(entries).ToNot(ContainElement(HaveField("Title", "Nameless")))
+
+		counts, err := adminRepo.ArtistCounts()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(counts).ToNot(ContainElement(HaveField("ArtistID", scannedUnknown.ID)))
+	})
+
 	It("leaves out placeholder songs", func() {
 		entries, err := adminRepo.SongIndex()
 		Expect(err).ToNot(HaveOccurred())
@@ -154,8 +169,9 @@ var _ = Describe("IpodRepository", func() {
 				ipod3 = s
 			}
 		}
-		Expect(ipod3.SongCount).To(Equal(5))
-		Expect(ipod3.ArtistCount).To(Equal(3))
+		Expect(ipod3.SongCount).To(Equal(6))
+		// Counts every artist of the iPod, including ones only recognised as unknown by name
+		Expect(ipod3.ArtistCount).To(Equal(4))
 		Expect(ipod3.AvgYear).To(BeNumerically("~", 1985))
 	})
 
@@ -209,13 +225,19 @@ VALUES ({:user}, 'ipod-6', 'media_file', 25), ({:user}, 'ipod-15', 'media_file',
 		))
 	})
 
-	It("changes the data version when a scan finishes", func() {
+	It("changes the data version when tracks change, not on scans that change nothing", func() {
 		before, err := adminRepo.DataVersion()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(NewLibraryRepository(request.WithUser(context.TODO(), adminUser), GetDBXBuilder()).ScanEnd(lib2)).To(Succeed())
 		after, err := adminRepo.DataVersion()
 		Expect(err).ToNot(HaveOccurred())
-		Expect(after).ToNot(Equal(before))
+		Expect(after).To(Equal(before), "a scan alone doesn't change the iPods")
+
+		_, err = GetDBXBuilder().NewQuery("UPDATE media_file SET updated_at = '2099-01-01 00:00:00' WHERE id = 'ipod-1'").Execute()
+		Expect(err).ToNot(HaveOccurred())
+		changed, err := adminRepo.DataVersion()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(changed).ToNot(Equal(before))
 	})
 
 	It("only considers the iPods the user can access", func() {

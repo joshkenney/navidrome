@@ -8,6 +8,7 @@ import (
 	"github.com/navidrome/navidrome/consts"
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/utils/slice"
+	"github.com/navidrome/navidrome/utils/songkey"
 	"github.com/pocketbase/dbx"
 )
 
@@ -191,7 +192,8 @@ func (r *ipodRepository) ArtistCounts() ([]model.IpodArtistCount, error) {
 	}
 	sq = sq.Join("artist a ON a.id = mf.artist_id").
 		Where(NotEq{"mf.artist_id": consts.UnknownArtistID}).
-		GroupBy("artist_key", "mf.library_id")
+		GroupBy("artist_key", "mf.library_id").
+		Having(NotEq{"artist_key": songkey.UnknownArtistKeys})
 
 	var rows []dbIpodArtistCount
 	if err := ignoreNotFound(r.queryAll(sq, &rows)); err != nil {
@@ -227,8 +229,12 @@ func (r *ipodRepository) DataVersion() (string, error) {
 	var res struct {
 		Version string `db:"version"`
 	}
-	sq := Select("coalesce(group_concat(id), '') || '|' || coalesce(max(last_scan_at), '') || '|' || " +
-		"coalesce(max(updated_at), '') AS version").From("library")
+	// The accessible iPods, then what changes when their tracks change: song and missing file
+	// counts (refreshed after scans that found changes) and the latest track update. Scans that
+	// change nothing leave it as is, so they don't cause a rebuild of the iPod data
+	sq := Select("coalesce(group_concat(id), '') || '|' || coalesce(sum(total_songs), 0) || '|' || " +
+		"coalesce(sum(total_missing_files), 0) || '|' || " +
+		"coalesce((SELECT max(updated_at) FROM media_file), '') AS version").From("library")
 	if user := loggedUser(r.ctx); !user.IsAdmin && user.ID != invalidUserId {
 		sq = sq.Where(Expr("id IN (SELECT ul.library_id FROM user_library ul WHERE ul.user_id = ?)", user.ID))
 	}
@@ -250,7 +256,8 @@ func (r *ipodRepository) UserArtistPlays() ([]model.IpodArtistPlays, error) {
 		Where(Eq{"an.user_id": user.ID, "an.item_type": "media_file"}).
 		Where(Gt{"an.play_count": 0}).
 		Where(NotEq{"mf.artist_id": consts.UnknownArtistID}).
-		GroupBy("artist_key")
+		GroupBy("artist_key").
+		Having(NotEq{"artist_key": songkey.UnknownArtistKeys})
 
 	var rows []dbArtistPlays
 	if err := ignoreNotFound(r.queryAll(sq, &rows)); err != nil {
