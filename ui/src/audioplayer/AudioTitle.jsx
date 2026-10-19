@@ -7,6 +7,7 @@ import { decisionService } from '../transcode'
 import useStyle from './styles'
 import { useDrag } from 'react-dnd'
 import { DraggableTypes } from '../consts'
+import { IpodLabel } from '../ipods/IpodLabel'
 
 const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
   const classes = useStyle()
@@ -53,6 +54,10 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
       ? `/playlist/${song.playlistId}/show`
       : `/album/${song.albumId}/show`
 
+  const ipod = !audioInfo.isRadio && (
+    <IpodLabel libraryId={song.libraryId} libraryName={song.libraryName} />
+  )
+
   return (
     <Link to={linkTo} className={className} ref={dragSongRef}>
       <span>
@@ -75,12 +80,14 @@ const AudioTitle = React.memo(({ audioInfo, gainInfo, isMobile }) => {
             <span className={'songAlbum'}>{song.album}</span>
             {song.year ? ` - ${song.year}` : ''}
           </span>
+          {ipod && <span className={classes.songInfo}>{ipod}</span>}
         </>
       ) : (
         <span className={classes.songInfo}>
           <span className={'songArtist'}>{song.artist}</span> -{' '}
           <span className={'songAlbum'}>{song.album}</span>
           {song.year ? ` - ${song.year}` : ''}
+          {ipod && <> · {ipod}</>}
         </span>
       )}
     </Link>

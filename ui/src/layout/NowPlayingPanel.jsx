@@ -26,6 +26,20 @@ import { httpClient } from '../dataProvider'
 import { useInterval } from '../common'
 import { nowPlayingCountUpdate, setTrack } from '../actions'
 import config from '../config'
+import { IpodLabel } from '../ipods/IpodLabel'
+import { useIpodName } from '../ipods/useIpodName'
+
+// " • [iPod] name", when the iPod of the song is known
+const IpodSuffix = ({ libraryId, libraryName }) => {
+  const name = useIpodName(libraryId, libraryName)
+  if (!name) return null
+  return (
+    <>
+      {' • '}
+      <IpodLabel libraryName={name} />
+    </>
+  )
+}
 
 const useStyles = makeStyles((theme) => ({
   button: { color: 'inherit' },
@@ -186,7 +200,15 @@ const LiveNowPlayingItem = React.memo(
               &nbsp;-&nbsp;{nowPlayingEntry.title}
             </div>
           }
-          secondary={`${nowPlayingEntry.username}${nowPlayingEntry.playerName ? ` (${nowPlayingEntry.playerName})` : ''} • ${translate('nowPlaying.minutesAgo', { smart_count: nowPlayingEntry.minutesAgo })}${nowPlayingEntry.libraryName ? ` • ${nowPlayingEntry.libraryName}` : ''}`}
+          secondary={
+            <>
+              {`${nowPlayingEntry.username}${nowPlayingEntry.playerName ? ` (${nowPlayingEntry.playerName})` : ''} • ${translate('nowPlaying.minutesAgo', { smart_count: nowPlayingEntry.minutesAgo })}`}
+              <IpodSuffix
+                libraryId={nowPlayingEntry.libraryId}
+                libraryName={nowPlayingEntry.libraryName}
+              />
+            </>
+          }
         />
         <Tooltip title={translate('nowPlaying.tuneIn')}>
           <IconButton
@@ -271,7 +293,10 @@ const RecentItem = React.memo(
             <>
               <span className={classes.usernameChip}>{entry.username}</span>
               &bull; {timeAgo()}
-              {entry.libraryName ? ` • ${entry.libraryName}` : ''}
+              <IpodSuffix
+                libraryId={entry.libraryId}
+                libraryName={entry.libraryName}
+              />
             </>
           }
         />

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"strings"
 	"unicode"
 
 	"github.com/navidrome/navidrome/model"
@@ -19,8 +20,39 @@ const (
 	tribeMinArtistShare = 0.3  // A signature artist must be on at least this share of the tribe's iPods
 	tribeTopArtists     = 3
 	tribeExamples       = 2
-	tribeUserMargin     = 1.1 // A user fits a tribe if it beats the runner-up by this factor
+	tribeUserMargin     = 1.1  // A user fits a tribe if it beats the runner-up by this factor
+	tribeMinGenreLift   = 1.25 // A tribe's genre must be at least this much more common than overall
+	tribeSecondGenre    = 0.6  // A second genre is named if it scores at least this share of the first
+
+	// Tribe counts aimed for when there are enough iPods, and the largest share of iPods one tribe
+	// may hold. Finer resolutions are tried until both hold
+	tribeMinCount      = 8
+	tribeMaxCount      = 15
+	tribeTargetCount   = 12
+	tribeMaxShare      = 0.25
+	tribeMinIpodsSplit = tribeMinCount * tribeMinSize
 )
+
+var tribeResolutions = []float64{1.0, 1.25, 1.5, 1.75, 2, 2.5, 3, 4}
+
+// genreSynonyms maps the many spellings of common genres (iTunes and others) to one name
+var genreSynonyms = map[string]string{
+	"alternative & punk": "alternative",
+	"alt rock":           "alternative",
+	"alternative rock":   "alternative",
+	"alt-rock":           "alternative",
+	"hip hop":            "hip-hop",
+	"hiphop":             "hip-hop",
+	"rap":                "hip-hop",
+	"rap & hip-hop":      "hip-hop",
+	"r&b/soul":           "r&b",
+	"r & b":              "r&b",
+	"rnb":                "r&b",
+	"rhythm & blues":     "r&b",
+	"electronica":        "electronic",
+	"dance & electronic": "electronic",
+	"electro":            "electronic",
+}
 
 type ipodTribe struct {
 	ID       int       `json:"id"`
@@ -43,7 +75,7 @@ type ipodTribes struct {
 
 // louvain groups the nodes of a weighted graph into communities, maximizing modularity. It visits
 // nodes in order, so results are deterministic
-func louvain(n int, pairs []ipodPair) []int {
+func louvain(n int, pairs []ipodPair, resolution float64) []int {
 	adj := make([]map[int]float64, n)
 	for i := range adj {
 		adj[i] = map[int]float64{}
@@ -57,7 +89,7 @@ func louvain(n int, pairs []ipodPair) []int {
 		membership[i] = i
 	}
 	for {
-		community, moved := louvainLevel(adj)
+		community, moved := louvainLevel(adj, resolution)
 		if !moved {
 			return membership
 		}
@@ -69,8 +101,9 @@ func louvain(n int, pairs []ipodPair) []int {
 }
 
 // louvainLevel moves each node to the neighbour community that increases modularity the most,
-// until no move helps. Returns the communities, numbered from 0, and whether anything moved
-func louvainLevel(adj []map[int]float64) ([]int, bool) {
+// until no move helps. Higher resolutions give more, smaller communities. Returns the
+// communities, numbered from 0, and whether anything moved
+func louvainLevel(adj []map[int]float64, resolution float64) ([]int, bool) {
 	n := len(adj)
 	degree := make([]float64, n)
 	total := 0.0
@@ -102,7 +135,7 @@ func louvainLevel(adj []map[int]float64) ([]int, bool) {
 					links[community[j]] += w
 				}
 			}
-			gain := func(c int) float64 { return links[c] - communityDegree[c]*degree[i]/total }
+			gain := func(c int) float64 { return links[c] - resolution*communityDegree[c]*degree[i]/total }
 			best, bestGain := current, gain(current)
 			candidates := make([]int, 0, len(links))
 			for c := range links {
@@ -148,11 +181,60 @@ func aggregate(adj []map[int]float64, community []int) []map[int]float64 {
 	return merged
 }
 
-// titleCase turns "hip-hop" into "Hip-Hop"
+// chooseCommunities runs Louvain at increasing resolutions, until the iPods are split into a
+// readable number of tribes, none of them holding too many of the iPods
+func chooseCommunities(n int, pairs []ipodPair) []int {
+	if n < tribeMinIpodsSplit {
+		return louvain(n, pairs, 1)
+	}
+	var best []int
+	bestCount, bestLargest := 0, n+1
+	for _, resolution := range tribeResolutions {
+		membership := louvain(n, pairs, resolution)
+		sizes := map[int]int{}
+		for _, c := range membership {
+			sizes[c]++
+		}
+		count, largest := 0, 0
+		for _, size := range sizes {
+			if size >= tribeMinSize {
+				count++
+			}
+			largest = max(largest, size)
+		}
+		if count >= tribeMinCount && count <= tribeMaxCount && float64(largest) <= tribeMaxShare*float64(n) {
+			return membership
+		}
+		distance := func(c int) int { return max(c-tribeTargetCount, tribeTargetCount-c) }
+		if best == nil || distance(count) < distance(bestCount) ||
+			(distance(count) == distance(bestCount) && largest < bestLargest) {
+			best, bestCount, bestLargest = membership, count, largest
+		}
+	}
+	return best
+}
+
+// normalizeGenre keeps the first of several genres ("Rock; Pop", "Hip-Hop/Rap") and merges
+// common spellings of the same genre
+func normalizeGenre(genre string) string {
+	g := strings.ToLower(strings.TrimSpace(genre))
+	if synonym, ok := genreSynonyms[g]; ok {
+		return synonym
+	}
+	if i := strings.IndexAny(g, ";/,|"); i > 0 {
+		g = strings.TrimSpace(g[:i])
+	}
+	if synonym, ok := genreSynonyms[g]; ok {
+		return synonym
+	}
+	return g
+}
+
+// titleCase turns "hip-hop" into "Hip-Hop", and "r&b" into "R&B"
 func titleCase(s string) string {
 	runes := []rune(s)
 	for i, r := range runes {
-		if i == 0 || runes[i-1] == ' ' || runes[i-1] == '-' || runes[i-1] == '/' {
+		if i == 0 || strings.ContainsRune(" -/&", runes[i-1]) {
 			runes[i] = unicode.ToUpper(r)
 		}
 	}
@@ -164,7 +246,7 @@ func titleCase(s string) string {
 func findTribes(stats []model.IpodStats, counts []model.IpodArtistCount, genres []model.IpodGenreCount,
 	pairs []ipodPair, taste tasteModel) ipodTribes {
 	result := ipodTribes{tribes: []ipodTribe{}, byIpod: map[int]int{}}
-	membership := louvain(len(stats), pairs)
+	membership := chooseCommunities(len(stats), pairs)
 
 	groups := map[int][]int{} // Community -> indexes in stats
 	for i, c := range membership {
@@ -195,8 +277,9 @@ func findTribes(stats []model.IpodStats, counts []model.IpodArtistCount, genres 
 		if genresByIpod[g.LibraryID] == nil {
 			genresByIpod[g.LibraryID] = map[string]int{}
 		}
-		genresByIpod[g.LibraryID][g.Genre] += g.SongCount
-		genreTotals[g.Genre] += g.SongCount
+		genre := normalizeGenre(g.Genre)
+		genresByIpod[g.LibraryID][genre] += g.SongCount
+		genreTotals[genre] += g.SongCount
 		allGenreSongs += g.SongCount
 	}
 	weights := map[[2]int]float64{}
@@ -240,27 +323,7 @@ func findTribes(stats []model.IpodStats, counts []model.IpodArtistCount, genres 
 			t.Artists = append(t.Artists, artists[key].Name)
 		}
 
-		// Genre: common in the tribe, and more common than elsewhere
-		tribeGenres := map[string]int{}
-		tribeSongs := 0
-		for _, i := range members {
-			for g, c := range genresByIpod[stats[i].LibraryID] {
-				tribeGenres[g] += c
-				tribeSongs += c
-			}
-		}
-		bestScore := 0.0
-		for g, c := range tribeGenres {
-			share := float64(c) / float64(tribeSongs)
-			if share < tribeMinGenreShare {
-				continue
-			}
-			lift := share / (float64(genreTotals[g]) / float64(allGenreSongs))
-			if score := lift * share; score > bestScore || (score == bestScore && g < t.Genre) {
-				bestScore, t.Genre = score, g
-			}
-		}
-		t.Genre = titleCase(t.Genre)
+		t.Genre = distinctiveGenre(members, stats, genresByIpod, genreTotals, allGenreSongs)
 
 		// Decade: the median of the members' average years
 		var years []float64
@@ -298,6 +361,44 @@ func findTribes(stats []model.IpodStats, counts []model.IpodArtistCount, genres 
 		result.tribes = append(result.tribes, t)
 	}
 	return result
+}
+
+// distinctiveGenre returns the genre (or two) that sets the tribe apart: common among its songs,
+// and clearly more common than among all songs. A genre that is as common everywhere (like Rock on
+// most iPods) scores nothing, as ln(lift) is then about 0
+func distinctiveGenre(members []int, stats []model.IpodStats, genresByIpod map[int]map[string]int,
+	genreTotals map[string]int, allGenreSongs int) string {
+	tribeGenres := map[string]int{}
+	tribeSongs := 0
+	for _, i := range members {
+		for g, c := range genresByIpod[stats[i].LibraryID] {
+			tribeGenres[g] += c
+			tribeSongs += c
+		}
+	}
+	type scored struct {
+		genre string
+		score float64
+	}
+	var candidates []scored
+	for g, c := range tribeGenres {
+		share := float64(c) / float64(tribeSongs)
+		lift := share / (float64(genreTotals[g]) / float64(allGenreSongs))
+		if share >= tribeMinGenreShare && lift >= tribeMinGenreLift {
+			candidates = append(candidates, scored{genre: g, score: share * math.Log(lift)})
+		}
+	}
+	if len(candidates) == 0 {
+		return ""
+	}
+	slices.SortFunc(candidates, func(a, b scored) int {
+		return cmp.Or(cmp.Compare(b.score, a.score), cmp.Compare(a.genre, b.genre))
+	})
+	genre := titleCase(candidates[0].genre)
+	if len(candidates) > 1 && candidates[1].score >= tribeSecondGenre*candidates[0].score {
+		genre += " & " + titleCase(candidates[1].genre)
+	}
+	return genre
 }
 
 func tribeName(t ipodTribe) string {

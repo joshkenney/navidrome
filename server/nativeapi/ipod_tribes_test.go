@@ -71,15 +71,74 @@ var _ = Describe("iPod tribes", func() {
 	})
 
 	It("tells tribes with the same name apart", func() {
+		// Both groups are emo, which is distinctive as the loner has lots of jazz
 		for i := range genres {
-			genres[i].Genre = "rock"
+			if genres[i].Genre != "jazz" {
+				genres[i].Genre = "emo"
+			} else {
+				genres[i].SongCount = 200
+			}
 		}
 		for i := range stats {
 			stats[i].AvgYear = 1995
 		}
 		ts := tribes()
-		Expect(ts.tribes[0].Name).To(Equal("1990s Rock"))
-		Expect(ts.tribes[1].Name).To(HavePrefix("1990s Rock ("))
+		Expect(ts.tribes[0].Name).To(Equal("1990s Emo"))
+		Expect(ts.tribes[1].Name).To(HavePrefix("1990s Emo ("))
+	})
+
+	It("names tribes after a distinctive genre, not one common everywhere", func() {
+		// Rock is everywhere, metal only on the second group's iPods
+		genres = nil
+		for _, s := range stats {
+			genres = append(genres, model.IpodGenreCount{LibraryID: s.LibraryID, Genre: "rock", SongCount: 20})
+		}
+		for lib := 5; lib <= 8; lib++ {
+			genres = append(genres, model.IpodGenreCount{LibraryID: lib, Genre: "metal", SongCount: 10})
+		}
+		ts := tribes()
+		Expect(ts.tribes[1].Name).To(Equal("1970s Metal"))
+		Expect(ts.tribes[0].Name).To(HaveSuffix(" crowd"), "rock is not distinctive, so the artists name the tribe")
+	})
+
+	It("names a tribe after two genres when both stand out", func() {
+		genres = nil
+		for _, s := range stats {
+			genres = append(genres, model.IpodGenreCount{LibraryID: s.LibraryID, Genre: "rock", SongCount: 20})
+		}
+		for lib := 5; lib <= 8; lib++ {
+			genres = append(genres,
+				model.IpodGenreCount{LibraryID: lib, Genre: "metal", SongCount: 10},
+				model.IpodGenreCount{LibraryID: lib, Genre: "punk", SongCount: 9})
+		}
+		Expect(tribes().tribes[1].Name).To(Equal("1970s Metal & Punk"))
+	})
+
+	It("merges spellings of the same genre", func() {
+		Expect(normalizeGenre("Hip Hop/Rap")).To(Equal("hip-hop"))
+		Expect(normalizeGenre("Rap")).To(Equal("hip-hop"))
+		Expect(normalizeGenre("Alternative & Punk")).To(Equal("alternative"))
+		Expect(normalizeGenre("R&B/Soul")).To(Equal("r&b"))
+		Expect(normalizeGenre(" Rock; Pop ")).To(Equal("rock"))
+		Expect(normalizeGenre("Electronica")).To(Equal("electronic"))
+	})
+
+	It("splits large, loosely linked groups into finer tribes", func() {
+		// 8 groups of 4 iPods (32 iPods, enough to aim for 8+ tribes), each group sharing its own
+		// artists, and all of them sharing a couple of common artists
+		stats, counts, genres = nil, nil, nil
+		for g := range 8 {
+			for k := range 4 {
+				lib := g*4 + k + 1
+				addIpod(lib, 2000, "", fmt.Sprint("g", g, "-a"), fmt.Sprint("g", g, "-b"), fmt.Sprint("g", g, "-c"),
+					"everyone-1", "everyone-2")
+			}
+		}
+		ts := tribes()
+		Expect(len(ts.tribes)).To(BeNumerically(">=", tribeMinCount))
+		for _, t := range ts.tribes {
+			Expect(float64(t.Size)).To(BeNumerically("<=", tribeMaxShare*float64(len(stats))))
+		}
 	})
 
 	It("finds the tribe a user fits in", func() {
@@ -98,5 +157,6 @@ var _ = Describe("iPod tribes", func() {
 	It("capitalizes genres", func() {
 		Expect(titleCase("hip-hop")).To(Equal("Hip-Hop"))
 		Expect(titleCase("classic rock")).To(Equal("Classic Rock"))
+		Expect(titleCase("r&b")).To(Equal("R&B"))
 	})
 })

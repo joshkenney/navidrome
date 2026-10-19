@@ -141,6 +141,46 @@ describe('<NowPlayingPanel />', () => {
     })
   })
 
+  it('shows the iPod the song is playing from, with the iPod logo', async () => {
+    subsonic.getNowPlaying.mockResolvedValue({
+      json: {
+        'subsonic-response': {
+          status: 'ok',
+          nowPlaying: {
+            entry: [
+              {
+                playerId: 1,
+                username: 'u1',
+                title: 'Song',
+                albumArtist: 'Artist',
+                albumId: 'album1',
+                albumArtistId: 'artist1',
+                minutesAgo: 2,
+                libraryName: "Alice's iPod",
+              },
+            ],
+          },
+        },
+      },
+    })
+    const store = createMockStore()
+    render(
+      <Provider store={store}>
+        <NowPlayingPanel />
+      </Provider>,
+    )
+    await waitFor(() => {
+      expect(subsonic.getNowPlaying).toHaveBeenCalled()
+    })
+    fireEvent.click(screen.getByRole('button'))
+    await waitFor(() => {
+      expect(screen.getByText("Alice's iPod")).toBeInTheDocument()
+    })
+    expect(
+      screen.getByText("Alice's iPod").parentElement.querySelector('svg'),
+    ).not.toBeNull()
+  })
+
   it('handles entries without player name', async () => {
     subsonic.getNowPlaying.mockResolvedValueOnce({
       json: {
