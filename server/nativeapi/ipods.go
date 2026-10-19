@@ -322,7 +322,13 @@ func (api *Router) getIpodMatch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(ctx, w, matchIpods(d.stats, d.counts, artistIDs))
+	keys, err := api.ds.Ipod(ctx).ArtistKeys(artistIDs)
+	if err != nil {
+		log.Error(ctx, "Error loading artists", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(ctx, w, matchIpods(d.stats, d.counts, artistIDs, keys))
 }
 
 func writeJSON(ctx context.Context, w http.ResponseWriter, v any) {
@@ -333,12 +339,13 @@ func writeJSON(ctx context.Context, w http.ResponseWriter, v any) {
 }
 
 func topSharedArtists(counts []model.IpodArtistCount, limit int) []ipodSharedArtist {
+	_, artists := artistsByIpod(counts)
 	byArtist := map[string]*ipodSharedArtist{}
 	for _, c := range counts {
-		a, ok := byArtist[c.ArtistID]
+		a, ok := byArtist[c.Key]
 		if !ok {
-			a = &ipodSharedArtist{ID: c.ArtistID, Name: c.ArtistName}
-			byArtist[c.ArtistID] = a
+			a = &ipodSharedArtist{ID: artists[c.Key].ID, Name: artists[c.Key].Name}
+			byArtist[c.Key] = a
 		}
 		a.IpodCount++
 		a.SongCount += c.SongCount
@@ -359,24 +366,40 @@ func topSharedArtists(counts []model.IpodArtistCount, limit int) []ipodSharedArt
 	return result[:min(limit, len(result))]
 }
 
-// artistsByIpod maps each library ID to its artists and their song counts on that iPod
-func artistsByIpod(counts []model.IpodArtistCount) (map[int]map[string]int, map[string]string) {
+// ipodArtistRef is the artist shown for an artist Key: the spelling with the most songs
+type ipodArtistRef struct {
+	ID    string
+	Name  string
+	songs int
+}
+
+// artistsByIpod maps each library ID to its artists (by Key) and their song counts on that
+// iPod. It also returns the artist to show for each Key
+func artistsByIpod(counts []model.IpodArtistCount) (map[int]map[string]int, map[string]ipodArtistRef) {
 	sets := map[int]map[string]int{}
-	names := map[string]string{}
+	songsByID := map[string]int{}
 	for _, c := range counts {
 		if sets[c.LibraryID] == nil {
 			sets[c.LibraryID] = map[string]int{}
 		}
-		sets[c.LibraryID][c.ArtistID] = c.SongCount
-		names[c.ArtistID] = c.ArtistName
+		sets[c.LibraryID][c.Key] = c.SongCount
+		songsByID[c.ArtistID] += c.SongCount
 	}
-	return sets, names
+	artists := map[string]ipodArtistRef{}
+	for _, c := range counts {
+		ref := ipodArtistRef{ID: c.ArtistID, Name: c.ArtistName, songs: songsByID[c.ArtistID]}
+		cur, ok := artists[c.Key]
+		if !ok || ref.songs > cur.songs || (ref.songs == cur.songs && ref.Name < cur.Name) {
+			artists[c.Key] = ref
+		}
+	}
+	return sets, artists
 }
 
 // buildIpodNetwork links iPods by the Jaccard similarity of their artist sets. To keep the
 // graph readable, an edge is only kept if it is among the strongest edges of one of its nodes
 func buildIpodNetwork(stats []model.IpodStats, counts []model.IpodArtistCount) ipodNetwork {
-	sets, names := artistsByIpod(counts)
+	sets, artists := artistsByIpod(counts)
 	network := ipodNetwork{Nodes: make([]ipodNode, len(stats)), Edges: []ipodEdge{}}
 	for i, s := range stats {
 		network.Nodes[i] = ipodNode{ID: s.LibraryID, Name: s.Name, SongCount: s.SongCount, ArtistCount: len(sets[s.LibraryID])}
@@ -402,11 +425,11 @@ func buildIpodNetwork(stats []model.IpodStats, counts []model.IpodArtistCount) i
 			}
 			// Show the artists both iPods have the most songs by
 			slices.SortFunc(shared, func(x, y string) int {
-				return cmp.Or(cmp.Compare(min(a[y], b[y]), min(a[x], b[x])), cmp.Compare(names[x], names[y]))
+				return cmp.Or(cmp.Compare(min(a[y], b[y]), min(a[x], b[x])), cmp.Compare(artists[x].Name, artists[y].Name))
 			})
 			top := make([]string, 0, ipodSharedArtistMax)
 			for _, id := range shared[:min(ipodSharedArtistMax, len(shared))] {
-				top = append(top, names[id])
+				top = append(top, artists[id].Name)
 			}
 			candidates = append(candidates, ipodEdge{
 				Source: stats[i].LibraryID, Target: stats[j].LibraryID,
@@ -432,16 +455,22 @@ func buildIpodNetwork(stats []model.IpodStats, counts []model.IpodArtistCount) i
 // contributes its rarity across iPods (idf) times how many of its songs the iPod has, so
 // sharing a niche artist counts more than sharing one that is on every iPod.
 // Resonance is the share of the (idf-weighted) input artists the iPod has.
-func matchIpods(stats []model.IpodStats, counts []model.IpodArtistCount, artistIDs []string) ipodMatchResult {
-	sets, names := artistsByIpod(counts)
+// Artists are matched by Key (artistKeys maps each input artist ID to its Key), so picking
+// "The Spill Canvas" also matches iPods that have "Spill Canvas"
+func matchIpods(stats []model.IpodStats, counts []model.IpodArtistCount, artistIDs []string, artistKeys map[string]string) ipodMatchResult {
+	sets, artists := artistsByIpod(counts)
 	result := ipodMatchResult{Matches: []ipodMatch{}, NotFound: []string{}}
 
 	idf := map[string]float64{}
 	var totalIdf float64
 	for _, id := range slices.Compact(slices.Sorted(slices.Values(artistIDs))) {
+		key, ok := artistKeys[id]
+		if _, seen := idf[key]; ok && seen {
+			continue
+		}
 		df := 0
 		for _, set := range sets {
-			if _, ok := set[id]; ok {
+			if _, has := set[key]; ok && has {
 				df++
 			}
 		}
@@ -449,21 +478,21 @@ func matchIpods(stats []model.IpodStats, counts []model.IpodArtistCount, artistI
 			result.NotFound = append(result.NotFound, id)
 			continue
 		}
-		idf[id] = math.Log(1 + float64(len(sets))/float64(df))
-		totalIdf += idf[id]
+		idf[key] = math.Log(1 + float64(len(sets))/float64(df))
+		totalIdf += idf[key]
 	}
 
 	for _, s := range stats {
 		m := ipodMatch{ID: s.LibraryID, Name: s.Name, SongCount: s.SongCount}
 		var matchedIdf float64
-		for id, w := range idf {
-			songs, ok := sets[s.LibraryID][id]
+		for key, w := range idf {
+			songs, ok := sets[s.LibraryID][key]
 			if !ok {
 				continue
 			}
 			m.Score += w * math.Log(1+float64(songs))
 			matchedIdf += w
-			m.Matched = append(m.Matched, ipodMatchedArtist{ID: id, Name: names[id], SongCount: songs})
+			m.Matched = append(m.Matched, ipodMatchedArtist{ID: artists[key].ID, Name: artists[key].Name, SongCount: songs})
 		}
 		if len(m.Matched) == 0 {
 			continue

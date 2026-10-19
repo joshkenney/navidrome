@@ -15,7 +15,10 @@ import (
 
 // songKeyExpr identifies "the same song" across iPods (see songkey.Key). It is empty for
 // placeholder songs, like "Track 05" or songs by [Unknown Artist]
-const songKeyExpr = "SONG_KEY(mf.title, mf.artist_id)"
+const songKeyExpr = "SONG_KEY(mf.title, mf.artist_id, mf.order_artist_name)"
+
+// artistKeyExpr matches spellings of the same artist (see songkey.ArtistKey)
+const artistKeyExpr = "coalesce(nullif(ARTIST_KEY(a.order_artist_name), ''), a.id)"
 
 type ipodRepository struct {
 	sqlRepository
@@ -197,6 +200,7 @@ func (r *ipodRepository) Totals() (*model.IpodTotals, error) {
 }
 
 type dbIpodArtistCount struct {
+	Key        string `db:"artist_key"`
 	LibraryID  int    `db:"library_id"`
 	ArtistID   string `db:"artist_id"`
 	ArtistName string `db:"artist_name"`
@@ -204,13 +208,14 @@ type dbIpodArtistCount struct {
 }
 
 func (r *ipodRepository) ArtistCounts() ([]model.IpodArtistCount, error) {
-	sq, err := r.mediaFiles("mf.library_id", "mf.artist_id", "a.name AS artist_name", "count(*) AS song_count")
+	sq, err := r.mediaFiles(artistKeyExpr+" AS artist_key", "mf.library_id",
+		"min(mf.artist_id) AS artist_id", "min(a.name) AS artist_name", "count(*) AS song_count")
 	if err != nil {
 		return nil, err
 	}
 	sq = sq.Join("artist a ON a.id = mf.artist_id").
 		Where(NotEq{"mf.artist_id": consts.UnknownArtistID}).
-		GroupBy("mf.library_id", "mf.artist_id")
+		GroupBy("artist_key", "mf.library_id")
 
 	var rows []dbIpodArtistCount
 	if err := ignoreNotFound(r.queryAll(sq, &rows)); err != nil {
@@ -219,6 +224,27 @@ func (r *ipodRepository) ArtistCounts() ([]model.IpodArtistCount, error) {
 	return slice.Map(rows, func(a dbIpodArtistCount) model.IpodArtistCount {
 		return model.IpodArtistCount(a)
 	}), nil
+}
+
+type dbArtistKey struct {
+	ID  string `db:"id"`
+	Key string `db:"artist_key"`
+}
+
+func (r *ipodRepository) ArtistKeys(artistIDs []string) (map[string]string, error) {
+	keys := make(map[string]string, len(artistIDs))
+	if len(artistIDs) == 0 {
+		return keys, nil
+	}
+	var rows []dbArtistKey
+	sq := Select("a.id", artistKeyExpr+" AS artist_key").From("artist a").Where(Eq{"a.id": artistIDs})
+	if err := ignoreNotFound(r.queryAll(sq, &rows)); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		keys[row.ID] = row.Key
+	}
+	return keys, nil
 }
 
 func (r *ipodRepository) DataVersion() (string, error) {

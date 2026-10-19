@@ -9,7 +9,7 @@ import (
 var _ = Describe("Key", func() {
 	DescribeTable("ignores placeholder songs",
 		func(title, artistID string) {
-			Expect(Key(title, artistID)).To(BeEmpty())
+			Expect(Key(title, artistID, "Artist")).To(BeEmpty())
 		},
 		Entry("Track 05", "Track 05", "a1"),
 		Entry("05 Track 05", "05 Track 05", "a1"),
@@ -28,7 +28,7 @@ var _ = Describe("Key", func() {
 
 	DescribeTable("matches versions of the same song",
 		func(title string) {
-			Expect(Key(title, "a1")).To(Equal(Key("Song", "a1")))
+			Expect(Key(title, "a1", "Artist")).To(Equal(Key("Song", "a1", "Artist")))
 		},
 		Entry("different case and spacing", "  SONG  "),
 		Entry("remastered in brackets", "Song (Remastered 2009)"),
@@ -43,7 +43,7 @@ var _ = Describe("Key", func() {
 
 	DescribeTable("keeps different recordings apart",
 		func(title string) {
-			Expect(Key(title, "a1")).ToNot(Equal(Key("Song", "a1")))
+			Expect(Key(title, "a1", "Artist")).ToNot(Equal(Key("Song", "a1", "Artist")))
 		},
 		Entry("remix", "Song (Remix)"),
 		Entry("acoustic", "Song (Acoustic)"),
@@ -53,12 +53,43 @@ var _ = Describe("Key", func() {
 	)
 
 	It("keeps titles that only look like placeholders", func() {
-		Expect(Key("Tracks of My Tears", "a1")).ToNot(BeEmpty())
-		Expect(Key("99 Problems", "a1")).To(Equal("99 problems|a1"))
-		Expect(Key("1979", "a1")).To(Equal("1979|a1"))
+		Expect(Key("Tracks of My Tears", "a1", "Artist")).ToNot(BeEmpty())
+		Expect(Key("99 Problems", "a1", "Artist")).To(Equal("99 problems|artist"))
+		Expect(Key("1979", "a1", "Artist")).To(Equal("1979|artist"))
 	})
 
 	It("tells apart songs by different artists", func() {
-		Expect(Key("Song", "a1")).ToNot(Equal(Key("Song", "a2")))
+		Expect(Key("Song", "a1", "Artist")).ToNot(Equal(Key("Song", "a2", "Other Artist")))
+	})
+
+	It("matches spellings of the same artist", func() {
+		Expect(Key("Song", "a1", "The Spill Canvas")).To(Equal(Key("Song", "a2", "spill canvas")))
+	})
+
+	It("falls back to the artist ID when the name has no letters", func() {
+		Expect(Key("Song", "a1", "")).To(Equal("song|a1"))
+	})
+})
+
+var _ = Describe("ArtistKey", func() {
+	DescribeTable("matches spellings of the same artist",
+		func(a, b string) {
+			Expect(ArtistKey(a)).To(Equal(ArtistKey(b)))
+		},
+		Entry("leading The", "The Spill Canvas", "Spill Canvas"),
+		Entry("case", "the spill canvas", "SPILL CANVAS"),
+		Entry("punctuation", "Panic! At The Disco", "Panic at the Disco"),
+		Entry("ampersand", "Simon & Garfunkel", "Simon and Garfunkel"),
+		Entry("plus", "Florence + The Machine", "Florence and the Machine"),
+		Entry("apostrophe", "Guns N' Roses", "Guns N Roses"),
+		Entry("slash", "AC/DC", "ACDC"),
+		Entry("accents", "Beyoncé", "Beyonce"),
+		Entry("extra spaces", "  Spill   Canvas ", "Spill Canvas"),
+	)
+
+	It("keeps different artists apart", func() {
+		Expect(ArtistKey("The The")).To(Equal("the"))
+		Expect(ArtistKey("Theory of a Deadman")).To(Equal("theory of a deadman"))
+		Expect(ArtistKey("!!!")).To(Equal("!!!"))
 	})
 })

@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/deluan/sanitize"
 	"github.com/navidrome/navidrome/consts"
 )
 
@@ -28,11 +29,15 @@ var (
 		`single version|album version|radio edit|radio version|feat|ft|featuring)\b`)
 	// ...unless they mark a different recording
 	differentRecordingWords = regexp.MustCompile(`\b(remix|mix|instrumental|acoustic|demo|karaoke|cover)\b`)
+
+	artistAnd         = regexp.MustCompile(`\s*[&+]\s*`)
+	artistPunctuation = regexp.MustCompile(`[^\p{L}\p{N}\s]`)
 )
 
 // Key returns the key used to match a song across collections, or "" if the song is a
-// placeholder (unknown artist, or a title like "Track 05") that should not be matched at all
-func Key(title, artistID string) string {
+// placeholder (unknown artist, or a title like "Track 05") that should not be matched at all.
+// The artist is matched by name (see ArtistKey), falling back to its ID
+func Key(title, artistID, artistName string) string {
 	if artistID == "" || artistID == consts.UnknownArtistID {
 		return ""
 	}
@@ -40,7 +45,28 @@ func Key(title, artistID string) string {
 	if t == "" {
 		return ""
 	}
-	return t + "|" + artistID
+	artist := ArtistKey(artistName)
+	if artist == "" {
+		artist = artistID
+	}
+	return t + "|" + artist
+}
+
+// ArtistKey matches spellings of the same artist name: "The Spill Canvas" and "Spill Canvas",
+// "Panic! At The Disco" and "Panic at the Disco", "Simon & Garfunkel" and "Simon and Garfunkel"
+func ArtistKey(name string) string {
+	k := strings.ToLower(sanitize.Accents(strings.TrimSpace(name)))
+	k = artistAnd.ReplaceAllString(k, " and ")
+	k = artistPunctuation.ReplaceAllString(k, "")
+	k = strings.TrimSpace(spaces.ReplaceAllString(k, " "))
+	if rest, ok := strings.CutPrefix(k, "the "); ok {
+		k = rest
+	}
+	if k == "" {
+		// Names made only of punctuation, like "!!!"
+		return strings.ToLower(strings.TrimSpace(name))
+	}
+	return k
 }
 
 func normalizeTitle(title string) string {

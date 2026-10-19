@@ -6,7 +6,6 @@ import { createStore } from 'redux'
 import { IpodNetworkDialog } from './IpodNetworkDialog'
 import { httpClient } from '../dataProvider'
 
-const getList = vi.fn()
 const redirect = vi.fn()
 
 vi.mock('../dataProvider', () => ({
@@ -54,7 +53,6 @@ vi.mock('react-admin', async (importOriginal) => {
   return {
     ...actual,
     useTranslate: () => (x) => x,
-    useDataProvider: () => ({ getList }),
     useRedirect: () => redirect,
   }
 })
@@ -103,7 +101,11 @@ describe('<IpodNetworkDialog />', () => {
     })
     httpClient.mockImplementation((url) =>
       Promise.resolve({
-        json: url.startsWith('/api/ipods/match') ? match : network,
+        json: url.startsWith('/api/ipods/match')
+          ? match
+          : url.startsWith('/api/artist')
+            ? [{ id: 'ar-1', name: 'Weezer' }]
+            : network,
       }),
     )
     // jsdom has no layout, so give the graph container a width
@@ -147,7 +149,6 @@ describe('<IpodNetworkDialog />', () => {
   })
 
   it('finds matching iPods for the chosen artists', async () => {
-    getList.mockResolvedValue({ data: [{ id: 'ar-1', name: 'Weezer' }] })
     renderDialog()
     fireEvent.click(screen.getByText('ipods.match.tab'))
 
@@ -161,10 +162,12 @@ describe('<IpodNetworkDialog />', () => {
       expect(screen.getByText('Weezer · 12')).toBeInTheDocument(),
     )
     expect(httpClient).toHaveBeenCalledWith('/api/ipods/match?artistId=ar-1')
-    expect(getList).toHaveBeenCalledWith(
-      'artist',
-      expect.objectContaining({ filter: { name: 'Wee' } }),
-    )
+    // The artist search bypasses the library selector filter
+    const searchUrl = httpClient.mock.calls
+      .map(([url]) => url)
+      .find((url) => url.startsWith('/api/artist'))
+    expect(searchUrl).toContain('name=Wee')
+    expect(searchUrl).not.toContain('library_id')
 
     // Selecting a match jumps back to the network with that iPod highlighted
     fireEvent.click(screen.getByText(/Bob's iPod · ipods.match.resonance/))

@@ -16,6 +16,9 @@ import (
 var _ = Describe("IpodRepository", func() {
 	var adminRepo model.IpodRepository
 	unknownArtist := model.Artist{ID: consts.UnknownArtistID, Name: consts.UnknownArtist, OrderArtistName: "unknown artist"}
+	// Two spellings of the same artist, as tagged on different iPods
+	spillCanvas := model.Artist{ID: "ipod-sc1", Name: "The Spill Canvas", OrderArtistName: "spill canvas"}
+	spillCanvasLower := model.Artist{ID: "ipod-sc2", Name: "the spill canvas", OrderArtistName: "the spill canvas"}
 
 	ipodSong := func(id string, libraryID int, title string, artist model.Artist) model.MediaFile {
 		s := mf(model.MediaFile{
@@ -39,7 +42,10 @@ var _ = Describe("IpodRepository", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		ctx := request.WithUser(log.NewContext(context.TODO()), adminUser)
-		Expect(NewArtistRepository(ctx, db).Put(&unknownArtist)).To(Succeed())
+		ar := NewArtistRepository(ctx, db)
+		for _, a := range []*model.Artist{&unknownArtist, &spillCanvas, &spillCanvasLower} {
+			Expect(ar.Put(a)).To(Succeed())
+		}
 		mr := NewMediaFileRepository(ctx, db)
 		songs := []model.MediaFile{
 			ipodSong("ipod-1", 1, "Ipod Shared Song", artistKraftwerk),
@@ -57,6 +63,9 @@ var _ = Describe("IpodRepository", func() {
 			// Copies in the combined library
 			ipodSong("ipod-12", 4, "Ipod Lonely Song", artistBeatles),
 			ipodSong("ipod-13", 4, "Ipod Pair Song", artistBeatles),
+			// The same song, by two spellings of the same artist
+			ipodSong("ipod-14", 2, "All Over You", spillCanvas),
+			ipodSong("ipod-15", 3, "All Over You", spillCanvasLower),
 		}
 		for i := range songs {
 			Expect(mr.Put(&songs[i])).To(Succeed())
@@ -64,7 +73,7 @@ var _ = Describe("IpodRepository", func() {
 		DeferCleanup(func() {
 			_, _ = db.NewQuery("DELETE FROM media_file WHERE id LIKE 'ipod-%'").Execute()
 			_, _ = db.NewQuery("DELETE FROM library WHERE id IN (2, 3, 4)").Execute()
-			_, _ = db.Delete("artist", dbx.HashExp{"id": unknownArtist.ID}).Execute()
+			_, _ = db.Delete("artist", dbx.HashExp{"id": []any{unknownArtist.ID, spillCanvas.ID, spillCanvasLower.ID}}).Execute()
 		})
 
 		adminRepo = NewIpodRepository(ctx, db)
@@ -84,9 +93,27 @@ var _ = Describe("IpodRepository", func() {
 		entries, err := adminRepo.SongIndex()
 		Expect(err).ToNot(HaveOccurred())
 		found := iPodsWith(entries)
-		Expect(found[key("Ipod Shared Song", artistKraftwerk.ID)]).To(ConsistOf(1, 2, 3))
-		Expect(found[key("Ipod Pair Song", artistBeatles.ID)]).To(ConsistOf(2, 3))
-		Expect(found[key("Ipod Lonely Song", artistBeatles.ID)]).To(ConsistOf(3))
+		Expect(found[key("Ipod Shared Song", artistKraftwerk.ID, artistKraftwerk.OrderArtistName)]).To(ConsistOf(1, 2, 3))
+		Expect(found[key("Ipod Pair Song", artistBeatles.ID, artistBeatles.OrderArtistName)]).To(ConsistOf(2, 3))
+		Expect(found[key("Ipod Lonely Song", artistBeatles.ID, artistBeatles.OrderArtistName)]).To(ConsistOf(3))
+	})
+
+	It("matches songs and artists across spellings of the artist name", func() {
+		entries, err := adminRepo.SongIndex()
+		Expect(err).ToNot(HaveOccurred())
+		found := iPodsWith(entries)
+		Expect(found[key("All Over You", spillCanvas.ID, "spill canvas")]).To(ConsistOf(2, 3))
+
+		counts, err := adminRepo.ArtistCounts()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(counts).To(ContainElements(
+			And(HaveField("LibraryID", 2), HaveField("Key", "spill canvas")),
+			And(HaveField("LibraryID", 3), HaveField("Key", "spill canvas")),
+		))
+
+		keys, err := adminRepo.ArtistKeys([]string{spillCanvas.ID, spillCanvasLower.ID, "missing"})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(keys).To(Equal(map[string]string{spillCanvas.ID: "spill canvas", spillCanvasLower.ID: "spill canvas"}))
 	})
 
 	It("leaves out placeholder songs", func() {
@@ -120,8 +147,8 @@ var _ = Describe("IpodRepository", func() {
 				lib3 = s
 			}
 		}
-		Expect(lib3.SongCount).To(Equal(4))
-		Expect(lib3.ArtistCount).To(Equal(2))
+		Expect(lib3.SongCount).To(Equal(5))
+		Expect(lib3.ArtistCount).To(Equal(3))
 		Expect(lib3.AvgYear).To(BeNumerically("~", 1985))
 	})
 
@@ -129,7 +156,7 @@ var _ = Describe("IpodRepository", func() {
 		counts, err := adminRepo.ArtistCounts()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(counts).To(ContainElement(model.IpodArtistCount{
-			LibraryID: 3, ArtistID: artistBeatles.ID, ArtistName: artistBeatles.Name, SongCount: 2,
+			Key: "beatles", LibraryID: 3, ArtistID: artistBeatles.ID, ArtistName: artistBeatles.Name, SongCount: 2,
 		}))
 		Expect(counts).ToNot(ContainElement(HaveField("ArtistID", consts.UnknownArtistID)))
 	})

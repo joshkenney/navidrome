@@ -35,7 +35,10 @@ func Db() *sql.DB {
 				if err := conn.RegisterFunc("SEEDEDRAND", hasher.HashFunc(), false); err != nil {
 					return err
 				}
-				return conn.RegisterFunc("SONG_KEY", songkey.Key, true)
+				if err := conn.RegisterFunc("SONG_KEY", songkey.Key, true); err != nil {
+					return err
+				}
+				return conn.RegisterFunc("ARTIST_KEY", songkey.ArtistKey, true)
 			},
 		})
 		Path = conf.Server.DbPath

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useDataProvider, useTranslate } from 'react-admin'
+import { useTranslate } from 'react-admin'
 import ForceGraph2D from 'react-force-graph-2d'
 import {
   Button,
@@ -25,8 +25,10 @@ import { MdZoomOutMap } from 'react-icons/md'
 import { DialogTitle } from '../dialogs/DialogTitle'
 import { DialogContent } from '../dialogs/DialogContent'
 import { httpClient } from '../dataProvider'
+import { REST_URL } from '../consts'
 import { IpodIcon } from './IpodIcon'
 import { useBrowseIpod } from './useBrowseIpod'
+import { uniqueArtists } from './artistKey'
 
 const GRAPH_HEIGHT = 520
 const FOCUS_MS = 800
@@ -381,7 +383,6 @@ const NetworkTab = ({ network, selectedId, onSelect, onBrowse }) => {
 export const MatchTab = ({ onSelectIpod }) => {
   const classes = useStyles()
   const translate = useTranslate()
-  const dataProvider = useDataProvider()
   const [input, setInput] = useState('')
   const [options, setOptions] = useState([])
   const [artists, setArtists] = useState([])
@@ -392,21 +393,26 @@ export const MatchTab = ({ onSelectIpod }) => {
   useEffect(() => {
     if (!input) return
     let active = true
+    // Search all iPods, not only the libraries selected in the library selector (the
+    // dataProvider would filter by them), as matching considers all iPods too
+    const query = new URLSearchParams({
+      name: input,
+      missing: 'false',
+      _sort: 'name',
+      _order: 'ASC',
+      _start: '0',
+      _end: '10',
+    })
     const timer = setTimeout(() => {
-      dataProvider
-        .getList('artist', {
-          pagination: { page: 1, perPage: 10 },
-          sort: { field: 'name', order: 'ASC' },
-          filter: { name: input },
-        })
-        .then(({ data }) => active && setOptions(data))
+      httpClient(`${REST_URL}/artist?${query}`)
+        .then(({ json }) => active && setOptions(uniqueArtists(json)))
         .catch(() => active && setOptions([]))
     }, 250)
     return () => {
       active = false
       clearTimeout(timer)
     }
-  }, [input, dataProvider])
+  }, [input])
 
   const handleMatch = useCallback(() => {
     setLoading(true)

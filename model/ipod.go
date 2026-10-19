@@ -44,8 +44,10 @@ type IpodStats struct {
 	AvgYear       float64 `json:"avgYear"`
 }
 
-// IpodArtistCount is the number of songs by an artist on an iPod
+// IpodArtistCount is the number of songs by an artist on an iPod. Spellings of the same
+// artist ("The Spill Canvas", "Spill Canvas") share the same Key (see songkey.ArtistKey)
 type IpodArtistCount struct {
+	Key        string `json:"key"`
 	LibraryID  int    `json:"libraryId"`
 	ArtistID   string `json:"artistId"`
 	ArtistName string `json:"artistName"`
@@ -68,6 +70,8 @@ type IpodRepository interface {
 	Stats() ([]IpodStats, error)
 	Totals() (*IpodTotals, error)
 	ArtistCounts() ([]IpodArtistCount, error)
+	// ArtistKeys returns the artist Key (see IpodArtistCount) of each of the given artist IDs
+	ArtistKeys(artistIDs []string) (map[string]string, error)
 	// DataVersion identifies the iPods the current user can access and their state. It changes
 	// whenever a scan finishes or a library is added, changed or removed
 	DataVersion() (string, error)

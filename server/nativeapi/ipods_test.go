@@ -13,8 +13,11 @@ var _ = Describe("iPod network and matching", func() {
 	var counts []model.IpodArtistCount
 
 	count := func(lib int, artist string, songs int) model.IpodArtistCount {
-		return model.IpodArtistCount{LibraryID: lib, ArtistID: artist, ArtistName: "Name " + artist, SongCount: songs}
+		return model.IpodArtistCount{Key: artist, LibraryID: lib, ArtistID: artist, ArtistName: "Name " + artist, SongCount: songs}
 	}
+
+	// In most tests, each artist ID is its own Key
+	sameKeys := map[string]string{"everyone": "everyone", "niche": "niche", "a-only": "a-only"}
 
 	BeforeEach(func() {
 		stats = []model.IpodStats{
@@ -53,6 +56,45 @@ var _ = Describe("iPod network and matching", func() {
 		})
 	})
 
+	Describe("artist spellings", func() {
+		// "The Spill Canvas" on Alice's iPod (3 songs) and "Spill Canvas" on Bob's iPod (5 songs)
+		BeforeEach(func() {
+			counts = []model.IpodArtistCount{
+				{Key: "spill canvas", LibraryID: 1, ArtistID: "the-sc", ArtistName: "The Spill Canvas", SongCount: 3},
+				{Key: "spill canvas", LibraryID: 2, ArtistID: "sc", ArtistName: "Spill Canvas", SongCount: 5},
+			}
+		})
+
+		It("links iPods that have different spellings of the same artist", func() {
+			n := buildIpodNetwork(stats[:2], counts)
+			Expect(n.Edges).To(HaveLen(1))
+			Expect(n.Edges[0].Weight).To(Equal(1.0))
+			Expect(n.Edges[0].SharedArtists).To(Equal([]string{"Spill Canvas"}))
+		})
+
+		It("counts them as one shared artist, shown with the most common spelling", func() {
+			shared := topSharedArtists(counts, 10)
+			Expect(shared).To(HaveLen(1))
+			Expect(shared[0]).To(Equal(ipodSharedArtist{ID: "sc", Name: "Spill Canvas", IpodCount: 2, SongCount: 8}))
+		})
+
+		It("matches iPods with any spelling of the chosen artist", func() {
+			res := matchIpods(stats[:2], counts, []string{"the-sc"}, map[string]string{"the-sc": "spill canvas"})
+			Expect(res.NotFound).To(BeEmpty())
+			Expect(res.Matches).To(HaveLen(2))
+			Expect(res.Matches[0].ID).To(Equal(2))
+			Expect(res.Matches[0].Matched).To(Equal([]ipodMatchedArtist{{ID: "sc", Name: "Spill Canvas", SongCount: 5}}))
+		})
+
+		It("counts both spellings picked together only once", func() {
+			keys := map[string]string{"the-sc": "spill canvas", "sc": "spill canvas"}
+			res := matchIpods(stats[:2], counts, []string{"the-sc", "sc"}, keys)
+			Expect(res.Matches).To(HaveLen(2))
+			Expect(res.Matches[0].Resonance).To(Equal(100))
+			Expect(res.Matches[0].Matched).To(HaveLen(1))
+		})
+	})
+
 	Describe("findIpodTwins", func() {
 		It("returns the two most similar iPods", func() {
 			twins := findIpodTwins(stats, counts)
@@ -71,7 +113,7 @@ var _ = Describe("iPod network and matching", func() {
 
 	Describe("matchIpods", func() {
 		It("ranks iPods sharing rarer artists higher", func() {
-			res := matchIpods(stats, counts, []string{"everyone", "niche"})
+			res := matchIpods(stats, counts, []string{"everyone", "niche"}, sameKeys)
 			Expect(res.NotFound).To(BeEmpty())
 			Expect(res.Matches).To(HaveLen(3))
 			Expect(res.Matches[0].ID).To(Equal(2))
@@ -82,7 +124,7 @@ var _ = Describe("iPod network and matching", func() {
 		})
 
 		It("reports artists not found on any iPod", func() {
-			res := matchIpods(stats, counts, []string{"a-only", "unknown", "a-only"})
+			res := matchIpods(stats, counts, []string{"a-only", "unknown", "a-only"}, sameKeys)
 			Expect(res.NotFound).To(Equal([]string{"unknown"}))
 			Expect(res.Matches).To(HaveLen(1))
 			Expect(res.Matches[0].ID).To(Equal(1))
@@ -90,7 +132,7 @@ var _ = Describe("iPod network and matching", func() {
 		})
 
 		It("returns no matches for an empty query", func() {
-			res := matchIpods(stats, counts, nil)
+			res := matchIpods(stats, counts, nil, sameKeys)
 			Expect(res.Matches).To(BeEmpty())
 		})
 	})
