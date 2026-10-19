@@ -235,11 +235,13 @@ func runInitialScan(ctx context.Context) func() error {
 // libraries. It only needs the DB, so existing duplicates are cleaned up without a rescan
 func mergeNestedLibraries(ctx context.Context, ds model.DataStore) {
 	err := ds.WithTx(func(tx model.DataStore) error {
-		merged, err := tx.Library(ctx).MergeNestedLibraries()
-		if err != nil {
+		// Write first, so the transaction waits for the write lock instead of failing when
+		// something else writes while it reads (see SyncNestedAccess)
+		if err := tx.Library(ctx).SyncNestedAccess(); err != nil {
 			return err
 		}
-		if err := tx.Library(ctx).SyncNestedAccess(); err != nil {
+		merged, err := tx.Library(ctx).MergeNestedLibraries()
+		if err != nil {
 			return err
 		}
 		if merged == 0 {

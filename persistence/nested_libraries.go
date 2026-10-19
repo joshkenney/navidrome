@@ -42,19 +42,21 @@ func (r *libraryRepository) nestedPairs() ([]nestedPair, error) {
 }
 
 // SyncNestedAccess gives users who can access a combined library access to all the libraries
-// inside it
+// inside it (whose folder is inside its folder, as in model.Library.Contains).
+//
+// It is a single statement that writes without reading first, so it can start a transaction:
+// SQLite then waits for the write lock as usual. A transaction that reads first and writes later
+// fails at once with "database is locked" if anything else wrote in between, which made scans
+// fail at their last step while people were listening
 func (r *libraryRepository) SyncNestedAccess() error {
-	pairs, err := r.nestedPairs()
+	_, err := r.db.NewQuery(`INSERT OR IGNORE INTO user_library (user_id, library_id)
+SELECT ul.user_id, child.id
+FROM library parent
+JOIN library child ON child.id != parent.id
+	AND substr(rtrim(child.path, '/'), 1, length(rtrim(parent.path, '/')) + 1) = rtrim(parent.path, '/') || '/'
+JOIN user_library ul ON ul.library_id = parent.id`).Execute()
 	if err != nil {
-		return err
-	}
-	for _, p := range pairs {
-		_, err := r.db.NewQuery(`INSERT OR IGNORE INTO user_library (user_id, library_id)
-SELECT user_id, {:child} FROM user_library WHERE library_id = {:parent}`).
-			Bind(dbx.Params{"parent": p.parent.ID, "child": p.child.ID}).Execute()
-		if err != nil {
-			return fmt.Errorf("granting access to library %d: %w", p.child.ID, err)
-		}
+		return fmt.Errorf("granting access to nested libraries: %w", err)
 	}
 	return nil
 }

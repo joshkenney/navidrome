@@ -154,5 +154,20 @@ VALUES ({:admin}, 'nested-p1', 'media_file', 2, '2026-01-02 00:00:00', true, '20
 			Expect(err).ToNot(HaveOccurred())
 			Expect(libs.IDs()).To(ContainElements(1, parentID, childID))
 		})
+
+		It("only counts folders inside the combined library's folder, not ones sharing its name", func() {
+			const siblingID = 22
+			exec("INSERT INTO library (id, name, path) VALUES ({:id}, 'Sibling', '/nested/music2')", dbx.Params{"id": siblingID})
+			DeferCleanup(func() { exec("DELETE FROM library WHERE id = {:id}", dbx.Params{"id": siblingID}) })
+			ur := NewUserRepository(request.WithUser(context.TODO(), adminUser), db)
+			Expect(ur.SetUserLibraries(regularUser.ID, []int{1, parentID})).To(Succeed())
+			DeferCleanup(func() { _ = ur.SetUserLibraries(regularUser.ID, []int{1}) })
+
+			Expect(repo.SyncNestedAccess()).To(Succeed())
+			libs, err := ur.GetUserLibraries(regularUser.ID)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(libs.IDs()).To(ContainElement(childID))
+			Expect(libs.IDs()).ToNot(ContainElement(siblingID))
+		})
 	})
 })
