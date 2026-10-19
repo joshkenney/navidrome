@@ -100,5 +100,6 @@ type LibraryRepository interface {
 
 	// Libraries containing other libraries (see Library.Contains)
 	SyncNestedAccess() error
+	NestedMergePending() (bool, error)
 	MergeNestedLibraries() (int, error)
 }

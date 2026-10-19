@@ -234,12 +234,19 @@ func runInitialScan(ctx context.Context) func() error {
 // every iPod's folder) imported from their nested libraries, and grants access to the nested
 // libraries. It only needs the DB, so existing duplicates are cleaned up without a rescan
 func mergeNestedLibraries(ctx context.Context, ds model.DataStore) {
-	err := ds.WithTx(func(tx model.DataStore) error {
-		// Write first, so the transaction waits for the write lock instead of failing when
-		// something else writes while it reads (see SyncNestedAccess)
-		if err := tx.Library(ctx).SyncNestedAccess(); err != nil {
-			return err
+	// Both outside a transaction: one would hold the write lock while reading every track,
+	// blocking all other writes for minutes on large libraries
+	if err := ds.Library(ctx).SyncNestedAccess(); err != nil {
+		log.Error(ctx, "Error granting access to nested libraries", err)
+		return
+	}
+	if pending, err := ds.Library(ctx).NestedMergePending(); err != nil || !pending {
+		if err != nil {
+			log.Error(ctx, "Error checking nested libraries", err)
 		}
+		return
+	}
+	err := ds.WithTx(func(tx model.DataStore) error {
 		merged, err := tx.Library(ctx).MergeNestedLibraries()
 		if err != nil {
 			return err

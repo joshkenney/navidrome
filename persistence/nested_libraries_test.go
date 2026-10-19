@@ -144,6 +144,20 @@ VALUES ({:admin}, 'nested-p1', 'media_file', 2, '2026-01-02 00:00:00', true, '20
 		})
 	})
 
+	Describe("NestedMergePending", func() {
+		It("is pending while the combined library holds a copy of a nested library's track", func() {
+			Expect(repo.NestedMergePending()).To(BeTrue())
+			_, err := repo.MergeNestedLibraries()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(repo.NestedMergePending()).To(BeFalse())
+		})
+
+		It("ignores tracks in combined library folders that are not libraries", func() {
+			exec("DELETE FROM media_file WHERE id = 'nested-p1'", nil)
+			Expect(repo.NestedMergePending()).To(BeFalse())
+		})
+	})
+
 	Describe("SyncNestedAccess", func() {
 		It("gives users of the combined library access to the libraries inside it", func() {
 			ur := NewUserRepository(request.WithUser(context.TODO(), adminUser), db)

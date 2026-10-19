@@ -236,12 +236,16 @@ func (s *scannerImpl) prepareLibrariesForScan(ctx context.Context, state *scanSt
 
 func (s *scannerImpl) runMergeNestedLibraries(ctx context.Context, state *scanState) func() error {
 	return func() error {
+		// Both outside a transaction: one would hold the write lock while reading every track,
+		// blocking all other writes for minutes on large libraries
+		if err := s.ds.Library(ctx).SyncNestedAccess(); err != nil {
+			return err
+		}
+		pending, err := s.ds.Library(ctx).NestedMergePending()
+		if err != nil || !pending {
+			return err
+		}
 		return s.ds.WithTx(func(tx model.DataStore) error {
-			// Write first, so the transaction waits for the write lock instead of failing when
-			// something else writes while it reads (see SyncNestedAccess)
-			if err := tx.Library(ctx).SyncNestedAccess(); err != nil {
-				return err
-			}
 			merged, err := tx.Library(ctx).MergeNestedLibraries()
 			if err != nil {
 				log.Error(ctx, "Scanner: Error merging nested libraries", err)

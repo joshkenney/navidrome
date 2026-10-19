@@ -44,10 +44,9 @@ func (r *libraryRepository) nestedPairs() ([]nestedPair, error) {
 // SyncNestedAccess gives users who can access a combined library access to all the libraries
 // inside it (whose folder is inside its folder, as in model.Library.Contains).
 //
-// It is a single statement that writes without reading first, so it can start a transaction:
-// SQLite then waits for the write lock as usual. A transaction that reads first and writes later
-// fails at once with "database is locked" if anything else wrote in between, which made scans
-// fail at their last step while people were listening
+// It is a single quick statement, best run on its own: in a transaction that read first, its
+// write would fail at once with "database is locked" if anything else wrote in between, which made
+// scans fail at their last step while people were listening
 func (r *libraryRepository) SyncNestedAccess() error {
 	_, err := r.db.NewQuery(`INSERT OR IGNORE INTO user_library (user_id, library_id)
 SELECT ul.user_id, child.id
@@ -59,6 +58,31 @@ JOIN user_library ul ON ul.library_id = parent.id`).Execute()
 		return fmt.Errorf("granting access to nested libraries: %w", err)
 	}
 	return nil
+}
+
+// NestedMergePending tells whether a combined library holds tracks of a library inside it, that
+// MergeNestedLibraries would merge. It reads the tracks once, outside any transaction: the merge
+// itself needs a write transaction, which would block every other write while it reads, so it
+// should only start when there is something to merge (rarely: after adding a library inside a
+// combined one)
+func (r *libraryRepository) NestedMergePending() (bool, error) {
+	pairs, err := r.nestedPairs()
+	if err != nil || len(pairs) == 0 {
+		return false, err
+	}
+	conds := make([]string, len(pairs))
+	params := dbx.Params{}
+	for i, p := range pairs {
+		conds[i] = fmt.Sprintf("(library_id = {:l%[1]d} AND substr(path, 1, length({:p%[1]d})) = {:p%[1]d})", i)
+		params[fmt.Sprintf("l%d", i)] = p.parent.ID
+		params[fmt.Sprintf("p%d", i)] = p.prefix
+	}
+	var res struct {
+		Pending bool `db:"pending"`
+	}
+	err = r.db.NewQuery("SELECT EXISTS (SELECT 1 FROM media_file WHERE " + strings.Join(conds, " OR ") + ") AS pending").
+		Bind(params).One(&res)
+	return res.Pending, err
 }
 
 // MergeNestedLibraries replaces the tracks a combined library imported from the folder of a

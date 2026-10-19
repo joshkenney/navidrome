@@ -147,6 +147,10 @@ func (m *MockLibraryRepo) SyncNestedAccess() error {
 	return nil
 }
 
+func (m *MockLibraryRepo) NestedMergePending() (bool, error) {
+	return false, nil
+}
+
 func (m *MockLibraryRepo) MergeNestedLibraries() (int, error) {
 	return 0, nil
 }
