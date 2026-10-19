@@ -40,6 +40,7 @@ const GRAPH_HEIGHT = 520
 const FOCUS_MS = 800
 const FIT_MS = 600
 const DIMMED_ALPHA = 0.15
+const PLAYING_MARK = '\u266A' // A music note, marking the iPod of the song playing
 const TOP_ARTISTS = 5
 
 const useStyles = makeStyles((theme) => ({
@@ -64,6 +65,8 @@ const useStyles = makeStyles((theme) => ({
     [theme.breakpoints.down('sm')]: { width: '100%' },
   },
   search: { marginBottom: theme.spacing(2) },
+  playingChip: { marginBottom: theme.spacing(1), maxWidth: '100%' },
+  playing: { color: theme.palette.primary.main, fontWeight: 600 },
   legend: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -133,7 +136,14 @@ const tribeName = (network, tribeId, translate) =>
 const prefersReducedMotion = () =>
   !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-const IpodDetails = ({ node, network, onSelect, onSelectTribe, onBrowse }) => {
+const IpodDetails = ({
+  node,
+  network,
+  onSelect,
+  onSelectTribe,
+  onBrowse,
+  playingSong,
+}) => {
   const classes = useStyles()
   const translate = useTranslate()
   const t = (key, opts) => translate(`ipods.network.${key}`, opts)
@@ -156,6 +166,14 @@ const IpodDetails = ({ node, network, onSelect, onSelectTribe, onBrowse }) => {
     <Card variant="outlined">
       <CardContent>
         <Typography variant="h6">{node.name}</Typography>
+        {playingSong && (
+          <Typography variant="body2" className={classes.playing}>
+            {t('playing', {
+              title: playingSong.title,
+              artist: playingSong.artist,
+            })}
+          </Typography>
+        )}
         <Typography variant="body2" color="textSecondary" gutterBottom>
           {t('counts', {
             songs: node.songCount,
@@ -236,6 +254,8 @@ const NetworkTab = ({
   tribeId,
   onSelectTribe,
   onBrowse,
+  playingId,
+  playingSong,
 }) => {
   const classes = useStyles()
   const theme = useTheme()
@@ -369,9 +389,25 @@ const NetworkTab = ({
       ctx.stroke()
     }
 
-    if (focused || hovered) {
+    // The iPod of the song playing: a ring and a note, always visible, even when dimmed
+    const playing = node.id === playingId
+    if (playing) {
+      ctx.globalAlpha = 1
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, radius + 3 / scale, 0, 2 * Math.PI)
+      ctx.lineWidth = 2.5 / scale
+      ctx.strokeStyle = theme.palette.primary.main
+      ctx.stroke()
+      ctx.font = `${16 / scale}px sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'bottom'
+      ctx.fillStyle = theme.palette.primary.main
+      ctx.fillText(PLAYING_MARK, node.x, node.y - radius - 4 / scale)
+    }
+
+    if (focused || hovered || playing) {
       const fontSize = 12 / scale
-      ctx.font = `${hovered ? 'bold ' : ''}${fontSize}px sans-serif`
+      ctx.font = `${hovered || playing ? 'bold ' : ''}${fontSize}px sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
       ctx.fillStyle = theme.palette.text.primary
@@ -401,6 +437,7 @@ const NetworkTab = ({
     }
   }
 
+  const playingNode = network.nodes.find((n) => n.id === playingId)
   const tribes = network.tribes || []
   const legendChip = (id, name, size) => (
     <Chip
@@ -502,6 +539,18 @@ const NetworkTab = ({
           )}
         </div>
         <div className={classes.side}>
+          {playingNode && (
+            <Chip
+              size="small"
+              clickable
+              color={selectedId === playingId ? 'primary' : 'default'}
+              className={classes.playingChip}
+              onClick={() => onSelect(playingId)}
+              label={`${PLAYING_MARK} ${translate('ipods.network.playingFrom', {
+                name: playingNode.name,
+              })}`}
+            />
+          )}
           <Autocomplete
             className={classes.search}
             options={sortedNodes}
@@ -525,6 +574,7 @@ const NetworkTab = ({
             onSelect={onSelect}
             onSelectTribe={onSelectTribe}
             onBrowse={onBrowse}
+            playingSong={selected?.id === playingId ? playingSong : null}
           />
         </div>
       </div>
@@ -715,9 +765,17 @@ export const MatchTab = ({ onSelectIpod, ipodId }) => {
 }
 
 // With an ipodId, the network opens on that iPod, and Find your iPod starts from its top artists
+// The song playing in the player, if it comes from an iPod (not an internet radio)
+const usePlayingSong = () => {
+  const song = useSelector((state) => state.player?.current?.song)
+  const isRadio = useSelector((state) => state.player?.current?.isRadio)
+  return song && !isRadio ? song : null
+}
+
 export const IpodNetworkDialog = ({ open, onClose, ipodId }) => {
   const classes = useStyles()
   const translate = useTranslate()
+  const playingSong = usePlayingSong()
   const [tab, setTab] = useState(0)
   const [network, setNetwork] = useState(null)
   const [error, setError] = useState(false)
@@ -739,6 +797,21 @@ export const IpodNetworkDialog = ({ open, onClose, ipodId }) => {
       .then(({ json }) => setNetwork(json))
       .catch(() => setError(true))
   }, [open])
+
+  // The iPod of the song playing, marked in the network. It follows the player
+  const playingId = network?.nodes.find(
+    (n) =>
+      n.id === Number(playingSong?.libraryId) ||
+      (playingSong?.libraryName && n.name === playingSong.libraryName),
+  )?.id
+
+  // The network opens on the playing song's iPod, if any, rather than on the selected one
+  const openedOnPlaying = useRef(false)
+  useEffect(() => {
+    if (!network || openedOnPlaying.current) return
+    openedOnPlaying.current = true
+    if (playingId != null) selectIpod(playingId)
+  }, [network, playingId, selectIpod])
 
   const handleBrowse = useBrowseIpod(onClose)
 
@@ -782,12 +855,17 @@ export const IpodNetworkDialog = ({ open, onClose, ipodId }) => {
                 tribeId={tribeId}
                 onSelectTribe={selectTribe}
                 onBrowse={handleBrowse}
+                playingId={playingId}
+                playingSong={playingSong}
               />
             )}
           </>
         )}
         {tab === 1 && (
-          <MatchTab onSelectIpod={handleSelectIpod} ipodId={ipodId} />
+          <MatchTab
+            onSelectIpod={handleSelectIpod}
+            ipodId={playingId ?? ipodId}
+          />
         )}
       </DialogContent>
     </Dialog>

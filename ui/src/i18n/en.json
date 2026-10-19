@@ -751,7 +751,9 @@
       "browse": "Browse this iPod",
       "resetView": "Show all iPods",
       "search": "Find an iPod",
-      "noMatch": "No iPod with that name"
+      "noMatch": "No iPod with that name",
+      "playingFrom": "Playing from %{name}",
+      "playing": "Playing now: %{title} — %{artist}"
     },
     "match": {
       "tab": "Find your iPod",

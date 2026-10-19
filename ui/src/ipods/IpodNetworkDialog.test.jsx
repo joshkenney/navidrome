@@ -19,10 +19,21 @@ const camera = vi.hoisted(() => ({
   centerAt: vi.fn(),
   zoom: vi.fn(),
 }))
+// What the graph drew: the text written next to each node
+const drawn = vi.hoisted(() => ({ texts: [] }))
 vi.mock('react-force-graph-2d', async () => {
   const React = await import('react')
   const MockGraph = React.forwardRef(
-    ({ graphData, onNodeClick, onBackgroundClick, onEngineStop }, ref) => {
+    (
+      {
+        graphData,
+        onNodeClick,
+        onBackgroundClick,
+        onEngineStop,
+        nodeCanvasObject,
+      },
+      ref,
+    ) => {
       React.useImperativeHandle(ref, () => camera)
       React.useEffect(() => {
         graphData.nodes.forEach((n, i) => {
@@ -32,6 +43,24 @@ vi.mock('react-force-graph-2d', async () => {
         onEngineStop()
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [])
+      // Draw every node, as the canvas would, recording the text written
+      drawn.texts = []
+      const ctx = new Proxy(
+        {},
+        {
+          get: (target, prop) =>
+            prop === 'fillText'
+              ? (text) => drawn.texts.push({ text })
+              : typeof prop === 'string' && prop in target
+                ? target[prop]
+                : () => {},
+          set: (target, prop, value) => {
+            target[prop] = value
+            return true
+          },
+        },
+      )
+      graphData.nodes.forEach((n) => nodeCanvasObject?.(n, ctx, 1))
       return (
         <div data-testid="graph">
           {graphData.nodes.map((n) => (
@@ -179,6 +208,61 @@ describe('<IpodNetworkDialog />', () => {
     const filter = camera.zoomToFit.mock.calls.at(-1)[2]
     expect(filter({ id: 2 })).toBe(true)
     expect(filter({ id: 3 })).toBe(false)
+  })
+
+  describe('with a song playing', () => {
+    const renderPlaying = (current, ipodId) =>
+      render(
+        <Provider
+          store={createStore((state) => state, {
+            player: { current },
+            library: { userLibraries: [], selectedLibraries: [] },
+          })}
+        >
+          <IpodNetworkDialog open onClose={vi.fn()} ipodId={ipodId} />
+        </Provider>,
+      )
+    const playingBob = {
+      song: { title: 'Buddy Holly', artist: 'Weezer', libraryId: 2 },
+    }
+    // The note is drawn just before the name of the iPod it marks
+    const markedIpods = () =>
+      drawn.texts
+        .map((t, i) => t.text === '\u266A' && drawn.texts[i + 1]?.text)
+        .filter(Boolean)
+
+    it("opens on the playing song's iPod, even with another iPod selected", async () => {
+      renderPlaying(playingBob, 1)
+      await waitFor(() =>
+        expect(screen.getByText('ipods.network.playing')).toBeInTheDocument(),
+      )
+      expect(screen.getByText('ipods.network.browse')).toBeInTheDocument()
+      const filter = camera.zoomToFit.mock.calls.at(-1)[2]
+      expect(filter({ id: 2 })).toBe(true)
+      expect(filter({ id: 3 })).toBe(false)
+    })
+
+    it('marks the iPod in the graph, and offers to go back to it', async () => {
+      renderPlaying(playingBob)
+      const chip = await screen.findByText(/ipods.network.playingFrom/)
+      expect(markedIpods()).toEqual(["Bob's iPod"])
+
+      fireEvent.click(screen.getByText("node-Carol's iPod"))
+      expect(screen.queryByText('ipods.network.playing')).toBeNull()
+      fireEvent.click(chip)
+      expect(screen.getByText('ipods.network.playing')).toBeInTheDocument()
+    })
+
+    it('marks nothing for an internet radio, and opens on the selected iPod', async () => {
+      renderPlaying({ isRadio: true, song: { title: 'KEXP', libraryId: 2 } }, 1)
+      await waitFor(() =>
+        expect(screen.getByText('ipods.network.browse')).toBeInTheDocument(),
+      )
+      expect(screen.queryByText(/ipods.network.playingFrom/)).toBeNull()
+      expect(markedIpods()).toEqual([])
+      const filter = camera.zoomToFit.mock.calls.at(-1)[2]
+      expect(filter({ id: 1 })).toBe(true)
+    })
   })
 
   describe('with one iPod selected', () => {
