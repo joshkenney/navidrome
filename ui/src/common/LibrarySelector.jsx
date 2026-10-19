@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useDataProvider, useTranslate, useRefresh } from 'react-admin'
 import {
@@ -12,6 +12,7 @@ import {
   Typography,
   Paper,
   Popper,
+  TextField,
   makeStyles,
 } from '@material-ui/core'
 import { ExpandMore, ExpandLess, LibraryMusic } from '@material-ui/icons'
@@ -66,7 +67,20 @@ const useStyles = makeStyles((theme) => ({
     marginLeft: '-9px',
     marginRight: 0,
   },
+  search: {
+    marginTop: theme.spacing(1),
+    marginBottom: theme.spacing(1),
+  },
+  list: {
+    maxHeight: '50vh',
+    overflowY: 'auto',
+    flexWrap: 'nowrap',
+  },
 }))
+
+// Lowercase, without accents, so "Beyonce" finds "Beyoncé's iPod"
+const searchable = (text) =>
+  text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
 
 const LibrarySelector = () => {
   const classes = useStyles()
@@ -76,6 +90,7 @@ const LibrarySelector = () => {
   const refresh = useRefresh()
   const [anchorEl, setAnchorEl] = useState(null)
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
 
   const { userLibraries, selectedLibraries } = useSelector(
     (state) => state.library,
@@ -110,6 +125,17 @@ const LibrarySelector = () => {
     onRefresh: loadUserLibraries,
   })
 
+  const sortedLibraries = useMemo(
+    () => [...userLibraries].sort((a, b) => a.name.localeCompare(b.name)),
+    [userLibraries],
+  )
+  const visibleLibraries = useMemo(() => {
+    const q = searchable(query.trim())
+    return q
+      ? sortedLibraries.filter((lib) => searchable(lib.name).includes(q))
+      : sortedLibraries
+  }, [sortedLibraries, query])
+
   // Don't render if user has no libraries or only has one library
   if (!userLibraries.length || userLibraries.length === 1) {
     return null
@@ -119,6 +145,7 @@ const LibrarySelector = () => {
     setAnchorEl(event.currentTarget)
     const wasOpen = open
     setOpen(!open)
+    setQuery('')
     // Refresh data when closing the dropdown
     if (wasOpen) {
       refresh()
@@ -127,6 +154,7 @@ const LibrarySelector = () => {
 
   const handleClose = () => {
     setOpen(false)
+    setQuery('')
     refresh()
   }
 
@@ -139,6 +167,18 @@ const LibrarySelector = () => {
   }
 
   const handleMasterCheckboxChange = () => {
+    // While searching, the checkbox only applies to the matching iPods
+    if (isSearching) {
+      const visibleIds = visibleLibraries.map((lib) => lib.id)
+      dispatch(
+        setSelectedLibraries(
+          allVisibleSelected
+            ? selectedLibraries.filter((id) => !visibleIds.includes(id))
+            : [...new Set([...selectedLibraries, ...visibleIds])],
+        ),
+      )
+      return
+    }
     if (isAllSelected) {
       dispatch(setSelectedLibraries([]))
     } else {
@@ -152,6 +192,13 @@ const LibrarySelector = () => {
   const isAllSelected = selectedCount === totalCount
   const isNoneSelected = selectedCount === 0
   const isIndeterminate = selectedCount > 0 && selectedCount < totalCount
+  const isSearching = query.trim() !== ''
+  const visibleSelectedCount = visibleLibraries.filter((lib) =>
+    selectedLibraries.includes(lib.id),
+  ).length
+  const allVisibleSelected =
+    visibleLibraries.length > 0 &&
+    visibleSelectedCount === visibleLibraries.length
 
   const displayText = isNoneSelected
     ? translate('menu.librarySelector.none') + ` (0 of ${totalCount})`
@@ -184,8 +231,12 @@ const LibrarySelector = () => {
           <Paper className={classes.paper}>
             <Box className={classes.headerContainer}>
               <Checkbox
-                checked={isAllSelected}
-                indeterminate={isIndeterminate}
+                checked={isSearching ? allVisibleSelected : isAllSelected}
+                indeterminate={
+                  isSearching
+                    ? visibleSelectedCount > 0 && !allVisibleSelected
+                    : isIndeterminate
+                }
                 onChange={handleMasterCheckboxChange}
                 size="small"
                 className={classes.masterCheckbox}
@@ -195,9 +246,28 @@ const LibrarySelector = () => {
               </Typography>
             </Box>
 
+            <TextField
+              className={classes.search}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={translate('menu.librarySelector.search')}
+              inputProps={{
+                'aria-label': translate('menu.librarySelector.search'),
+              }}
+              variant="outlined"
+              size="small"
+              fullWidth
+              autoFocus
+            />
+
             <FormControl component="fieldset" variant="standard" fullWidth>
-              <FormGroup>
-                {userLibraries.map((library) => (
+              {visibleLibraries.length === 0 && (
+                <Typography variant="body2" color="textSecondary">
+                  {translate('menu.librarySelector.noMatches')}
+                </Typography>
+              )}
+              <FormGroup className={classes.list}>
+                {visibleLibraries.map((library) => (
                   <FormControlLabel
                     key={library.id}
                     control={

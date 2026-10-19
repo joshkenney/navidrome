@@ -609,6 +609,8 @@
       "allLibraries": "All iPods (%{count})",
       "multipleLibraries": "%{selected} of %{total} iPods",
       "selectLibraries": "Select iPods",
+      "search": "Search iPods",
+      "noMatches": "No iPods match",
       "none": "None"
     },
     "settings": "Settings",

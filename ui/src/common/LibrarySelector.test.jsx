@@ -17,6 +17,8 @@ const mockTranslate = vi.fn((key, options = {}) => {
     'menu.librarySelector.multipleLibraries': `${options.selected || 0} of ${options.total || 0} Libraries`,
     'menu.librarySelector.none': 'None',
     'menu.librarySelector.selectLibraries': 'Select Libraries',
+    'menu.librarySelector.search': 'Search iPods',
+    'menu.librarySelector.noMatches': 'No iPods match',
   }
   return translations[key] || key
 })
@@ -83,6 +85,15 @@ vi.mock('@material-ui/core', () => ({
   ),
   Typography: ({ children, variant, ...props }) => (
     <span {...props}>{children}</span>
+  ),
+  TextField: ({ value, onChange, placeholder, inputProps }) => (
+    <input
+      type="text"
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      {...inputProps}
+    />
   ),
   Paper: ({ children, className }) => (
     <div className={className}>{children}</div>
@@ -390,11 +401,9 @@ describe('LibrarySelector', () => {
         const chipButton = screen.getByRole('button')
         await user.click(chipButton)
 
-        const checkboxes = screen.getAllByRole('checkbox')
-        // Skip master checkbox (index 0)
-        expect(checkboxes[1].checked).toBe(true) // Music Library
-        expect(checkboxes[2].checked).toBe(false) // Podcasts
-        expect(checkboxes[3].checked).toBe(true) // Audiobooks
+        expect(screen.getByLabelText('Music Library').checked).toBe(true)
+        expect(screen.getByLabelText('Podcasts').checked).toBe(false)
+        expect(screen.getByLabelText('Audiobooks').checked).toBe(true)
       })
 
       it('should toggle library selection when individual checkbox is clicked', async () => {
@@ -407,8 +416,7 @@ describe('LibrarySelector', () => {
         const chipButton = screen.getByRole('button')
         await user.click(chipButton)
 
-        const checkboxes = screen.getAllByRole('checkbox')
-        const podcastsCheckbox = checkboxes[2] // Podcasts checkbox
+        const podcastsCheckbox = screen.getByLabelText('Podcasts')
 
         fireEvent.click(podcastsCheckbox)
 
@@ -431,8 +439,7 @@ describe('LibrarySelector', () => {
         const chipButton = screen.getByRole('button')
         await user.click(chipButton)
 
-        const checkboxes = screen.getAllByRole('checkbox')
-        const musicCheckbox = checkboxes[1] // Music Library checkbox
+        const musicCheckbox = screen.getByLabelText('Music Library')
 
         fireEvent.click(musicCheckbox)
 
@@ -440,6 +447,85 @@ describe('LibrarySelector', () => {
           type: 'SET_SELECTED_LIBRARIES',
           data: ['2'],
         })
+      })
+    })
+
+    describe('search', () => {
+      const openSelector = async (state = defaultState) => {
+        const user = userEvent.setup()
+        renderLibrarySelector(state)
+        mockDispatch.mockClear()
+        await user.click(screen.getByRole('button'))
+        return user
+      }
+
+      it('lists the iPods sorted by name', async () => {
+        await openSelector()
+        const names = screen
+          .getAllByRole('checkbox')
+          .slice(1)
+          .map((c) => c.parentElement.textContent)
+        expect(names).toEqual(['Audiobooks', 'Music Library', 'Podcasts'])
+      })
+
+      it('filters the iPods by name, ignoring case', async () => {
+        await openSelector()
+        fireEvent.change(screen.getByLabelText('Search iPods'), {
+          target: { value: 'POD' },
+        })
+        expect(screen.getByLabelText('Podcasts')).toBeInTheDocument()
+        expect(screen.queryByLabelText('Music Library')).toBeNull()
+        expect(screen.queryByLabelText('Audiobooks')).toBeNull()
+      })
+
+      it('shows a message when nothing matches', async () => {
+        await openSelector()
+        fireEvent.change(screen.getByLabelText('Search iPods'), {
+          target: { value: 'zzz' },
+        })
+        expect(screen.getByText('No iPods match')).toBeInTheDocument()
+      })
+
+      it('selects only the matching iPods with the master checkbox', async () => {
+        await openSelector({
+          userLibraries: mockLibraries,
+          selectedLibraries: ['1'],
+        })
+        fireEvent.change(screen.getByLabelText('Search iPods'), {
+          target: { value: 'o' },
+        })
+        // "o" matches Podcasts and Audiobooks, but not Music Library
+        fireEvent.click(screen.getAllByRole('checkbox')[0])
+        expect(mockDispatch).toHaveBeenCalledWith({
+          type: 'SET_SELECTED_LIBRARIES',
+          data: ['1', '3', '2'],
+        })
+      })
+
+      it('deselects only the matching iPods when they are all selected', async () => {
+        await openSelector({
+          userLibraries: mockLibraries,
+          selectedLibraries: ['1', '2'],
+        })
+        fireEvent.change(screen.getByLabelText('Search iPods'), {
+          target: { value: 'pod' },
+        })
+        fireEvent.click(screen.getAllByRole('checkbox')[0])
+        expect(mockDispatch).toHaveBeenCalledWith({
+          type: 'SET_SELECTED_LIBRARIES',
+          data: ['1'],
+        })
+      })
+
+      it('clears the search when reopened', async () => {
+        const user = await openSelector()
+        fireEvent.change(screen.getByLabelText('Search iPods'), {
+          target: { value: 'pod' },
+        })
+        await user.click(screen.getByText('1 of 3 Libraries'))
+        await user.click(screen.getByText('1 of 3 Libraries'))
+        expect(screen.getByLabelText('Search iPods').value).toBe('')
+        expect(screen.getByLabelText('Audiobooks')).toBeInTheDocument()
       })
     })
 
