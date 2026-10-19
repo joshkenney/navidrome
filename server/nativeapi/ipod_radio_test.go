@@ -57,9 +57,9 @@ var _ = Describe("iPod Radio", func() {
 		}
 	})
 
-	Describe("podcasts", func() {
-		podcast := func(e model.IpodSongEntry) model.IpodSongEntry {
-			e.Podcast = true
+	Describe("spoken word", func() {
+		spoken := func(e model.IpodSongEntry) model.IpodSongEntry {
+			e.Spoken = true
 			return e
 		}
 		var idx *radioIndex
@@ -69,32 +69,32 @@ var _ = Describe("iPod Radio", func() {
 				entries = append(entries,
 					entry("Seed", "seed-artist", lib),
 					entry("Song", "song-artist", lib),
-					podcast(entry("Episode", "show", lib)),
-					podcast(entry("Other Episode", "other-show", lib)),
+					spoken(entry("Episode", "show", lib)),
+					spoken(entry("Other Episode", "other-show", lib)),
 				)
 			}
 			idx = build(entries)
 		})
 		seedOf := func(title, artist string) int32 { return idx.songOf(title + "|" + artist) }
 
-		It("leaves podcasts out of a radio started from a song", func() {
+		It("leaves spoken word out of a radio started from a song", func() {
 			picks := titles(idx, idx.recommend(seedOf("Seed", "seed-artist"), -1, opts(10)))
 			Expect(picks).To(ContainElement("Song|song-artist"))
 			Expect(picks).ToNot(ContainElement("Episode|show"))
 			Expect(picks).ToNot(ContainElement("Other Episode|other-show"))
 		})
 
-		It("plays podcasts on a radio started from one", func() {
+		It("plays spoken word on a radio started from it", func() {
 			o := opts(10)
-			o.podcasts = true
+			o.spoken = true
 			picks := titles(idx, idx.recommend(seedOf("Episode", "show"), -1, o))
 			Expect(picks).To(ContainElement("Other Episode|other-show"))
 		})
 
-		It("never starts a surprise radio from a podcast", func() {
+		It("never starts a surprise radio from spoken word", func() {
 			rng := rand.New(rand.NewPCG(3, 4))
 			for range 50 {
-				Expect(idx.songs[idx.surpriseSeed(0, rng)].podcast).To(BeFalse())
+				Expect(idx.songs[idx.surpriseSeed(0, rng)].spoken).To(BeFalse())
 			}
 		})
 	})

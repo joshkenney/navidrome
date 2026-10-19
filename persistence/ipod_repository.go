@@ -3,6 +3,8 @@ package persistence
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/consts"
@@ -74,18 +76,40 @@ type dbIpodSongEntry struct {
 	MediaFileID string `db:"media_file_id"`
 	Title       string `db:"title"`
 	Artist      string `db:"artist"`
-	Podcast     bool   `db:"podcast"`
+	Spoken      bool   `db:"spoken"`
 }
 
-// podcastExpr matches podcast episodes, like model.IsPodcast
-const podcastExpr = "(lower(coalesce(mf.genre, '')) LIKE '%podcast%' OR '/' || lower(mf.path) LIKE '%/podcasts/%')"
+// Albums of at least spokenAlbumTracks tracks lasting spokenAlbumMinutes on average are spoken
+// word (audiobooks, lectures, shows filed as albums): music albums rarely look like that
+const (
+	spokenAlbumTracks  = 5
+	spokenAlbumMinutes = 30
+)
+
+// spokenExpr matches spoken word, like model.IsSpokenWord, plus albums of long tracks
+func spokenExpr() string {
+	var conds []string
+	for _, g := range model.SpokenGenres() {
+		conds = append(conds, "lower(coalesce(mf.genre, '')) LIKE '%"+g+"%'")
+	}
+	for _, f := range model.SpokenFolders() {
+		conds = append(conds, "'/' || lower(mf.path) LIKE '%"+f+"%'")
+	}
+	conds = append(conds,
+		"lower(coalesce(mf.artist, '') || ' ' || coalesce(mf.album, '')) LIKE '%podcast%'",
+		"lower(coalesce(mf.suffix, '')) = 'm4b'",
+		fmt.Sprintf("mf.album_id IN (SELECT album_id FROM media_file WHERE missing = 0 GROUP BY album_id "+
+			"HAVING count(*) >= %d AND avg(duration) >= %d)", spokenAlbumTracks, spokenAlbumMinutes*60),
+	)
+	return "(" + strings.Join(conds, " OR ") + ")"
+}
 
 func (r *ipodRepository) SongIndex() ([]model.IpodSongEntry, error) {
 	// Filtering placeholders in HAVING (not WHERE) computes the song key only once per track
 	sq, err := r.mediaFiles(
 		songKeyExpr+" AS song_key", "mf.library_id",
 		"min(mf.id) AS media_file_id", "min(mf.title) AS title", "min(mf.artist) AS artist",
-		"max("+podcastExpr+") AS podcast",
+		"max("+spokenExpr()+") AS spoken",
 	)
 	if err != nil {
 		return nil, err

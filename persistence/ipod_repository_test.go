@@ -135,7 +135,7 @@ var _ = Describe("IpodRepository", func() {
 		Expect(keys).To(Equal(map[string]string{spillCanvas.ID: "spill canvas", spillCanvasLower.ID: "spill canvas"}))
 	})
 
-	It("flags podcast episodes, by genre or folder", func() {
+	It("flags spoken word: podcasts by genre or folder, and albums of long tracks", func() {
 		// Tagged as podcasts, or in iTunes' Podcasts folder
 		for _, s := range []model.MediaFile{
 			podcast(ipodSong("ipod-18", lib2, "Ipod Episode One", artistKraftwerk), "Podcast", "Show/Episode One.mp3"),
@@ -143,14 +143,21 @@ var _ = Describe("IpodRepository", func() {
 		} {
 			Expect(mediaFiles.Put(&s)).To(Succeed())
 		}
+		// A show filed as an album, without any tag: five 40-minute episodes
+		for i := range 5 {
+			s := ipodSong(fmt.Sprintf("ipod-show-%d", i), lib2, fmt.Sprintf("Ipod Show Episode %d", i), artistBeatles)
+			s.AlbumID, s.Album, s.Duration = "ipod-show-album", "Ipod Show", 40*60
+			Expect(mediaFiles.Put(&s)).To(Succeed())
+		}
 		entries, err := adminRepo.SongIndex()
 		Expect(err).ToNot(HaveOccurred())
 		podcasts := map[string]bool{}
 		for _, e := range entries {
-			podcasts[e.Title] = e.Podcast
+			podcasts[e.Title] = e.Spoken
 		}
 		Expect(podcasts).To(HaveKeyWithValue("Ipod Episode One", true))
 		Expect(podcasts).To(HaveKeyWithValue("Ipod Episode Two", true))
+		Expect(podcasts).To(HaveKeyWithValue("Ipod Show Episode 0", true))
 		Expect(podcasts).To(HaveKeyWithValue("Ipod Pair Song", false))
 	})
 

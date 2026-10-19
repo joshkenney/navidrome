@@ -24,14 +24,38 @@ type IpodSongEntry struct {
 	MediaFileID string
 	Title       string
 	Artist      string
-	Podcast     bool // See IsPodcast
+	Spoken      bool // Spoken word: see IsSpokenWord
 }
 
-// IsPodcast tells whether a track is a podcast episode: its genre says so (iTunes tags them
-// "Podcast"), or it is in a "Podcasts" folder, as iTunes keeps them
-func IsPodcast(genre, path string) bool {
-	return strings.Contains(strings.ToLower(genre), "podcast") ||
-		strings.Contains("/"+strings.ToLower(filepath.ToSlash(path)), "/podcasts/")
+// Genres, folders and names that mark spoken word: podcasts, audiobooks, lectures
+var (
+	spokenGenres  = []string{"podcast", "audiobook", "audio book", "spoken", "speech", "lecture"}
+	spokenFolders = []string{"/podcasts/", "/audiobooks/"}
+)
+
+// SpokenGenres and SpokenFolders are the markers IsSpokenWord looks for, also used in SQL
+func SpokenGenres() []string  { return spokenGenres }
+func SpokenFolders() []string { return spokenFolders }
+
+// IsSpokenWord tells whether a track is a podcast episode, an audiobook or a lecture: by its genre
+// (iTunes tags podcasts "Podcast"), its folder (iTunes keeps them in "Podcasts" and "Audiobooks"),
+// "podcast" in its artist or album, or its format (.m4b audiobooks). Albums made of many long
+// tracks are spotted too, but only in the iPod data (see the iPod repository's SongIndex)
+func IsSpokenWord(mf MediaFile) bool {
+	genre := strings.ToLower(mf.Genre)
+	for _, g := range spokenGenres {
+		if strings.Contains(genre, g) {
+			return true
+		}
+	}
+	path := "/" + strings.ToLower(filepath.ToSlash(mf.Path))
+	for _, f := range spokenFolders {
+		if strings.Contains(path, f) {
+			return true
+		}
+	}
+	return strings.Contains(strings.ToLower(mf.Artist+" "+mf.Album), "podcast") ||
+		strings.EqualFold(mf.Suffix, "m4b")
 }
 
 // IpodGem is a song found on exactly one iPod

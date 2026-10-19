@@ -29,10 +29,10 @@ const (
 )
 
 type radioSong struct {
-	rep     string  // ID of one of the song's media files
-	artist  int32   // Index in radioIndex.artists
-	ipods   []int32 // Indexes of the iPods with the song, sorted
-	podcast bool    // Podcast episodes are only played by radios started from one
+	rep    string  // ID of one of the song's media files
+	artist int32   // Index in radioIndex.artists
+	ipods  []int32 // Indexes of the iPods with the song, sorted
+	spoken bool    // Spoken word (podcasts, audiobooks) is only played by radios started from it
 }
 
 type radioArtist struct {
@@ -113,7 +113,7 @@ func buildRadioIndex(entries []model.IpodSongEntry, stats []model.IpodStats, cou
 			idx.artists[a].songs = append(idx.artists[a].songs, s)
 		}
 		idx.songs[s].ipods = append(idx.songs[s].ipods, ipod)
-		idx.songs[s].podcast = idx.songs[s].podcast || e.Podcast
+		idx.songs[s].spoken = idx.songs[s].spoken || e.Spoken
 		idx.ipodSongs[ipod] = append(idx.ipodSongs[ipod], s)
 	}
 
@@ -203,7 +203,7 @@ type radioOptions struct {
 	adventure float64 // -1 (crowd-pleasers) to 1 (deep cuts)
 	exclude   map[int32]bool
 	bias      map[int32]float64 // Artist -> score multiplier, from the listener's skips and likes
-	podcasts  bool              // Play podcast episodes too: the radio was started from one
+	spoken    bool              // Play spoken word too: the radio was started from it
 	rng       *rand.Rand
 }
 
@@ -319,7 +319,7 @@ func (idx *radioIndex) recommendFrom(seeds []radioSeed, opts radioOptions) []rad
 
 	pool := make([]*radioCandidate, 0, len(cands))
 	for s := range cands {
-		if isSeed[s] || opts.exclude[s] || (idx.songs[s].podcast && !opts.podcasts) {
+		if isSeed[s] || opts.exclude[s] || (idx.songs[s].spoken && !opts.spoken) {
 			continue
 		}
 		song := idx.songs[s]
@@ -438,7 +438,7 @@ func (idx *radioIndex) surpriseSeed(adventure float64, rng *rand.Rand) int32 {
 	var weights []float64
 	total := 0.0
 	for s, song := range idx.songs {
-		if len(song.ipods) < radioSurpriseMin || song.podcast {
+		if len(song.ipods) < radioSurpriseMin || song.spoken {
 			continue
 		}
 		w := math.Pow(float64(len(song.ipods)), 1-adventure) *
@@ -449,7 +449,7 @@ func (idx *radioIndex) surpriseSeed(adventure float64, rng *rand.Rand) int32 {
 	}
 	if len(cands) == 0 {
 		for s, song := range idx.songs {
-			if !song.podcast {
+			if !song.spoken {
 				cands = append(cands, int32(s))
 			}
 		}

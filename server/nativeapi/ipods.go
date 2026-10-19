@@ -819,11 +819,10 @@ func (api *Router) getIpodRadio(w http.ResponseWriter, r *http.Request) {
 	bias := radioBias(idx, resolveSongs(songOf, liked), resolveSongs(songOf, skipped))
 	seeds := radioSeeds(idx, seed, seedArtist, resolveSongs(songOf, drift), bias)
 
-	// Podcast episodes only play on a radio started from one
-	podcasts := (seed >= 0 && idx.songs[seed].podcast) ||
-		(seedFile != nil && model.IsPodcast(seedFile.Genre, seedFile.Path))
+	// Spoken word (podcasts, audiobooks, lectures) only plays on a radio started from it
+	spoken := (seed >= 0 && idx.songs[seed].spoken) || (seedFile != nil && model.IsSpokenWord(*seedFile))
 	picks := idx.recommendFrom(seeds, radioOptions{
-		count: count, adventure: adventure, exclude: excluded, bias: bias, podcasts: podcasts, rng: rng,
+		count: count, adventure: adventure, exclude: excluded, bias: bias, spoken: spoken, rng: rng,
 	})
 	timer.step("picks")
 	ids := make([]string, len(picks))
