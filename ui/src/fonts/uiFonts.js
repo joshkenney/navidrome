@@ -4,45 +4,91 @@ export const DEFAULT_FONT = 'default'
 
 const FALLBACK = 'system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif'
 
+// A public-domain revival of Susan Kare's Chicago, the font of the classic Mac and early iPods
+const CHICAGO = {
+  family: `"ChicagoFLF", ${FALLBACK}`,
+  fontFace: `
+    @font-face {
+      font-family: 'ChicagoFLF';
+      font-style: normal;
+      font-weight: 400;
+      font-display: swap;
+      src: url('fonts/ChicagoFLF.ttf') format('truetype');
+    }
+  `,
+}
+
+// Close to the Myriad-based faces of later iPods (Podium Sans); SIL Open Font License
+const SOURCE_SANS = {
+  family: `"Source Sans 3", ${FALLBACK}`,
+  fontFace: `
+    @font-face {
+      font-family: 'Source Sans 3';
+      font-style: normal;
+      font-weight: 200 900;
+      font-display: swap;
+      src: url('fonts/SourceSans3-Variable.woff2') format('woff2');
+    }
+  `,
+}
+
+// Short labels and headings, where the iPod and the classic Mac used Chicago
+const HEADINGS = [
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  '.MuiTypography-h1',
+  '.MuiTypography-h2',
+  '.MuiTypography-h3',
+  '.MuiTypography-h4',
+  '.MuiTypography-h5',
+  '.MuiTypography-h6',
+  '.MuiDialogTitle-root',
+  '.MuiAppBar-root .MuiToolbar-root > .MuiTypography-root',
+  '.MuiDrawer-root .MuiMenuItem-root',
+  '.MuiDrawer-root .MuiListItem-button',
+  '.MuiTab-root',
+  '.MuiButton-label',
+  '.MuiTableCell-head',
+  '.MuiListSubheader-root',
+  '.songTitle',
+]
+
 export const UI_FONTS = {
-  // A public-domain revival of Susan Kare's Chicago, the font of the classic Mac and early iPods
-  chicago: {
-    name: 'Chicago',
-    family: `"ChicagoFLF", ${FALLBACK}`,
-    fontFace: `
-      @font-face {
-        font-family: 'ChicagoFLF';
-        font-style: normal;
-        font-weight: 400;
-        font-display: swap;
-        src: url('fonts/ChicagoFLF.ttf') format('truetype');
-      }
-    `,
+  // Chicago for headings and labels, Source Sans 3 for everything else (lists, details, numbers)
+  ipod: {
+    name: 'iPod (Chicago + Source Sans 3)',
+    body: SOURCE_SANS,
+    headings: CHICAGO,
   },
-  // Close to the Myriad-based faces of later iPods (Podium Sans); SIL Open Font License
-  podium: {
-    name: 'Source Sans 3 (iPod mini/nano)',
-    family: `"Source Sans 3", ${FALLBACK}`,
-    fontFace: `
-      @font-face {
-        font-family: 'Source Sans 3';
-        font-style: normal;
-        font-weight: 200 900;
-        font-display: swap;
-        src: url('fonts/SourceSans3-Variable.woff2') format('woff2');
-      }
-    `,
-  },
+  chicago: { name: 'Chicago', body: CHICAGO },
+  podium: { name: 'Source Sans 3 (iPod mini/nano)', body: SOURCE_SANS },
 }
 
 // The stylesheet that applies a font everywhere, overriding the theme's fonts. Code keeps its
-// monospace font
+// monospace font. The body rule has no specificity (:where), so the headings rule always wins
 export const uiFontStylesheet = (id) => {
   const font = UI_FONTS[id]
   if (!font) return ''
-  return `${font.fontFace}
-    body, body *:not(code):not(pre):not(kbd):not(samp) {
-      font-family: ${font.family} !important;
+  const faces = [font.body, font.headings].filter(Boolean)
+  let css = `${faces.map((f) => f.fontFace).join('')}
+    :where(body, body *:not(code, pre, kbd, samp)) {
+      font-family: ${font.body.family} !important;
     }
   `
+  if (font.headings) {
+    const selectors = HEADINGS.flatMap((s) => [s, `${s} *`]).join(', ')
+    // Chicago has a single weight: a faked bold would smear it
+    css += `
+    ${selectors} {
+      font-family: ${font.headings.family} !important;
+      font-synthesis: none;
+      letter-spacing: 0.02em;
+    }
+  `
+  }
+  return css
 }

@@ -30,6 +30,23 @@ describe('useUiFont', () => {
     expect(css).toMatch(/font-family: "ChicagoFLF".*!important/)
   })
 
+  it('pairs Chicago headings with Source Sans 3 text', () => {
+    renderWith('ipod')
+    const css = overrideStyle().innerHTML
+    expect(css).toContain("src: url('fonts/ChicagoFLF.ttf')")
+    expect(css).toContain("src: url('fonts/SourceSans3-Variable.woff2')")
+    expect(css).toMatch(
+      /:where\(body, body \*[^{]*\{\s*font-family: "Source Sans 3"/,
+    )
+    const headings = css
+      .split('}')
+      .find((rule) => rule.includes('font-family: "ChicagoFLF"'))
+    expect(headings).toContain('.MuiDialogTitle-root')
+    expect(headings).toContain('.MuiButton-label *')
+    expect(headings).toContain('.songTitle')
+    expect(headings).toContain('font-synthesis: none')
+  })
+
   it('switches back to the theme font', () => {
     const { unmount } = renderWith('podium')
     expect(overrideStyle().innerHTML).toContain('Source Sans 3')
