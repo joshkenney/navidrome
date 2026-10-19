@@ -5,6 +5,7 @@ import { Provider } from 'react-redux'
 import { createStore } from 'redux'
 import { IpodNetworkButton, IpodNetworkDialog } from './IpodNetworkDialog'
 import { httpClient } from '../dataProvider'
+import { clearIpodDataCache, prefetchIpodData } from './ipodDataCache'
 
 const redirect = vi.fn()
 
@@ -122,6 +123,7 @@ describe('<IpodNetworkDialog />', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    clearIpodDataCache()
     store = createStore((state = {}, action) => {
       if (action.type === 'SET_SELECTED_LIBRARIES') {
         return { ...state, selected: action.data }
@@ -150,6 +152,13 @@ describe('<IpodNetworkDialog />', () => {
         <IpodNetworkDialog open onClose={onClose} ipodId={ipodId} />
       </Provider>,
     )
+
+  it('opens at once with the network fetched in the background', async () => {
+    await prefetchIpodData()
+    httpClient.mockImplementation(() => new Promise(() => {}))
+    renderDialog()
+    expect(screen.getByText("node-Alice's iPod")).toBeInTheDocument()
+  })
 
   it('renders the network and shows details for a clicked iPod', async () => {
     renderDialog()

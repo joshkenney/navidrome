@@ -388,12 +388,24 @@ func scheduleCoverFinder(ctx context.Context) func() error {
 	}
 }
 
-const ipodWarmupCheck = 30 * time.Second
+const (
+	ipodWarmupDelay = 10 * time.Second
+	ipodWarmupCheck = 5 * time.Minute
+)
 
-// startIpodWarmup prepares the iPod data in the background once the startup scan is done, so the
-// first iPod request after a restart (starting a radio, the iPod Facts) doesn't wait for it
+// startIpodWarmup keeps the iPod data ready, so iPod requests (the iPod Facts and Network, starting
+// a radio) don't wait for it: it is prepared shortly after startup, without waiting for the startup
+// scan (the data from before it is good enough), then checked every few minutes, which refreshes
+// it in the background after scans that changed the music
 func startIpodWarmup(ctx context.Context) func() error {
 	return func() error {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(ipodWarmupDelay):
+		}
+		api := CreateNativeAPIRouter(ctx)
+		api.WarmIpodData(ctx)
 		ticker := time.NewTicker(ipodWarmupCheck)
 		defer ticker.Stop()
 		for {
@@ -401,11 +413,7 @@ func startIpodWarmup(ctx context.Context) func() error {
 			case <-ctx.Done():
 				return nil
 			case <-ticker.C:
-				if scanner.IsScanning() {
-					continue
-				}
-				CreateNativeAPIRouter(ctx).WarmIpodData(ctx)
-				return nil
+				api.WarmIpodData(ctx)
 			}
 		}
 	}

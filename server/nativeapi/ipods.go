@@ -238,15 +238,18 @@ func (api *Router) loadIpodData(ctx context.Context) (*ipodData, error) {
 	return d, err
 }
 
-// WarmIpodData computes the iPod data for the all-iPods view (admins), so the first iPod request
-// after a restart doesn't wait for it. It runs with no user in the context, which sees every iPod
+// WarmIpodData computes the iPod data for the all-iPods view (admins), so iPod requests don't wait
+// for it. It runs with no user in the context, which sees every iPod. When the data is cached, it
+// returns at once, refreshing outdated data in the background (see loadIpodData)
 func (api *Router) WarmIpodData(ctx context.Context) {
 	start := time.Now()
 	if _, err := api.loadIpodData(ctx); err != nil {
 		log.Error(ctx, "Error preparing iPod data", err)
 		return
 	}
-	log.Info(ctx, "iPod data ready", "elapsed", time.Since(start))
+	if elapsed := time.Since(start); elapsed >= time.Second {
+		log.Info(ctx, "iPod data ready", "elapsed", elapsed)
+	}
 }
 
 // refreshIpodData recomputes outdated data in the background, while the old data is still served

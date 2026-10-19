@@ -1,4 +1,10 @@
-import React, { createElement, forwardRef, Fragment, useState } from 'react'
+import React, {
+  createElement,
+  forwardRef,
+  Fragment,
+  useEffect,
+  useState,
+} from 'react'
 import {
   AppBar as RAAppBar,
   MenuItemLink,
@@ -22,6 +28,7 @@ import {
   IpodShuffleButton,
 } from '../ipods'
 import { FeatureTips } from './FeatureTips'
+import { schedulePrefetch } from '../ipods/ipodDataCache'
 import { GlobalSearch } from '../search/GlobalSearch'
 import UserMenu from './UserMenu'
 import config from '../config'
@@ -81,6 +88,9 @@ const CustomUserMenu = ({ onClick, ...rest }) => {
   const classes = useStyles(rest)
   const { permissions } = usePermissions()
   const [tipsAnchor, setTipsAnchor] = useState(null)
+
+  // Fetch the iPod Facts and Network in the background, so they open at once
+  useEffect(() => schedulePrefetch(), [])
 
   const resourceDefinition = (resourceName) =>
     resources.find((r) => r?.name === resourceName)

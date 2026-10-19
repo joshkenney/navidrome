@@ -7,6 +7,7 @@ import { IpodFactsDialog } from './IpodFactsDialog'
 import { pickSuperlatives } from './superlatives'
 import { httpClient } from '../dataProvider'
 import { playIpodRadio } from './radio'
+import { clearIpodDataCache, prefetchIpodData } from './ipodDataCache'
 
 const getOne = vi.fn()
 const redirect = vi.fn()
@@ -144,6 +145,7 @@ describe('<IpodFactsDialog />', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    clearIpodDataCache()
     httpClient.mockImplementation((url) =>
       Promise.resolve({
         json:
@@ -185,6 +187,31 @@ describe('<IpodFactsDialog />', () => {
     expect(screen.getByText('Blur')).toBeInTheDocument()
     expect(screen.getByText('ipods.facts.duplicates')).toBeInTheDocument()
     expect(screen.getByText('ipods.facts.onIpods')).toBeInTheDocument()
+  })
+
+  it('opens at once with the facts fetched in the background', async () => {
+    await prefetchIpodData()
+    // The refresh never answers, and fails for the second dialog
+    httpClient.mockImplementation((url) =>
+      url === '/api/ipods/facts'
+        ? new Promise(() => {})
+        : Promise.resolve({ json: null }),
+    )
+    renderDialog()
+    expect(screen.getByText('Hey Ya! — OutKast')).toBeInTheDocument()
+  })
+
+  it('keeps showing the background copy when the refresh fails', async () => {
+    await prefetchIpodData()
+    httpClient.mockImplementation((url) =>
+      url === '/api/ipods/facts'
+        ? Promise.reject(new Error('offline'))
+        : Promise.resolve({ json: null }),
+    )
+    renderDialog()
+    await waitFor(() => expect(httpClient).toHaveBeenCalledTimes(2 + 2))
+    expect(screen.getByText('Hey Ya! — OutKast')).toBeInTheDocument()
+    expect(screen.queryByText('ipods.facts.error')).toBeNull()
   })
 
   it('hides the duplicates when there are none', async () => {

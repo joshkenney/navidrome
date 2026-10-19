@@ -26,6 +26,7 @@ import { MdZoomOutMap } from 'react-icons/md'
 import { DialogTitle } from '../dialogs/DialogTitle'
 import { DialogContent } from '../dialogs/DialogContent'
 import { httpClient } from '../dataProvider'
+import { NETWORK_URL, fetchIpodData, getCachedIpodData } from './ipodDataCache'
 import { REST_URL } from '../consts'
 import { IpodIcon } from './IpodIcon'
 import { useBrowseIpod } from './useBrowseIpod'
@@ -777,7 +778,9 @@ export const IpodNetworkDialog = ({ open, onClose, ipodId }) => {
   const translate = useTranslate()
   const playingSong = usePlayingSong()
   const [tab, setTab] = useState(0)
-  const [network, setNetwork] = useState(null)
+  const [network, setNetwork] = useState(
+    () => getCachedIpodData(NETWORK_URL) || null,
+  )
   const [error, setError] = useState(false)
   const [selectedId, setSelectedId] = useState(ipodId ?? null)
   const [tribeId, setTribeId] = useState(null)
@@ -791,11 +794,12 @@ export const IpodNetworkDialog = ({ open, onClose, ipodId }) => {
     setSelectedId(null)
   }, [])
 
+  // Shows the copy fetched in the background at once, if any, and refreshes it
   useEffect(() => {
     if (!open) return
-    httpClient('/api/ipods/network')
-      .then(({ json }) => setNetwork(json))
-      .catch(() => setError(true))
+    fetchIpodData(NETWORK_URL)
+      .then((json) => setNetwork(json))
+      .catch(() => !getCachedIpodData(NETWORK_URL) && setError(true))
   }, [open])
 
   // The iPod of the song playing, marked in the network. It follows the player

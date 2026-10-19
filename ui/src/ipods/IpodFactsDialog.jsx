@@ -29,6 +29,7 @@ import { FaLightbulb, FaPlay, FaRadio, FaShuffle } from 'react-icons/fa6'
 import { DialogTitle } from '../dialogs/DialogTitle'
 import { DialogContent } from '../dialogs/DialogContent'
 import { httpClient } from '../dataProvider'
+import { FACTS_URL, fetchIpodData, getCachedIpodData } from './ipodDataCache'
 import { setTrack } from '../actions'
 import { pickSuperlatives } from './superlatives'
 import { useBrowseIpod } from './useBrowseIpod'
@@ -119,17 +120,18 @@ export const IpodFactsDialog = ({ open, onClose }) => {
   const dispatch = useDispatch()
   const dataProvider = useDataProvider()
   const notify = useNotify()
-  const [facts, setFacts] = useState(null)
+  const [facts, setFacts] = useState(() => getCachedIpodData(FACTS_URL) || null)
   const [error, setError] = useState(false)
   const [myTaste, setMyTaste] = useState(null)
   const browseIpod = useBrowseIpod(onClose)
   const { permissions } = usePermissions()
 
+  // Shows the copy fetched in the background at once, if any, and refreshes it
   const fetchFacts = useCallback(() => {
     setError(false)
-    return httpClient('/api/ipods/facts')
-      .then(({ json }) => setFacts(json))
-      .catch(() => setError(true))
+    return fetchIpodData(FACTS_URL)
+      .then((json) => setFacts(json))
+      .catch(() => !getCachedIpodData(FACTS_URL) && setError(true))
   }, [])
 
   useEffect(() => {
