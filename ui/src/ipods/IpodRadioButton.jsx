@@ -23,7 +23,30 @@ import {
 
 const useStyles = makeStyles((theme) => ({
   button: { color: 'inherit' },
-  active: { color: theme.palette.secondary.main },
+  // While a radio plays, the icon keeps the app bar's colour (a theme colour could match the
+  // app bar itself and hide it) and pulses, with a small dot
+  '@keyframes radioPulse': {
+    '0%, 100%': { opacity: 1 },
+    '50%': { opacity: 0.35 },
+  },
+  active: {
+    color: 'inherit',
+    position: 'relative',
+    '& svg': {
+      animation: '$radioPulse 1.6s ease-in-out infinite',
+      '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+    },
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      width: 7,
+      height: 7,
+      borderRadius: '50%',
+      backgroundColor: 'currentColor',
+    },
+  },
   paper: {
     padding: theme.spacing(2),
     width: 300,
@@ -76,6 +99,8 @@ export const IpodRadioButton = () => {
           onClick={(e) => setAnchorEl(e.currentTarget)}
           aria-label={t('title')}
           aria-haspopup="true"
+          aria-pressed={!!session}
+          data-playing={session ? 'true' : undefined}
         >
           <FaRadio size={18} />
         </IconButton>

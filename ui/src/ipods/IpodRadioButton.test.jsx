@@ -56,6 +56,27 @@ describe('<IpodRadioButton />', () => {
     expect(playIpodRadio.mock.calls[0][2].songId).toBeUndefined()
   })
 
+  it('stays visible and marks the button while a radio plays', () => {
+    act(() => {
+      startRadioSession({
+        seed: { id: 's', title: 'Buddy Holly', artist: 'Weezer' },
+        adventure: 0,
+        trackIds: ['s'],
+        reasons: {},
+      })
+    })
+    render(
+      <Provider
+        store={createStore(() => ({ player: { queue: [], current: {} } }))}
+      >
+        <IpodRadioButton />
+      </Provider>,
+    )
+    const button = screen.getByLabelText('ipods.radio.title')
+    expect(button).toHaveAttribute('aria-pressed', 'true')
+    expect(button).toHaveAttribute('data-playing', 'true')
+  })
+
   it('shows the running radio and can stop it', () => {
     act(() => {
       startRadioSession({
