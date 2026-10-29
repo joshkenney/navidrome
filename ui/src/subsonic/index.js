@@ -54,8 +54,13 @@ const unstar = (id) => httpClient(url('unstar', id))
 
 const setRating = (id, rating) => httpClient(url('setRating', id, { rating }))
 
+// id may be an array of song ids, downloaded together as one zip
 const download = (id, format = 'raw', bitrate = '0') =>
-  (window.location.href = baseUrl(url('download', id, { format, bitrate })))
+  (window.location.href = baseUrl(
+    Array.isArray(id)
+      ? url('download', null, { id, format, bitrate })
+      : url('download', id, { format, bitrate }),
+  ))
 
 const startScan = (options) => httpClient(url('startScan', null, options))
 

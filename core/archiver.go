@@ -23,6 +23,8 @@ type Archiver interface {
 	ZipArtist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 	ZipShare(ctx context.Context, id string, w io.Writer) error
 	ZipPlaylist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
+	// ZipSongs zips a selection of songs, numbered in the order of the ids
+	ZipSongs(ctx context.Context, ids []string, format string, bitrate int, w io.Writer) error
 	// ZipLibrary zips all songs of a library (on this server, a whole iPod), in Artist/Album folders
 	ZipLibrary(ctx context.Context, libraryID int, format string, bitrate int, w io.Writer) error
 }
@@ -126,6 +128,30 @@ func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bi
 	mfs := pls.MediaFiles()
 	log.Debug(ctx, "Zipping playlist", "name", pls.Name, "format", format, "bitrate", bitrate, "numTracks", len(mfs))
 	return a.zipMediaFiles(ctx, id, pls.Name, format, bitrate, out, mfs, true)
+}
+
+func (a *archiver) ZipSongs(ctx context.Context, ids []string, format string, bitrate int, out io.Writer) error {
+	all, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"media_file.id": ids}})
+	if err != nil {
+		log.Error(ctx, "Error loading selected mediafiles", "numIds", len(ids), err)
+		return err
+	}
+	byID := make(map[string]model.MediaFile, len(all))
+	for _, mf := range all {
+		byID[mf.ID] = mf
+	}
+	mfs := make(model.MediaFiles, 0, len(all))
+	for _, id := range ids {
+		if mf, ok := byID[id]; ok {
+			mfs = append(mfs, mf)
+			delete(byID, id)
+		}
+	}
+	if len(mfs) == 0 {
+		return model.ErrNotFound
+	}
+	log.Debug(ctx, "Zipping songs", "format", format, "bitrate", bitrate, "numTracks", len(mfs))
+	return a.zipMediaFiles(ctx, ids[0], "songs", format, bitrate, out, mfs, false)
 }
 
 func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format string, bitrate int, out io.Writer, mfs model.MediaFiles, addM3U bool) error {

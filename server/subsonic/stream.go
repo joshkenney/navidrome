@@ -54,10 +54,11 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	ctx := r.Context()
 	username, _ := request.UsernameFrom(ctx)
 	p := req.Params(r)
-	id, err := p.String("id")
+	ids, err := p.Strings("id")
 	if err != nil {
 		return nil, err
 	}
+	id := ids[0]
 
 	if !conf.Server.EnableDownloads {
 		log.Warn(ctx, "Downloads are disabled", "user", username, "id", id)
@@ -65,7 +66,9 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	}
 
 	var entity any
-	if _, isIpod := ipodDownloadID(id); !isIpod {
+	_, isIpod := ipodDownloadID(id)
+	// Several ids are a selection of songs, zipped together below
+	if len(ids) == 1 && !isIpod {
 		if entity, err = model.GetEntityByID(ctx, api.ds, id); err != nil {
 			return nil, err
 		}
@@ -97,6 +100,11 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 		disposition := fmt.Sprintf("attachment; filename=\"%s.zip\"", name)
 		w.Header().Set("Content-Disposition", disposition)
 		w.Header().Set("Content-Type", "application/zip")
+	}
+
+	if len(ids) > 1 {
+		setHeaders(fmt.Sprintf("%d songs", len(ids)))
+		return nil, api.archiver.ZipSongs(ctx, ids, format, maxBitRate, w)
 	}
 
 	if libraryID, ok := ipodDownloadID(id); ok {

@@ -7,6 +7,7 @@ import { BatchPlayButton } from './index'
 import { AddToPlaylistButton } from './AddToPlaylistButton'
 import { makeStyles } from '@material-ui/core/styles'
 import { BatchShareButton } from './BatchShareButton'
+import { BatchDownloadButton } from './BatchDownloadButton'
 import config from '../config'
 
 const useStyles = makeStyles((theme) => ({
@@ -44,6 +45,9 @@ export const SongBulkActions = (props) => {
         icon={<RiPlayListAddFill />}
         className={classes.button}
       />
+      {config.enableDownloads && (
+        <BatchDownloadButton {...props} className={classes.button} />
+      )}
       {config.enableSharing && (
         <BatchShareButton {...props} className={classes.button} />
       )}
