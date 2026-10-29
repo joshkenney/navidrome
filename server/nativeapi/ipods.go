@@ -183,6 +183,8 @@ func (api *Router) addIpodRoutes(r chi.Router) {
 		r.Get("/facts", api.getIpodFacts)
 		r.Get("/network", api.getIpodNetwork)
 		r.Get("/match", api.getIpodMatch)
+		r.Get("/best", api.getIpodBestCopy)
+		r.Get("/album", api.getIpodCompleteAlbum)
 		r.Get("/radio", api.getIpodRadio)
 		r.Get("/radio/history", api.getRadioHistory)
 		r.Post("/radio/history", api.addRadioHistory)

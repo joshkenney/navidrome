@@ -23,8 +23,9 @@ type Archiver interface {
 	ZipArtist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
 	ZipShare(ctx context.Context, id string, w io.Writer) error
 	ZipPlaylist(ctx context.Context, id string, format string, bitrate int, w io.Writer) error
-	// ZipSongs zips a selection of songs, numbered in the order of the ids
-	ZipSongs(ctx context.Context, ids []string, format string, bitrate int, w io.Writer) error
+	// ZipSongs zips a selection of songs, numbered in the order of the ids. With an album name,
+	// the songs are zipped as that album instead, in one folder named after it
+	ZipSongs(ctx context.Context, ids []string, album string, format string, bitrate int, w io.Writer) error
 	// ZipLibrary zips all songs of a library (on this server, a whole iPod), in Artist/Album folders
 	ZipLibrary(ctx context.Context, libraryID int, format string, bitrate int, w io.Writer) error
 }
@@ -130,7 +131,7 @@ func (a *archiver) ZipPlaylist(ctx context.Context, id string, format string, bi
 	return a.zipMediaFiles(ctx, id, pls.Name, format, bitrate, out, mfs, true)
 }
 
-func (a *archiver) ZipSongs(ctx context.Context, ids []string, format string, bitrate int, out io.Writer) error {
+func (a *archiver) ZipSongs(ctx context.Context, ids []string, album string, format string, bitrate int, out io.Writer) error {
 	all, err := a.ds.MediaFile(ctx).GetAll(model.QueryOptions{Filters: squirrel.Eq{"media_file.id": ids}})
 	if err != nil {
 		log.Error(ctx, "Error loading selected mediafiles", "numIds", len(ids), err)
@@ -150,8 +151,35 @@ func (a *archiver) ZipSongs(ctx context.Context, ids []string, format string, bi
 	if len(mfs) == 0 {
 		return model.ErrNotFound
 	}
-	log.Debug(ctx, "Zipping songs", "format", format, "bitrate", bitrate, "numTracks", len(mfs))
-	return a.zipMediaFiles(ctx, ids[0], "songs", format, bitrate, out, mfs, false)
+	log.Debug(ctx, "Zipping songs", "album", album, "format", format, "bitrate", bitrate, "numTracks", len(mfs))
+	if album == "" {
+		return a.zipMediaFiles(ctx, ids[0], "songs", format, bitrate, out, mfs, false)
+	}
+
+	// The songs of a completed album can come from different copies of it (see the iPods' "complete
+	// the album"), so they are named by their tags, not by their files' names
+	z := createZipWriter(out, format, bitrate)
+	isMultiDisc := len(slice.Group(mfs, func(mf model.MediaFile) int { return mf.DiscNumber })) > 1
+	for idx, mf := range mfs {
+		_ = a.addFileToZip(ctx, z, mf, format, bitrate, completedAlbumFilename(album, mf, format, idx, isMultiDisc))
+	}
+	err = z.Close()
+	if err != nil {
+		log.Error(ctx, "Error closing zip file", "album", album, err)
+	}
+	return err
+}
+
+func completedAlbumFilename(album string, mf model.MediaFile, format string, idx int, isMultiDisc bool) string {
+	ext := mf.Suffix
+	if format != "" && format != "raw" {
+		ext = format
+	}
+	file := fmt.Sprintf("%02d - %s.%s", cmp.Or(mf.TrackNumber, idx+1), sanitizeName(mf.Title), ext)
+	if isMultiDisc {
+		file = fmt.Sprintf("Disc %02d/%s", mf.DiscNumber, file)
+	}
+	return fmt.Sprintf("%s/%s", sanitizeName(album), file)
 }
 
 func (a *archiver) zipMediaFiles(ctx context.Context, id, name string, format string, bitrate int, out io.Writer, mfs model.MediaFiles, addM3U bool) error {

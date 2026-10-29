@@ -1,6 +1,7 @@
 package subsonic
 
 import (
+	"cmp"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -103,8 +104,10 @@ func (api *Router) Download(w http.ResponseWriter, r *http.Request) (*responses.
 	}
 
 	if len(ids) > 1 {
-		setHeaders(fmt.Sprintf("%d songs", len(ids)))
-		return nil, api.archiver.ZipSongs(ctx, ids, format, maxBitRate, w)
+		// "album" names a completed album (see the iPods' "complete the album")
+		album, _ := p.String("album")
+		setHeaders(cmp.Or(album, fmt.Sprintf("%d songs", len(ids))))
+		return nil, api.archiver.ZipSongs(ctx, ids, album, format, maxBitRate, w)
 	}
 
 	if libraryID, ok := ipodDownloadID(id); ok {

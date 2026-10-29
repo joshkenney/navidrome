@@ -11,6 +11,8 @@ import subsonic from '../subsonic'
 import { closeDownloadMenu } from '../actions'
 import { formatBytes } from '../utils'
 import { useTranscodingOptions } from './useTranscodingOptions'
+import { BestCopyRecommendation } from './BestCopyRecommendation'
+import { useBestCopy } from './bestCopy'
 
 const DownloadMenuDialog = () => {
   const { open, record, recordType } = useSelector(
@@ -21,6 +23,13 @@ const DownloadMenuDialog = () => {
 
   const { TranscodingOptionsInput, format, maxBitRate, originalFormat } =
     useTranscodingOptions()
+  const best = useBestCopy(open ? record : null, recordType)
+
+  // The recommended download: the best copy of a song, or the complete album, in original format
+  const handleBestDownload = (ids) => {
+    subsonic.download(ids, 'raw', '0', record?.name)
+    dispatch(closeDownloadMenu())
+  }
 
   const handleClose = (e) => {
     dispatch(closeDownloadMenu())
@@ -59,6 +68,7 @@ const DownloadMenuDialog = () => {
           })}
       </DialogTitle>
       <DialogContent>
+        <BestCopyRecommendation best={best} onDownload={handleBestDownload} />
         <SimpleForm toolbar={null} variant={'outlined'}>
           <TranscodingOptionsInput
             fullWidth

@@ -602,7 +602,13 @@
     "shareSuccess": "URL copied to clipboard: %{url}",
     "shareFailure": "Error copying URL %{url} to clipboard",
     "downloadDialogTitle": "Download %{resource} '%{name}' (%{size})",
-    "downloadOriginalFormat": "Download in original format"
+    "downloadOriginalFormat": "Download in original format",
+    "bestCopyRecommended": "Recommended: %{ipod} has a better copy of this song, %{best} instead of %{current}.",
+    "bestCopyDownload": "Download best quality",
+    "completeAlbumRecommended": "Recommended: complete this album with the best copies from %{ipods}.",
+    "completeAlbumAdded": "%{smart_count} missing song added. |||| %{smart_count} missing songs added.",
+    "completeAlbumBetter": "%{smart_count} song in better quality. |||| %{smart_count} songs in better quality.",
+    "completeAlbumDownload": "Download complete album (%{smart_count} song) |||| Download complete album (%{smart_count} songs)"
   },
   "menu": {
     "library": "iPods",

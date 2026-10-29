@@ -363,7 +363,7 @@ func (n noopArchiver) ZipPlaylist(context.Context, string, string, int, io.Write
 	return model.ErrNotFound
 }
 
-func (n noopArchiver) ZipSongs(context.Context, []string, string, int, io.Writer) error {
+func (n noopArchiver) ZipSongs(context.Context, []string, string, string, int, io.Writer) error {
 	return model.ErrNotFound
 }
 
