@@ -148,6 +148,24 @@ var _ = Describe("ListeningRepository", func() {
 			Expect(t.Totals.Plays).To(Equal(3))
 		})
 
+		It("narrows the plays list to some artists or iPods, keeping the totals", func() {
+			t, err := repo.Timeline(friend.ID, model.TimelineOptions{Max: 10, ArtistIDs: []string{artistA.ID}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(t.Plays).To(BeEmpty())
+			Expect(t.FilteredPlays).To(BeZero())
+			Expect(t.Totals.Plays).To(Equal(1))
+
+			t, err = repo.Timeline(listener.ID, model.TimelineOptions{Max: 10, ArtistIDs: []string{artistA.ID}, LibraryIDs: []int{lib}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(t.Plays).To(HaveLen(3))
+			Expect(t.FilteredPlays).To(Equal(3))
+
+			t, err = repo.Timeline(listener.ID, model.TimelineOptions{Max: 10, LibraryIDs: []int{lib + 1}})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(t.Plays).To(BeEmpty())
+			Expect(t.Totals.Plays).To(Equal(3))
+		})
+
 		It("is empty outside the listening", func() {
 			t, err := repo.Timeline(listener.ID, model.TimelineOptions{From: day("2020-01-01", 0), To: day("2020-02-01", 0)})
 			Expect(err).ToNot(HaveOccurred())

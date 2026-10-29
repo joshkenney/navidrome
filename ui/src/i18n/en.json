@@ -1011,6 +1011,13 @@
       "topSongs": "Top songs",
       "plays": "Plays",
       "replay": "Replay these days",
+      "playsFiltered": "%{smart_count} play |||| %{smart_count} plays",
+      "playThese": "Play these",
+      "downloadThese": "Download these",
+      "downloadName": "Timeline %{range}",
+      "onlyFrom": "Only from:",
+      "allTopArtists": "All top artists",
+      "showAll": "All plays",
       "playSong": "Play",
       "more": "Show more"
     },

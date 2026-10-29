@@ -24,6 +24,9 @@ import {
 import { makeStyles } from '@material-ui/core/styles'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import EventIcon from '@material-ui/icons/Event'
+import CloudDownloadOutlinedIcon from '@material-ui/icons/CloudDownloadOutlined'
+import subsonic from '../subsonic'
+import config from '../config'
 import { APP_NAME } from '../common/Title'
 import { IpodLabel } from '../ipods/IpodLabel'
 import { ActivityChart } from './ActivityChart'
@@ -86,7 +89,24 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'center',
     marginTop: theme.spacing(1),
   },
+  filters: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+    marginTop: theme.spacing(1),
+  },
+  playsActions: { display: 'flex', flexWrap: 'wrap', gap: theme.spacing(1) },
 }))
+
+// Most plays downloaded at once from the plays list
+const DOWNLOAD_MAX = 500
+
+const splitParam = (value) => (value ? value.split(',') : [])
+
+// Adds or removes an ID from a list
+const toggle = (list, id) =>
+  list.includes(id) ? list.filter((x) => x !== id) : [...list, id]
 
 const PRESETS = ['today', 'week', 'month', 'last30', 'year', 'all']
 
@@ -119,6 +139,11 @@ const TimelinePage = () => {
   const from = params.get('from') || fallback.from
   const to = params.get('to') || fallback.to
   const user = params.get('user') || ''
+  // The plays list can be narrowed to some of the top artists and iPods
+  const artistParam = params.get('artist') || ''
+  const ipodParam = params.get('ipod') || ''
+  const artists = useMemo(() => splitParam(artistParam), [artistParam])
+  const ipods = useMemo(() => splitParam(ipodParam), [ipodParam])
 
   const [data, setData] = useState(null)
   const [plays, setPlays] = useState([])
@@ -147,7 +172,7 @@ const TimelinePage = () => {
   useEffect(() => {
     let current = true
     setLoading(true)
-    fetchTimeline({ from, to, user })
+    fetchTimeline({ from, to, user, artists, ipods })
       .then((json) => {
         if (!current) return
         setData(json)
@@ -158,7 +183,7 @@ const TimelinePage = () => {
     return () => {
       current = false
     }
-  }, [from, to, user, notify])
+  }, [from, to, user, artists, ipods, notify])
 
   const loadMore = () => {
     setLoadingMore(true)
@@ -166,12 +191,51 @@ const TimelinePage = () => {
       from,
       to,
       user,
+      artists,
+      ipods,
       start: plays.length,
       end: plays.length + PLAYS_PAGE,
     })
       .then((json) => setPlays((p) => [...p, ...(json.plays || [])]))
       .catch(() => notify('ra.page.error', 'warning'))
       .finally(() => setLoadingMore(false))
+  }
+
+  const filtering = artists.length > 0 || ipods.length > 0
+  const filteredTotal = filtering
+    ? (data?.filteredPlays ?? 0)
+    : (data?.totals?.plays ?? 0)
+
+  // Downloads the songs of the plays list (each once), as far as DOWNLOAD_MAX plays
+  const [downloading, setDownloading] = useState(false)
+  const downloadPlays = () => {
+    setDownloading(true)
+    const all =
+      plays.length >= Math.min(filteredTotal, DOWNLOAD_MAX)
+        ? Promise.resolve(plays)
+        : fetchTimeline({
+            from,
+            to,
+            user,
+            artists,
+            ipods,
+            start: 0,
+            end: DOWNLOAD_MAX,
+          }).then((json) => json.plays || [])
+    all
+      .then((entries) => {
+        const ids = [...new Set(entries.map((e) => e.id))]
+        if (ids.length) {
+          subsonic.download(
+            ids,
+            'raw',
+            '0',
+            t('downloadName', { range: formatRange(from, to) }),
+          )
+        }
+      })
+      .catch(() => notify('ra.page.error', 'warning'))
+      .finally(() => setDownloading(false))
   }
 
   const submitJump = (e) => {
@@ -374,15 +438,88 @@ const TimelinePage = () => {
             </Grid>
 
             <div className={classes.header} style={{ marginTop: 16 }}>
-              <Typography variant="h6">{t('plays')}</Typography>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<PlayArrowIcon />}
-                onClick={() => playEntries(dispatch, [...plays].reverse())}
-              >
-                {t('replay')}
-              </Button>
+              <Typography variant="h6">
+                {filtering
+                  ? t('playsFiltered', { smart_count: filteredTotal })
+                  : t('plays')}
+              </Typography>
+              <div className={classes.playsActions}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<PlayArrowIcon />}
+                  disabled={!plays.length}
+                  onClick={() => playEntries(dispatch, [...plays].reverse())}
+                >
+                  {filtering ? t('playThese') : t('replay')}
+                </Button>
+                {config.enableDownloads && (
+                  <Button
+                    size="small"
+                    startIcon={
+                      downloading ? (
+                        <CircularProgress size={14} />
+                      ) : (
+                        <CloudDownloadOutlinedIcon />
+                      )
+                    }
+                    disabled={!plays.length || downloading}
+                    onClick={downloadPlays}
+                  >
+                    {t('downloadThese')}
+                  </Button>
+                )}
+              </div>
+            </div>
+            <div className={classes.filters}>
+              <Typography variant="body2" color="textSecondary">
+                {t('onlyFrom')}
+              </Typography>
+              {(data.topIpods || []).slice(0, 5).map((item) => (
+                <Chip
+                  key={`ipod-${item.id}`}
+                  size="small"
+                  label={item.name}
+                  color={ipods.includes(item.id) ? 'primary' : 'default'}
+                  variant={ipods.includes(item.id) ? 'default' : 'outlined'}
+                  onClick={() => go({ ipod: toggle(ipods, item.id).join(',') })}
+                />
+              ))}
+              {(data.topArtists || []).slice(0, 5).map((item) => (
+                <Chip
+                  key={`artist-${item.id}`}
+                  size="small"
+                  label={item.name}
+                  color={artists.includes(item.id) ? 'primary' : 'default'}
+                  variant={artists.includes(item.id) ? 'default' : 'outlined'}
+                  onClick={() =>
+                    go({ artist: toggle(artists, item.id).join(',') })
+                  }
+                />
+              ))}
+              {(data.topArtists || []).length > 1 && (
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={t('allTopArtists')}
+                  onClick={() =>
+                    go({
+                      artist: data.topArtists
+                        .slice(0, 5)
+                        .map((a) => a.id)
+                        .join(','),
+                    })
+                  }
+                />
+              )}
+              {filtering && (
+                <Chip
+                  size="small"
+                  label={t('showAll')}
+                  onDelete={() => go({ artist: '', ipod: '' })}
+                  onClick={() => go({ artist: '', ipod: '' })}
+                />
+              )}
             </div>
             <List dense>
               {playsByDay.map((group) => (
@@ -438,7 +575,7 @@ const TimelinePage = () => {
                 </li>
               ))}
             </List>
-            {plays.length < totals.plays && (
+            {plays.length < filteredTotal && (
               <div className={classes.more}>
                 <Button onClick={loadMore} disabled={loadingMore}>
                   {loadingMore ? <CircularProgress size={16} /> : t('more')}

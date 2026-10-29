@@ -167,7 +167,22 @@ func (r *listeningRepository) Timeline(userID string, opts model.TimelineOptions
 		return nil, err
 	}
 
-	plays := base.Join("library l ON l.id = mf.library_id").Columns(
+	filtered := base
+	if len(opts.ArtistIDs) > 0 {
+		filtered = filtered.Where(Eq{"mf.artist_id": opts.ArtistIDs})
+	}
+	if len(opts.LibraryIDs) > 0 {
+		filtered = filtered.Where(Eq{"mf.library_id": opts.LibraryIDs})
+	}
+	var count struct {
+		Plays int `db:"plays"`
+	}
+	if err := ignoreNotFound(r.queryOne(filtered.Columns("count(*) AS plays"), &count)); err != nil {
+		return nil, err
+	}
+	res.FilteredPlays = count.Plays
+
+	plays := filtered.Join("library l ON l.id = mf.library_id").Columns(
 		"s.user_id", "s.submission_time",
 		"mf.id AS media_file_id", "mf.title", "mf.artist", "mf.album",
 		"mf.album_id", "mf.artist_id", "mf.album_artist_id",

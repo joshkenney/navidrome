@@ -10,6 +10,10 @@ type TimelineOptions struct {
 	TZOffset int
 	Offset   int // paging of the plays list
 	Max      int
+	// ArtistIDs and LibraryIDs narrow the plays list (not the totals and tops) to these artists and
+	// iPods. When both are given, a play must match both
+	ArtistIDs  []string
+	LibraryIDs []int
 }
 
 // ListeningDay is the listening of one day, in the listener's time zone
@@ -51,6 +55,8 @@ type Timeline struct {
 	TopSongs   []ListeningCount `json:"topSongs"`
 	TopIpods   []ListeningCount `json:"topIpods"`
 	Plays      []ListenEntry    `json:"-"`
+	// FilteredPlays counts the plays in the plays list (see TimelineOptions.ArtistIDs)
+	FilteredPlays int `json:"filteredPlays"`
 	// First and Last are the user's first and last plays ever, so the UI knows how far back it can go
 	First time.Time `json:"first,omitzero"`
 	Last  time.Time `json:"last,omitzero"`
@@ -121,6 +127,7 @@ type ListeningRepository interface {
 	// SearchListens finds songs that listeners sharing their activity have played, by title, artist or album
 	SearchListens(q string, limit int) ([]ListenMatch, error)
 }
+
 
 // SearchOptions is a search across the library, with filters
 type SearchOptions struct {

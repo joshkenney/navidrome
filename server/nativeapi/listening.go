@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -163,6 +164,14 @@ func (api *Router) getTimeline(w http.ResponseWriter, r *http.Request) {
 		opts.To = to.AddDate(0, 0, 1)
 	}
 	opts.Max = min(max(p.IntOr("_end", 50)-opts.Offset, 1), 500)
+	// "artist" and "ipod" narrow the plays list to some artists and iPods
+	opts.ArtistIDs, _ = p.Strings("artist")
+	ipods, _ := p.Strings("ipod")
+	for _, id := range ipods {
+		if n, err := strconv.Atoi(id); err == nil {
+			opts.LibraryIDs = append(opts.LibraryIDs, n)
+		}
+	}
 
 	timeline, err := api.ds.Listening(ctx).Timeline(user.ID, opts)
 	if err != nil {

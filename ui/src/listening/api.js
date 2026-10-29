@@ -6,29 +6,32 @@ import { tzOffset } from './dates'
 
 export const PLAYS_PAGE = 50
 
-const query = (params) =>
-  new URLSearchParams(
-    Object.entries(params).filter(
-      ([, v]) => v !== undefined && v !== null && v !== '',
-    ),
-  ).toString()
+// Arrays become one parameter per value
+const query = (params) => {
+  const q = new URLSearchParams()
+  Object.entries(params).forEach(([k, v]) =>
+    (Array.isArray(v) ? v : [v])
+      .filter((x) => x !== undefined && x !== null && x !== '')
+      .forEach((x) => q.append(k, x)),
+  )
+  return q.toString()
+}
 
-// A user's listening between two days (both included). Without days, all of it
+// A user's listening between two days (both included). Without days, all of it. "artists" and
+// "ipods" (IDs) narrow the plays list
 export const fetchTimeline = ({
   from,
   to,
   user,
+  artists,
+  ipods,
   start = 0,
   end = PLAYS_PAGE,
 }) =>
   httpClient(
-    `/api/listening/timeline?${query({ from, to, user, tz: tzOffset(), _start: start, _end: end })}`,
+    `/api/listening/timeline?${query({ from, to, user, artist: artists, ipod: ipods, tz: tzOffset(), _start: start, _end: end })}`,
   ).then(({ json }) => json)
 
-export const fetchHoles = (refresh = false) =>
-  httpClient(
-    `/api/listening/holes?${query({ tz: tzOffset(), refresh: refresh || undefined })}`,
-  ).then(({ json }) => json)
 
 // The listeners whose timeline can be seen: the ones sharing their activity, and the current user
 export const fetchListeners = () =>
