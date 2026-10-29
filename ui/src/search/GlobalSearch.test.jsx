@@ -166,4 +166,96 @@ describe('<GlobalSearch />', () => {
       '{"genre_id":["g1"]}',
     )
   })
+  it('opens the timeline for a date', async () => {
+    const input = await search('last june', {
+      dates: [
+        {
+          id: 'timeline',
+          kind: 'timeline',
+          label: 'June 2026',
+          from: '2026-06-01',
+          to: '2026-06-30',
+        },
+      ],
+    })
+    await screen.findByText('search.dates.timeline')
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(history.location.pathname).toBe('/timeline')
+    expect(history.location.search).toBe('?from=2026-06-01&to=2026-06-30')
+  })
+
+  it('finds the music released in a year', async () => {
+    const input = await search('1997', {
+      dates: [
+        {
+          id: 'timeline',
+          kind: 'timeline',
+          label: '1997',
+          from: '1997-01-01',
+          to: '1997-12-31',
+        },
+        {
+          id: 'released',
+          kind: 'released',
+          label: '1997',
+          yearFrom: 1997,
+          yearTo: 1997,
+        },
+      ],
+    })
+    await screen.findByText('search.dates.released')
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(history.location.pathname).toBe('/search')
+    expect(history.location.search).toBe(
+      '?type=albums&year_from=1997&year_to=1997',
+    )
+  })
+
+  it("opens a listener's timeline", async () => {
+    const input = await search('ann', {
+      users: [{ id: 'u1', username: 'ann', plays: 3 }],
+    })
+    await screen.findByText('ann')
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(history.location.pathname).toBe('/timeline')
+    expect(history.location.search).toBe('?user=u1')
+  })
+
+  it('plays a song someone listened to', async () => {
+    const input = await search('buddy', {
+      listens: [
+        {
+          id: 's9',
+          userId: 'u1',
+          username: 'ann',
+          title: 'Buddy Holly',
+          plays: 2,
+        },
+      ],
+    })
+    await screen.findByText('Buddy Holly')
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(actions.find((a) => a.type === 'PLAYER_PLAY_TRACKS').id).toBe('s9')
+  })
+
+  it('marks songs never played and where they matched, and links to all results', async () => {
+    await search('ocean', {
+      songs: [{ id: 's1', title: 'Undertow', playCount: 0 }],
+      matches: { s1: 'lyrics' },
+      more: { songs: true },
+    })
+    await screen.findByText('Undertow')
+    expect(screen.getByText('search.neverPlayed')).toBeInTheDocument()
+    expect(screen.getByText('search.matchedIn.lyrics')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('search.seeAll'))
+    expect(history.location.pathname).toBe('/search')
+    expect(history.location.search).toBe('?q=ocean&type=songs')
+  })
+
+  it('opens the search page with filters', async () => {
+    await search('weezer', {})
+    fireEvent.click(screen.getByText('search.withFilters'))
+    expect(history.location.search).toBe('?q=weezer')
+  })
 })

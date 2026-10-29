@@ -900,17 +900,53 @@
   },
   "search": {
     "tooltip": "Search everything",
-    "placeholder": "Search artists, albums, songs, iPods, playlists, genres, radios…",
+    "placeholder": "Search music, lyrics, labels, listeners, dates…",
     "noResults": "Nothing found",
     "goToAlbum": "Go to album",
     "groups": {
+      "dates": "Dates",
       "ipods": "iPods",
       "artists": "Artists",
       "albums": "Albums",
       "songs": "Songs",
+      "users": "Listeners",
+      "listens": "Listening",
       "playlists": "Playlists",
       "genres": "Genres",
       "radios": "iPod Radios"
+    },
+    "seeAll": "See all",
+    "withFilters": "Search with filters",
+    "neverPlayed": "Never played",
+    "matchedIn": {
+      "lyrics": "In lyrics",
+      "comment": "In comment",
+      "label": "Label",
+      "credits": "In credits"
+    },
+    "dates": {
+      "timeline": "Your listening · %{label}",
+      "released": "Music released in %{label}"
+    },
+    "userPlays": "%{smart_count} play |||| %{smart_count} plays",
+    "listenedBy": "%{name} played it · %{artist} |||| %{name} played it %{smart_count} times · %{artist}",
+    "page": {
+      "title": "Search",
+      "help": "Everything on every iPod, matching names, credits, comments, lyrics and record labels.",
+      "ipod": "iPod",
+      "allIpods": "All iPods",
+      "yearFrom": "From year",
+      "yearTo": "To year",
+      "genre": "Genre",
+      "anyGenre": "Any genre",
+      "played": "Played",
+      "playedAny": "Played or not",
+      "playedYes": "Played",
+      "playedNo": "Never played",
+      "clear": "Clear filters",
+      "start": "Type something to search, or pick a filter.",
+      "more": "Show more",
+      "albumCount": "%{smart_count} album |||| %{smart_count} albums"
     }
   },
   "help": {
@@ -926,6 +962,85 @@
       "vol_up": "Volume Up",
       "vol_down": "Volume Down",
       "toggle_love": "Add this track to favourites"
+    }
+  },
+  "listening": {
+    "plays": "%{smart_count} play |||| %{smart_count} plays",
+    "timeline": {
+      "title": "Timeline",
+      "titleOf": "%{name}'s timeline",
+      "whose": "Whose listening",
+      "me": "Mine",
+      "jumpPlaceholder": "Go to a date: last june, summer 2025, 2026-03-14…",
+      "jumpError": "Try \"yesterday\", \"last month\", \"june 5\" or \"2025\"",
+      "from": "From",
+      "to": "To",
+      "presets": {
+        "today": "Today",
+        "week": "This week",
+        "month": "This month",
+        "last30": "Past 30 days",
+        "year": "This year",
+        "all": "All time"
+      },
+      "totals": {
+        "plays": "plays",
+        "time": "listening",
+        "songs": "songs",
+        "albums": "albums",
+        "artists": "artists"
+      },
+      "silences": "Silences:",
+      "silence": "%{range} (%{smart_count} day) |||| %{range} (%{smart_count} days)",
+      "emptyRange": "Nothing was played on these days. The listening history starts on %{first}.",
+      "emptyEver": "Nothing played yet. Songs show up here once they've been listened to.",
+      "topIpods": "Top iPods",
+      "topArtists": "Top artists",
+      "topAlbums": "Top albums",
+      "topSongs": "Top songs",
+      "plays": "Plays",
+      "replay": "Replay these days",
+      "playSong": "Play",
+      "more": "Show more"
+    },
+    "holes": {
+      "title": "Holes",
+      "pageHelp": "What's on the server that you haven't heard, or have stopped listening to.",
+      "refresh": "Refresh",
+      "time": "Time",
+      "timeSummary": "You've listened on %{days} of the %{span} days since %{first}.",
+      "lastToday": "Your last listen was today.",
+      "lastDaysAgo": "Your last listen was %{smart_count} day ago. |||| Your last listen was %{smart_count} days ago.",
+      "timeEmpty": "Nothing played yet.",
+      "ipods": "iPods",
+      "ipodsHelp": "How much of each iPod you've played, least first.",
+      "decades": "Decades",
+      "decadesHelp": "How much of each decade's music you've played.",
+      "genres": "Genres",
+      "genresHelp": "Albums played in each genre, least first.",
+      "coverage": "%{percent}% · %{played} of %{total} %{unit}",
+      "units": {
+        "songs": "song |||| songs",
+        "albums": "album |||| albums"
+      },
+      "artists": "Artists you've never played",
+      "artistsHelp": "With the most songs on the server first.",
+      "albums": "Albums you've never played",
+      "albumsHelp": "The ones on the most iPods first.",
+      "songs": "%{smart_count} song |||| %{smart_count} songs",
+      "onIpods": "on %{smart_count} iPod |||| on %{smart_count} iPods",
+      "none": "None: you've played them all.",
+      "forgotten": "Forgotten favourites",
+      "forgottenHelp": "Things you played a lot, but not in the last month. |||| Things you played a lot, but not in the last %{smart_count} months.",
+      "forgottenArtists": "Artists",
+      "forgottenAlbums": "Albums",
+      "forgottenSongs": "Songs",
+      "noneForgotten": "Nothing forgotten.",
+      "lastPlayed": "last %{date}",
+      "community": "What others play that you never have",
+      "communityHelp": "Artists loved by listeners who share their activity.",
+      "noneCommunity": "Nothing yet. This fills up as other listeners share their activity.",
+      "lovedBy": "%{names} · %{plays}"
     }
   }
 }

@@ -72,24 +72,26 @@ func (r *scrobbleRepository) GetRecentAll(limit int) ([]model.ListenEntry, error
 		return nil, err
 	}
 
-	return slice.Map(rows, func(e dbScrobbleEntry) model.ListenEntry {
-		return model.ListenEntry{
-			UserID:         e.UserID,
-			Username:       e.Username,
-			SubmissionTime: time.Unix(e.SubmissionTime, 0),
-			MediaFile: model.MediaFile{
-				ID:            e.MediaFileID,
-				Title:         e.Title,
-				Artist:        e.Artist,
-				Album:         e.Album,
-				AlbumID:       e.AlbumID,
-				ArtistID:      e.ArtistID,
-				AlbumArtistID: e.AlbumArtistID,
-				Duration:      e.Duration,
-				UpdatedAt:     e.UpdatedAt,
-				LibraryID:     e.LibraryID,
-				LibraryName:   e.LibraryName,
-			},
-		}
-	}), nil
+	return slice.Map(rows, dbScrobbleEntry.toModel), nil
+}
+
+func (e dbScrobbleEntry) toModel() model.ListenEntry {
+	return model.ListenEntry{
+		UserID:         e.UserID,
+		Username:       e.Username,
+		SubmissionTime: time.Unix(e.SubmissionTime, 0),
+		MediaFile: model.MediaFile{
+			ID:            e.MediaFileID,
+			Title:         e.Title,
+			Artist:        e.Artist,
+			Album:         e.Album,
+			AlbumID:       e.AlbumID,
+			ArtistID:      e.ArtistID,
+			AlbumArtistID: e.AlbumArtistID,
+			Duration:      e.Duration,
+			UpdatedAt:     e.UpdatedAt,
+			LibraryID:     e.LibraryID,
+			LibraryName:   e.LibraryName,
+		},
+	}
 }

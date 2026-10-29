@@ -38,4 +38,23 @@ describe('<Menu />', () => {
     expect(screen.queryByText('resources.radio.name')).toBeNull()
     expect(screen.getByText('resources.song.name')).toBeInTheDocument()
   })
+
+  it('links to the timeline and the holes', () => {
+    const store = createStore(() => ({
+      admin: { ui: { sidebarOpen: true } },
+      player: { queue: [] },
+      resources: [],
+    }))
+    render(
+      <Provider store={store}>
+        <Menu />
+      </Provider>,
+    )
+    expect(
+      screen.getByText('listening.timeline.title').closest('a'),
+    ).toHaveAttribute('href', '/timeline')
+    expect(
+      screen.getByText('listening.holes.title').closest('a'),
+    ).toHaveAttribute('href', '/holes')
+  })
 })

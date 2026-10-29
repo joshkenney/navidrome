@@ -6,7 +6,6 @@ import {
   Filter,
   NumberField,
   ReferenceInput,
-  SearchInput,
   SelectInput,
   TextField,
   useUpdate,
@@ -40,7 +39,6 @@ const PlaylistFilter = (props) => {
   const { permissions } = usePermissions()
   return (
     <Filter {...props} variant={'outlined'}>
-      <SearchInput source="q" alwaysOn />
       {permissions === 'admin' && (
         <ReferenceInput
           source="owner_id"

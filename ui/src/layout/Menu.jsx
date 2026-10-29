@@ -12,6 +12,8 @@ import PlaylistsSubMenu from './PlaylistsSubMenu'
 import LibrarySelector from '../common/LibrarySelector'
 import config from '../config'
 import { FaRadio } from 'react-icons/fa6'
+import TimelineIcon from '@material-ui/icons/Timeline'
+import TrackChangesIcon from '@material-ui/icons/TrackChanges'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -80,6 +82,30 @@ const Menu = ({ dense = false }) => {
     />
   )
 
+  // The listening history pages: the timeline, and the holes in it
+  const renderListeningMenuItemLinks = () => [
+    <MenuItemLink
+      key="timeline"
+      data-tour="timeline"
+      to="/timeline"
+      activeClassName={classes.active}
+      primaryText={translate('listening.timeline.title')}
+      leftIcon={<TimelineIcon />}
+      sidebarIsOpen={open}
+      dense={dense}
+    />,
+    <MenuItemLink
+      key="holes"
+      data-tour="holes"
+      to="/holes"
+      activeClassName={classes.active}
+      primaryText={translate('listening.holes.title')}
+      leftIcon={<TrackChangesIcon />}
+      sidebarIsOpen={open}
+      dense={dense}
+    />,
+  ]
+
   const renderResourceMenuItemLink = (resource) =>
     resource.name === 'radio' ? (
       renderIpodRadioMenuItemLink()
@@ -145,6 +171,7 @@ const Menu = ({ dense = false }) => {
         )}
       </SubMenu>
       {resources.filter(subItems(undefined)).map(renderResourceMenuItemLink)}
+      {renderListeningMenuItemLinks()}
       {config.devSidebarPlaylists && open ? (
         <>
           <Divider />

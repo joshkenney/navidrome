@@ -101,6 +101,14 @@ func (s *SQLStore) Ipod(ctx context.Context) model.IpodRepository {
 	return NewIpodRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) Listening(ctx context.Context) model.ListeningRepository {
+	return NewListeningRepository(ctx, s.getDBXBuilder())
+}
+
+func (s *SQLStore) Search(ctx context.Context) model.SearchRepository {
+	return NewSearchRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:

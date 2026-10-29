@@ -7,7 +7,6 @@ import {
   Filter,
   FunctionField,
   NumberField,
-  SearchInput,
   SelectInput,
   TextField,
   useTranslate,
@@ -85,7 +84,6 @@ const ArtistFilter = (props) => {
   roles?.sort((a, b) => a.name.localeCompare(b.name))
   return (
     <Filter {...props} variant={'outlined'}>
-      <SearchInput id="search" source="name" alwaysOn />
       <SelectInput source="role" choices={roles} alwaysOn />
       {config.enableFavourites && (
         <QuickFilter

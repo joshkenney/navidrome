@@ -2,9 +2,9 @@ import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 
 // Search field names used by SearchInput across different list views:
-// - 'name': AlbumList, ArtistList, LibraryList, PlayerList, RadioList, UserList
-// - 'title': SongList
-// - 'q': PlaylistList
+// - 'name': LibraryList, PlayerList, RadioList, UserList
+// Music lists (albums, artists, songs, playlists) have no search box: the header search covers
+// them. 'title' and 'q' stay for old links that still filter by them.
 // If a new list view uses a different source field, add it here.
 const SEARCH_FIELDS = ['name', 'title', 'q']
 

@@ -4,6 +4,7 @@ import { useHistory } from 'react-router-dom'
 import { useNotify, useTranslate } from 'react-admin'
 import { GlobalHotKeys } from 'react-hotkeys'
 import {
+  Button,
   CircularProgress,
   Dialog,
   IconButton,
@@ -25,6 +26,10 @@ import MusicNoteIcon from '@material-ui/icons/MusicNote'
 import PersonIcon from '@material-ui/icons/Person'
 import QueueMusicIcon from '@material-ui/icons/QueueMusic'
 import LocalOfferIcon from '@material-ui/icons/LocalOffer'
+import EventIcon from '@material-ui/icons/Event'
+import PeopleIcon from '@material-ui/icons/People'
+import HistoryIcon from '@material-ui/icons/History'
+import TuneIcon from '@material-ui/icons/Tune'
 import { FaRadio } from 'react-icons/fa6'
 import { playTracks } from '../actions'
 import { processSongsForPlayback } from '../common/playbackActions'
@@ -34,7 +39,14 @@ import { playIpodRadio } from '../ipods/radio'
 import { useBrowseIpod } from '../ipods/useBrowseIpod'
 import { useSelectIpod } from '../ipods/useSelectIpod'
 import { keyMap } from '../hotkeys'
-import { fetchRadioHistory, searchEverything } from './searchEverything'
+import { entryToSong } from '../listening/api'
+import {
+  PAGED_GROUPS,
+  fetchRadioHistory,
+  searchEverything,
+  searchPageUrl,
+} from './searchEverything'
+import { ResultBadges } from './ResultBadges'
 
 export const SEARCH_MIN_LENGTH = 2
 export const SEARCH_DELAY = 250
@@ -67,21 +79,35 @@ const useStyles = makeStyles((theme) => ({
     gap: theme.spacing(1),
   },
   message: { padding: theme.spacing(3, 2), textAlign: 'center' },
+  seeAll: { paddingLeft: theme.spacing(2) },
+  footer: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    padding: theme.spacing(0.5, 1),
+    borderTop: `1px solid ${theme.palette.divider}`,
+  },
 }))
 
 // The order the result groups are shown in, with their icons
 const GROUPS = [
+  ['dates', <EventIcon key="dates" />],
   ['ipods', <IpodIcon size={20} key="ipods" />],
   ['artists', <PersonIcon key="artists" />],
   ['albums', <AlbumIcon key="albums" />],
   ['songs', <MusicNoteIcon key="songs" />],
+  ['users', <PeopleIcon key="users" />],
+  ['listens', <HistoryIcon key="listens" />],
   ['playlists', <QueueMusicIcon key="playlists" />],
   ['genres', <LocalOfferIcon key="genres" />],
   ['radios', <FaRadio size={18} key="radios" />],
 ]
 
-const primaryText = (group, item) => {
+const primaryText = (group, item, t) => {
   switch (group) {
+    case 'dates':
+      return t(`dates.${item.kind}`, { label: item.label })
+    case 'users':
+      return item.name || item.username
     case 'albums':
     case 'artists':
     case 'playlists':
@@ -93,10 +119,18 @@ const primaryText = (group, item) => {
   }
 }
 
-const secondaryText = (group, item) => {
+const secondaryText = (group, item, t) => {
   switch (group) {
     case 'albums':
       return item.albumArtist
+    case 'users':
+      return t('userPlays', { smart_count: item.plays || 0 })
+    case 'listens':
+      return t('listenedBy', {
+        name: item.username,
+        artist: item.artist,
+        smart_count: item.plays || 1,
+      })
     case 'songs':
       return [item.artist, item.album].filter(Boolean).join(' - ')
     case 'radios':
@@ -108,8 +142,9 @@ const secondaryText = (group, item) => {
   }
 }
 
-// A search box in the header that searches everything at once: artists, albums, songs, iPods,
-// playlists, genres and past iPod radios, on every iPod
+// A search box in the header that searches everything at once: artists, albums, songs (also in
+// lyrics, comments, credits and labels), iPods, listeners and what they played, playlists, genres,
+// past iPod radios and dates, on every iPod
 export const GlobalSearch = () => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -184,7 +219,7 @@ export const GlobalSearch = () => {
     () =>
       results
         ? GROUPS.flatMap(([group]) =>
-            results[group].map((item) => ({ group, item })),
+            (results[group] || []).map((item) => ({ group, item })),
           )
         : [],
     [results],
@@ -202,6 +237,20 @@ export const GlobalSearch = () => {
 
   const openResult = ({ group, item }) => {
     switch (group) {
+      case 'dates':
+        return item.kind === 'released'
+          ? go(
+              `/search?type=albums&year_from=${item.yearFrom}&year_to=${item.yearTo}`,
+            )
+          : go(`/timeline?from=${item.from}&to=${item.to}`)
+      case 'users':
+        return go(`/timeline?user=${encodeURIComponent(item.id)}`)
+      case 'listens': {
+        selectIpod(item.libraryId, item.libraryName)
+        const { songData, ids } = processSongsForPlayback([entryToSong(item)])
+        dispatch(playTracks(songData, ids))
+        return close()
+      }
       case 'ipods':
         return browseIpod(item.id)
       case 'artists':
@@ -248,13 +297,16 @@ export const GlobalSearch = () => {
   }
 
   const renderItem = (group, item, index) => {
-    const secondary = secondaryText(group, item)
-    const ipod = ['albums', 'songs', 'radios'].includes(group) && (
+    const secondary = secondaryText(group, item, t)
+    const ipod = ['albums', 'songs', 'radios', 'listens'].includes(group) && (
       <IpodLabel libraryId={item.libraryId} libraryName={item.libraryName} />
+    )
+    const badges = PAGED_GROUPS.includes(group) && (
+      <ResultBadges item={item} match={results.matches?.[item.id]} />
     )
     return (
       <ListItem
-        key={`${group}-${item.id || item.seedId}`}
+        key={`${group}-${item.userId || ''}${item.id || item.seedId}`}
         button
         dense
         selected={index === highlight}
@@ -262,12 +314,13 @@ export const GlobalSearch = () => {
         onMouseMove={() => index !== highlight && setHighlight(index)}
       >
         <ListItemText
-          primary={primaryText(group, item)}
+          primary={primaryText(group, item, t)}
           secondary={
-            (secondary || ipod) && (
+            (secondary || ipod || badges) && (
               <span className={classes.secondary}>
                 {secondary && <span>{secondary}</span>}
                 {ipod}
+                {badges}
               </span>
             )
           }
@@ -306,7 +359,7 @@ export const GlobalSearch = () => {
     let index = 0
     return (
       <List className={classes.results} dense>
-        {GROUPS.filter(([group]) => results[group].length).map(
+        {GROUPS.filter(([group]) => results[group]?.length).map(
           ([group, icon]) => (
             <li key={group}>
               <ul style={{ padding: 0 }}>
@@ -323,6 +376,22 @@ export const GlobalSearch = () => {
                   </span>
                 </ListSubheader>
                 {results[group].map((item) => renderItem(group, item, index++))}
+                {results.more?.[group] && (
+                  <ListItem
+                    button
+                    dense
+                    className={classes.seeAll}
+                    onClick={() => go(searchPageUrl(query.trim(), group))}
+                  >
+                    <ListItemText
+                      primary={t('seeAll')}
+                      primaryTypographyProps={{
+                        color: 'primary',
+                        variant: 'body2',
+                      }}
+                    />
+                  </ListItem>
+                )}
               </ul>
             </li>
           ),
@@ -372,6 +441,15 @@ export const GlobalSearch = () => {
           }
         />
         {renderResults()}
+        <div className={classes.footer}>
+          <Button
+            size="small"
+            startIcon={<TuneIcon fontSize="small" />}
+            onClick={() => go(searchPageUrl(query.trim()))}
+          >
+            {t('withFilters')}
+          </Button>
+        </div>
       </Dialog>
     </>
   )

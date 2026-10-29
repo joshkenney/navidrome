@@ -87,6 +87,7 @@ func (api *Router) routes() http.Handler {
 		api.addInsightsRoute(r)
 		api.addActivityRoute(r)
 		api.addIpodRoutes(r)
+		api.addListeningRoutes(r)
 
 		r.With(adminOnlyMiddleware).Group(func(r chi.Router) {
 			api.addInspectRoute(r)

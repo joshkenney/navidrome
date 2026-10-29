@@ -5,7 +5,6 @@ import {
   FunctionField,
   NumberField,
   ReferenceArrayInput,
-  SearchInput,
   TextField,
   useTranslate,
   NullableBooleanInput,
@@ -73,7 +72,6 @@ const SongFilter = (props) => {
   const isAdmin = permissions === 'admin'
   return (
     <Filter {...props} variant={'outlined'}>
-      <SearchInput source="title" alwaysOn />
       <ReferenceArrayInput
         label={translate('resources.song.fields.genre')}
         source="genre_id"
