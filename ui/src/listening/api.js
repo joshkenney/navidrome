@@ -32,6 +32,14 @@ export const fetchTimeline = ({
     `/api/listening/timeline?${query({ from, to, user, artist: artists, ipod: ipods, tz: tzOffset(), _start: start, _end: end })}`,
   ).then(({ json }) => json)
 
+// What the closest listener has been playing lately, for the recommendation shown after logging in
+export const fetchListeningMatch = () =>
+  httpClient('/api/listening/match').then(({ json }) => json)
+
+export const fetchHoles = (refresh = false) =>
+  httpClient(
+    `/api/listening/holes?${query({ tz: tzOffset(), refresh: refresh || undefined })}`,
+  ).then(({ json }) => json)
 
 // The listeners whose timeline can be seen: the ones sharing their activity, and the current user
 export const fetchListeners = () =>

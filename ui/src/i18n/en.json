@@ -1021,6 +1021,15 @@
       "playSong": "Play",
       "more": "Show more"
     },
+    "match": {
+      "title": "%{name} has been listening to %{artist}",
+      "enjoy": "I think you'd enjoy it.",
+      "you": "You",
+      "shared": "You and %{name} played %{smart_count} of the same artist in the past %{days} days: %{artists} |||| You and %{name} played %{smart_count} of the same artists in the past %{days} days: %{artists}",
+      "nothingShared": "Your artists and %{name}'s over the past %{days} days. Nothing in common yet: here's a start.",
+      "play": "Play %{artist}",
+      "timeline": "%{name}'s timeline"
+    },
     "holes": {
       "title": "Holes",
       "pageHelp": "What's on the server that you haven't heard, or have stopped listening to.",

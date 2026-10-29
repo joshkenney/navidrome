@@ -126,8 +126,22 @@ type ListeningRepository interface {
 	SearchUsers(q string, limit int) ([]ListeningUser, error)
 	// SearchListens finds songs that listeners sharing their activity have played, by title, artist or album
 	SearchListens(q string, limit int) ([]ListenMatch, error)
+	// ListenerArtists returns how often the current user, and each listener sharing their activity,
+	// played each artist since a time, counting only songs the current user can access
+	ListenerArtists(since time.Time) ([]ListenerArtistPlays, error)
+	// TopSongsOf returns the songs of an artist a user played the most since a time
+	TopSongsOf(userID, artistID string, since time.Time, limit int) ([]ListeningCount, error)
 }
 
+// ListenerArtistPlays is how often a listener played an artist
+type ListenerArtistPlays struct {
+	UserID     string
+	UserName   string
+	Name       string
+	ArtistID   string
+	ArtistName string
+	Plays      int
+}
 
 // SearchOptions is a search across the library, with filters
 type SearchOptions struct {

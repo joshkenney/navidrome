@@ -33,6 +33,7 @@ func (api *Router) addListeningRoutes(r chi.Router) {
 		r.Get("/timeline", api.getTimeline)
 		r.Get("/holes", api.getHoles)
 		r.Get("/users", api.getListeningUsers)
+		r.Get("/match", api.getListeningMatch)
 	})
 	r.Get("/search", api.search)
 }

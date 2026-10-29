@@ -51,6 +51,8 @@ const authProvider = {
         config.firstTime = false
         // Show the community welcome dialog once after this login
         localStorage.setItem('show-welcome', 'true')
+        // And what the closest listener has been playing (see ListeningMatchCard)
+        localStorage.setItem('show-listening-match', 'true')
         removeHomeCache()
         return response
       })

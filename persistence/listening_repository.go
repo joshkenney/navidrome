@@ -197,6 +197,52 @@ func (r *listeningRepository) Timeline(userID string, opts model.TimelineOptions
 	return res, r.bounds(userID, res)
 }
 
+type dbListenerArtistPlays struct {
+	UserID     string `db:"user_id"`
+	UserName   string `db:"user_name"`
+	Name       string `db:"name"`
+	ArtistID   string `db:"artist_id"`
+	ArtistName string `db:"artist_name"`
+	Plays      int    `db:"plays"`
+}
+
+func (r *listeningRepository) ListenerArtists(since time.Time) ([]model.ListenerArtistPlays, error) {
+	combined, err := r.combinedLibraryIDs()
+	if err != nil {
+		return nil, err
+	}
+	sq := Select("s.user_id", "u.user_name", "u.name", "mf.artist_id", "min(mf.artist) AS artist_name",
+		"count(*) AS plays").
+		From("scrobbles s").
+		Join("media_file mf ON mf.id = s.media_file_id").
+		Join("user u ON u.id = s.user_id").
+		Where(r.sharingOrMe()).
+		Where(GtOrEq{"s.submission_time": since.Unix()}).
+		Where(NotEq{"mf.artist_id": []string{"", consts.VariousArtistsID, consts.UnknownArtistID}}).
+		GroupBy("s.user_id", "mf.artist_id")
+	if len(combined) > 0 {
+		sq = sq.Where(NotEq{"mf.library_id": combined})
+	}
+	sq = r.applyLibraryFilter(sq, "mf")
+	var rows []dbListenerArtistPlays
+	if err := ignoreNotFound(r.queryAll(sq, &rows)); err != nil {
+		return nil, err
+	}
+	return slice.Map(rows, func(p dbListenerArtistPlays) model.ListenerArtistPlays {
+		return model.ListenerArtistPlays(p)
+	}), nil
+}
+
+func (r *listeningRepository) TopSongsOf(userID, artistID string, since time.Time, limit int) ([]model.ListeningCount, error) {
+	base, err := r.scrobbles(userID, since, time.Time{})
+	if err != nil {
+		return nil, err
+	}
+	return r.top(base.Where(Eq{"mf.artist_id": artistID}).Join("library l ON l.id = mf.library_id"), limit, "mf.id",
+		"mf.id", "mf.title AS name", "mf.artist", "mf.artist_id", "mf.album_id", "mf.library_id",
+		"l.name AS library_name", "mf.updated_at")
+}
+
 // bounds sets the times of the user's first and last plays ever
 func (r *listeningRepository) bounds(userID string, res *model.Timeline) error {
 	sq, err := r.scrobbles(userID, time.Time{}, time.Time{},

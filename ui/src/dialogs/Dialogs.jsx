@@ -4,6 +4,7 @@ import { HelpDialog } from './HelpDialog'
 import { ShareDialog } from './ShareDialog'
 import { SaveQueueDialog } from './SaveQueueDialog'
 import { WelcomeDialog } from './WelcomeDialog'
+import { ListeningMatchCard } from '../listening/ListeningMatchCard'
 
 export const Dialogs = (props) => (
   <>
@@ -13,5 +14,6 @@ export const Dialogs = (props) => (
     <HelpDialog />
     <ShareDialog />
     <WelcomeDialog />
+    <ListeningMatchCard />
   </>
 )

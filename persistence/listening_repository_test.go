@@ -222,6 +222,27 @@ var _ = Describe("ListeningRepository", func() {
 		})
 	})
 
+	Describe("ListenerArtists", func() {
+		It("counts the artists played lately by me and listeners who share", func() {
+			plays, err := repo.ListenerArtists(day("2026-06-02", 0))
+			Expect(err).ToNot(HaveOccurred())
+			Expect(plays).To(ConsistOf(
+				model.ListenerArtistPlays{UserID: listener.ID, UserName: listener.UserName, Name: "Me",
+					ArtistID: artistA.ID, ArtistName: artistA.Name, Plays: 1},
+				model.ListenerArtistPlays{UserID: friend.ID, UserName: friend.UserName, Name: "Friend",
+					ArtistID: artistB.ID, ArtistName: artistB.Name, Plays: 1},
+			))
+		})
+
+		It("finds the songs of an artist a listener played the most", func() {
+			songs, err := repo.TopSongsOf(listener.ID, artistA.ID, time.Time{}, 5)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(songs).To(HaveLen(2))
+			Expect(songs[0].ID).To(Equal("listen-1"))
+			Expect(songs[0].Plays).To(Equal(2))
+		})
+	})
+
 	Describe("SearchUsers", func() {
 		It("finds listeners who share, and me", func() {
 			users, err := repo.SearchUsers("listen-", 10)
