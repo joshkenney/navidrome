@@ -29,6 +29,7 @@ var _ = Describe("Nested libraries", func() {
 	song := func(id string, libraryID int, path string) model.MediaFile {
 		s := mf(model.MediaFile{ID: id, Title: "Nested " + id, Path: path, ArtistID: artistKraftwerk.ID, Artist: artistKraftwerk.Name})
 		s.LibraryID = libraryID
+		s.AlbumID = "nested-al-" + id
 		return s
 	}
 
@@ -47,6 +48,8 @@ var _ = Describe("Nested libraries", func() {
 			song("nested-c1", childID, "Album/01 Song.mp3"),
 		} {
 			Expect(mr.Put(&s)).To(Succeed())
+			exec("INSERT INTO album (id, name, library_id, song_count) VALUES ({:id}, {:name}, {:lib}, 1)",
+				dbx.Params{"id": s.AlbumID, "name": "Nested " + s.ID, "lib": s.LibraryID})
 		}
 
 		// The admin played and starred both copies, the regular user only the combined library's one
@@ -69,6 +72,7 @@ VALUES ({:admin}, 'nested-p1', 'media_file', 2, '2026-01-02 00:00:00', true, '20
 				"DELETE FROM playlist WHERE id = 'nested-pls'",
 				"DELETE FROM annotation WHERE item_id LIKE 'nested-%'",
 				"DELETE FROM media_file WHERE id LIKE 'nested-%'",
+				"DELETE FROM album WHERE id LIKE 'nested-al-%'",
 				"DELETE FROM user_library WHERE library_id IN (20, 21)",
 				"DELETE FROM library WHERE id IN (20, 21)",
 			} {
@@ -135,6 +139,12 @@ VALUES ({:admin}, 'nested-p1', 'media_file', 2, '2026-01-02 00:00:00', true, '20
 			Expect(value("SELECT media_file_id AS v FROM scrobbles WHERE user_id = '" + adminUser.ID + "' AND submission_time = 1")).To(Equal("nested-c1"))
 			Expect(value("SELECT items AS v FROM playqueue WHERE id = 'nested-pq'")).To(Equal("nested-p2,nested-c1"))
 			Expect(value("SELECT resource_ids AS v FROM share WHERE id = 'nested-share'")).To(Equal("nested-c1"))
+		})
+
+		It("removes the combined library's albums left without songs", func() {
+			Expect(value("SELECT group_concat(id) AS v FROM album WHERE id LIKE 'nested-al-%' ORDER BY id")).
+				To(SatisfyAll(ContainSubstring("nested-al-nested-c1"), ContainSubstring("nested-al-nested-p2"),
+					Not(ContainSubstring("nested-al-nested-p1"))))
 		})
 
 		It("has nothing left to merge afterwards", func() {

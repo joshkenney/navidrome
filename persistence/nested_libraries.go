@@ -148,6 +148,15 @@ WHERE p.library_id = {:parent} AND substr(p.path, 1, length({:prefix})) = {:pref
 		},
 		func() error { return r.fillMergeTable(albums) },
 		func() error { return r.mergeAnnotations("album") },
+		func() error {
+			// The combined library's albums whose tracks all moved are now empty: left there, they
+			// would still show (with their old song count) and open with no songs
+			_, err := r.db.NewQuery(`DELETE FROM album WHERE library_id = {:parent}
+AND id IN (SELECT old_id FROM temp.nested_merge)
+AND NOT EXISTS (SELECT 1 FROM media_file WHERE media_file.album_id = album.id)`).
+				Bind(dbx.Params{"parent": p.parent.ID}).Execute()
+			return err
+		},
 		func() error { return r.replaceIDLists("playqueue", "items", tracks) },
 		func() error { return r.replaceIDLists("share", "resource_ids", tracks, albums) },
 		func() error {
