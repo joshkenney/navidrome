@@ -35,6 +35,7 @@ import { calculateGain } from '../utils/calculateReplayGain'
 import { detectBrowserProfile, decisionService } from '../transcode'
 import { IpodRadioExtender } from '../ipods/IpodRadioExtender'
 import { noteRadioProgress } from '../ipods/radio'
+import { REPLAY_THRESHOLD, addToReplay } from './replay'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -45,6 +46,8 @@ const Player = () => {
   const dispatch = useDispatch()
   const [startTime, setStartTime] = useState(null)
   const [scrobbled, setScrobbled] = useState(false)
+  // The track already added to Replay in this play of it
+  const replayedRef = useRef(null)
   const [preloaded, setPreload] = useState(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
@@ -243,6 +246,15 @@ const Player = () => {
 
       noteRadioProgress(info.trackId, info.currentTime, info.duration)
       const progress = (info.currentTime / info.duration) * 100
+      if (
+        progress >= REPLAY_THRESHOLD &&
+        !info.isRadio &&
+        info.trackId &&
+        replayedRef.current !== info.trackId
+      ) {
+        replayedRef.current = info.trackId
+        addToReplay(info.trackId)
+      }
       if (isNaN(info.duration) || (progress < 50 && info.currentTime < 240)) {
         return
       }
@@ -315,6 +327,7 @@ const Player = () => {
   )
 
   const onAudioPlayTrackChange = useCallback(() => {
+    replayedRef.current = null
     if (scrobbled) {
       setScrobbled(false)
     }
