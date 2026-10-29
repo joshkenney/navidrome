@@ -112,8 +112,18 @@ var _ = Describe("Replay and best copies endpoints", Ordered, func() {
 
 	Describe("Replay", func() {
 		It("creates each user's own Replay playlist, adding each song once", func() {
-			Expect(replay(aliceCtx, "a1").Code).To(Equal(http.StatusOK))
-			Expect(replay(aliceCtx, "b3").Code).To(Equal(http.StatusOK))
+			var first, second replayResponse
+			w1 := replay(aliceCtx, "a1")
+			Expect(w1.Code).To(Equal(http.StatusOK))
+			Expect(json.Unmarshal(w1.Body.Bytes(), &first)).To(Succeed())
+			Expect(first.Created).To(BeTrue())
+			Expect(first.Added).To(BeTrue())
+			Expect(first.PlaylistID).ToNot(BeEmpty())
+			w2 := replay(aliceCtx, "b3")
+			Expect(w2.Code).To(Equal(http.StatusOK))
+			Expect(json.Unmarshal(w2.Body.Bytes(), &second)).To(Succeed())
+			Expect(second.Created).To(BeFalse())
+			Expect(second.PlaylistID).To(Equal(first.PlaylistID))
 			w := replay(aliceCtx, "a1")
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Body.String()).To(ContainSubstring(`"added":false`))

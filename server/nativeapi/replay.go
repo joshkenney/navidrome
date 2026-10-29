@@ -43,7 +43,7 @@ func (api *Router) addToReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	added := false
+	resp := replayResponse{}
 	err := api.ds.WithTx(func(tx model.DataStore) error {
 		repo := tx.Playlist(ctx)
 		pls, err := repo.GetAll(model.QueryOptions{
@@ -63,7 +63,9 @@ func (api *Router) addToReplay(w http.ResponseWriter, r *http.Request) {
 				return err
 			}
 			plsID = p.ID
+			resp.Created = true
 		}
+		resp.PlaylistID = plsID
 		tracks := repo.Tracks(plsID, false)
 		existing, err := tracks.GetAll(model.QueryOptions{
 			Filters: squirrel.Eq{"playlist_tracks.media_file_id": id}, Max: 1,
@@ -74,7 +76,7 @@ func (api *Router) addToReplay(w http.ResponseWriter, r *http.Request) {
 		if len(existing) > 0 {
 			return nil
 		}
-		added = true
+		resp.Added = true
 		_, err = tracks.Add([]string{id})
 		return err
 	}, "addToReplay")
@@ -83,5 +85,12 @@ func (api *Router) addToReplay(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(ctx, w, map[string]bool{"added": added})
+	writeJSON(ctx, w, resp)
+}
+
+// replayResponse tells the web player what changed, so it can show the new playlist or song
+type replayResponse struct {
+	PlaylistID string `json:"playlistId"`
+	Created    bool   `json:"created"`
+	Added      bool   `json:"added"`
 }
