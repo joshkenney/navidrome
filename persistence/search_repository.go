@@ -6,6 +6,7 @@ import (
 
 	. "github.com/Masterminds/squirrel"
 	"github.com/navidrome/navidrome/model"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/pocketbase/dbx"
 )
 
@@ -20,6 +21,18 @@ type searchRepository struct {
 
 func NewSearchRepository(ctx context.Context, db dbx.Builder) model.SearchRepository {
 	return &searchRepository{ctx: ctx, db: db}
+}
+
+// combinedLibraryIDs returns the libraries holding other libraries (like a "Music Library" holding
+// every iPod's folder). Search leaves them out, like the library selector does: what they hold is
+// found in the libraries inside them, and their own leftovers would show twice, or open empty
+func (r *searchRepository) combinedLibraryIDs() ([]int, error) {
+	var libs model.Libraries
+	err := r.db.NewQuery("SELECT id, path FROM library").All(&libs)
+	if err != nil {
+		return nil, err
+	}
+	return libs.Combined().IDs(), nil
 }
 
 func searchQuery(opts model.SearchOptions) string {
@@ -109,8 +122,13 @@ func (r *searchRepository) Songs(opts model.SearchOptions) (model.MediaFiles, er
 	if match == nil {
 		return model.MediaFiles{}, nil
 	}
+	combined, err := r.combinedLibraryIDs()
+	if err != nil {
+		return nil, err
+	}
 	repo := NewMediaFileRepository(r.ctx, r.db).(*mediaFileRepository)
 	sq := repo.selectMediaFile().
+		Where(NotEq{"media_file.library_id": combined}).
 		Where(Eq{"media_file.missing": false}).
 		Where(match).
 		Where(playedFilter(opts.Played))
@@ -143,8 +161,13 @@ func (r *searchRepository) Albums(opts model.SearchOptions) (model.Albums, error
 	if match == nil {
 		return model.Albums{}, nil
 	}
+	combined, err := r.combinedLibraryIDs()
+	if err != nil {
+		return nil, err
+	}
 	repo := NewAlbumRepository(r.ctx, r.db).(*albumRepository)
 	sq := repo.selectAlbum().
+		Where(NotEq{"album.library_id": combined}).
 		Where(Eq{"album.missing": false}).
 		Where(match).
 		Where(playedFilter(opts.Played)).
@@ -172,11 +195,21 @@ func (r *searchRepository) Artists(opts model.SearchOptions) (model.Artists, err
 	if match == nil {
 		return model.Artists{}, nil
 	}
+	combined, err := r.combinedLibraryIDs()
+	if err != nil {
+		return nil, err
+	}
 	repo := NewArtistRepository(r.ctx, r.db).(*artistRepository)
 	sq := repo.selectArtist().
 		Where(Eq{"artist.missing": false}).
 		Where(match).
 		Where(playedFilter(opts.Played))
+	if len(combined) > 0 {
+		// Artists only found in a combined library are left out, like their songs
+		sq = sq.Where(Expr("EXISTS (SELECT 1 FROM library_artist la WHERE la.artist_id = artist.id AND "+
+			"la.library_id NOT IN ("+strings.TrimSuffix(strings.Repeat("?,", len(combined)), ",")+"))",
+			slice.Map(combined, func(id int) any { return id })...))
+	}
 	if len(opts.LibraryIDs) > 0 {
 		sq = sq.Where(Eq{"library_artist.library_id": opts.LibraryIDs})
 	}
