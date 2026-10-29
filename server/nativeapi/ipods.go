@@ -21,6 +21,7 @@ import (
 	"github.com/navidrome/navidrome/model"
 	"github.com/navidrome/navidrome/model/request"
 	"github.com/navidrome/navidrome/utils/req"
+	"github.com/navidrome/navidrome/utils/slice"
 	"github.com/navidrome/navidrome/utils/songkey"
 )
 
@@ -142,6 +143,8 @@ type ipodData struct {
 	taste     tasteModel
 	tribes    ipodTribes
 	radio     *radioIndex
+	// essentials are the Essentials of each tribe, by tribe ID
+	essentials map[int][]string
 }
 
 // ipodCache holds the data of each set of iPods users can access (users with the same access
@@ -185,6 +188,7 @@ func (api *Router) addIpodRoutes(r chi.Router) {
 		r.Get("/match", api.getIpodMatch)
 		r.Get("/best", api.getIpodBestCopy)
 		r.Get("/album", api.getIpodCompleteAlbum)
+		r.Get("/tribes/{id}/essentials", api.getTribeEssentials)
 		r.Get("/radio", api.getIpodRadio)
 		r.Get("/radio/history", api.getRadioHistory)
 		r.Post("/radio/history", api.addRadioHistory)
@@ -321,6 +325,7 @@ func (api *Router) computeIpodData(ctx context.Context) (*ipodData, error) {
 		d.network.Nodes[i].Tribe = d.tribes.byIpod[n.ID]
 	}
 	d.radio = buildRadioIndex(entries, d.stats, d.counts, d.network.Edges)
+	d.essentials = tribeEssentials(d.radio, d.tribes, slice.Map(d.stats, func(s model.IpodStats) int { return s.LibraryID }))
 
 	d.totals = ipodTotals{
 		IpodTotals:    *totals,

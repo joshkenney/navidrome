@@ -827,7 +827,11 @@
       "renameTitle": "Rename %{name}",
       "newName": "Name",
       "reset": "Use automatic name",
-      "save": "Save"
+      "save": "Save",
+      "essentials": "Essentials",
+      "essentialsOf": "%{name} Essentials",
+      "downloadEssentials": "Download the Essentials",
+      "essentialsEmpty": "This tribe has no Essentials yet: its iPods don't share enough songs"
     },
     "shuffle": {
       "all": "Shuffle all iPods",

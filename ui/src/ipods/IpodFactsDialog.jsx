@@ -38,6 +38,7 @@ import { TasteBadge } from './TasteBadge'
 import { tasteLabelOf } from './taste'
 import { tribeColor } from './tribes'
 import { RenameTribeButton } from './RenameTribeButton'
+import { TribeEssentialsButtons } from './TribeEssentialsButtons'
 
 const useStyles = makeStyles((theme) => ({
   button: { color: 'inherit' },
@@ -366,6 +367,7 @@ export const IpodFactsDialog = ({ open, onClose }) => {
                               ))}
                             </Typography>
                           )}
+                          <TribeEssentialsButtons tribe={tribe} />
                         </CardContent>
                       </Card>
                     </Grid>
