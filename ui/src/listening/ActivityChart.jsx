@@ -35,6 +35,7 @@ const useStyles = makeStyles((theme) => ({
     height: 2,
     backgroundColor: theme.palette.action.disabledBackground,
   },
+  faded: { opacity: 0.35 },
   axis: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -42,25 +43,42 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-// Plays per day (or week, or month) as bars. Choosing a bar zooms in on its days
-export const ActivityChart = ({ bars, onSelect, playsLabel }) => {
+// Plays per day (or week, or month) as bars. Choosing a bar zooms in on its days.
+// For other kinds of bars (like years), "describe" gives each bar's tooltip and "axisLabel" the
+// text under the first and last bars. Bars for which "active" is false are faded
+export const ActivityChart = ({
+  bars,
+  onSelect,
+  playsLabel,
+  describe,
+  axisLabel = (day) => formatRange(day, day),
+  active,
+}) => {
   const classes = useStyles()
   const peak = Math.max(1, ...bars.map((b) => b.plays))
   if (!bars.length) return null
+  const tooltip =
+    describe ||
+    ((bar) =>
+      `${formatRange(bar.from, bar.to)}: ${playsLabel(bar.plays)}${
+        bar.plays ? ` · ${formatDuration(bar.seconds)}` : ''
+      }`)
   return (
     <div>
       <div className={classes.root} role="list">
         {bars.map((bar) => {
-          const label = `${formatRange(bar.from, bar.to)}: ${playsLabel(bar.plays)}${
-            bar.plays ? ` · ${formatDuration(bar.seconds)}` : ''
-          }`
+          const label = tooltip(bar)
           return (
             <Tooltip key={bar.key} title={label} placement="top">
               <button
                 type="button"
                 role="listitem"
                 aria-label={label}
-                className={classes.column}
+                className={
+                  active && !active(bar)
+                    ? `${classes.column} ${classes.faded}`
+                    : classes.column
+                }
                 onClick={() => onSelect(bar)}
               >
                 {bar.plays > 0 ? (
@@ -80,10 +98,10 @@ export const ActivityChart = ({ bars, onSelect, playsLabel }) => {
       </div>
       <div className={classes.axis}>
         <Typography variant="caption" color="textSecondary">
-          {formatRange(bars[0].from, bars[0].from)}
+          {axisLabel(bars[0].from)}
         </Typography>
         <Typography variant="caption" color="textSecondary">
-          {formatRange(bars[bars.length - 1].to, bars[bars.length - 1].to)}
+          {axisLabel(bars[bars.length - 1].to)}
         </Typography>
       </div>
     </div>

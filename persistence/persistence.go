@@ -109,6 +109,10 @@ func (s *SQLStore) Search(ctx context.Context) model.SearchRepository {
 	return NewSearchRepository(ctx, s.getDBXBuilder())
 }
 
+func (s *SQLStore) Eras(ctx context.Context) model.ErasRepository {
+	return NewErasRepository(ctx, s.getDBXBuilder())
+}
+
 func (s *SQLStore) Resource(ctx context.Context, m any) model.ResourceRepository {
 	switch m.(type) {
 	case model.User:

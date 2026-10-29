@@ -206,10 +206,8 @@ describe('<GlobalSearch />', () => {
     await screen.findByText('search.dates.released')
     fireEvent.keyDown(input, { key: 'ArrowDown' })
     fireEvent.keyDown(input, { key: 'Enter' })
-    expect(history.location.pathname).toBe('/search')
-    expect(history.location.search).toBe(
-      '?type=albums&year_from=1997&year_to=1997',
-    )
+    expect(history.location.pathname).toBe('/eras')
+    expect(history.location.search).toBe('?from=1997&to=1997')
   })
 
   it("opens a listener's timeline", async () => {

@@ -39,7 +39,7 @@ describe('<Menu />', () => {
     expect(screen.getByText('resources.song.name')).toBeInTheDocument()
   })
 
-  it('links to the timeline and the holes', () => {
+  it('links to the timeline, the holes and the eras', () => {
     const store = createStore(() => ({
       admin: { ui: { sidebarOpen: true } },
       player: { queue: [] },
@@ -56,5 +56,9 @@ describe('<Menu />', () => {
     expect(
       screen.getByText('listening.holes.title').closest('a'),
     ).toHaveAttribute('href', '/holes')
+    expect(screen.getByText('eras.title').closest('a')).toHaveAttribute(
+      'href',
+      '/eras',
+    )
   })
 })

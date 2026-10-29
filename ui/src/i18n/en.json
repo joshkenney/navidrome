@@ -926,7 +926,7 @@
     },
     "dates": {
       "timeline": "Your listening · %{label}",
-      "released": "Music released in %{label}"
+      "released": "Eras: music from %{label}"
     },
     "userPlays": "%{smart_count} play |||| %{smart_count} plays",
     "listenedBy": "%{name} played it · %{artist} |||| %{name} played it %{smart_count} times · %{artist}",
@@ -1042,5 +1042,27 @@
       "noneCommunity": "Nothing yet. This fills up as other listeners share their activity.",
       "lovedBy": "%{names} · %{plays}"
     }
+  },
+  "eras": {
+    "title": "Eras",
+    "pageHelp": "Travel through the history of the music on every iPod. Pick a decade or a year, and play it.",
+    "playHistory": "Play through the decades",
+    "empty": "None of the music has a year yet.",
+    "undated": "%{smart_count} song has no year |||| %{smart_count} songs have no year",
+    "songs": "%{smart_count} song |||| %{smart_count} songs",
+    "theDecade": "The %{name}",
+    "summary": "%{songs} · you've heard %{percent}%",
+    "earlier": "Earlier",
+    "later": "Later",
+    "shuffle": "Shuffle %{name}",
+    "journey": "Journey through %{name}",
+    "unplayed": "Only songs I haven't heard",
+    "nothingToPlay": "Nothing to play from this era",
+    "emptyEra": "No music from %{name} on the iPods.",
+    "genres": "Shuffle a genre from this era",
+    "artists": "Artists",
+    "albums": "Albums",
+    "ipods": "iPods",
+    "heard": "%{played} of %{songs} heard"
   }
 }

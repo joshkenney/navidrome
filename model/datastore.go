@@ -43,6 +43,7 @@ type DataStore interface {
 	Ipod(ctx context.Context) IpodRepository
 	Listening(ctx context.Context) ListeningRepository
 	Search(ctx context.Context) SearchRepository
+	Eras(ctx context.Context) ErasRepository
 
 	Resource(ctx context.Context, model any) ResourceRepository
 

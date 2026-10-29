@@ -31,6 +31,7 @@ type MockDataStore struct {
 	MockedIpod           model.IpodRepository
 	MockedListening      model.ListeningRepository
 	MockedSearch         model.SearchRepository
+	MockedEras           model.ErasRepository
 	scrobbleBufferMu     sync.Mutex
 	repoMu               sync.Mutex
 
@@ -259,6 +260,17 @@ func (db *MockDataStore) Search(ctx context.Context) model.SearchRepository {
 	}
 	db.MockedSearch = struct{ model.SearchRepository }{}
 	return db.MockedSearch
+}
+
+func (db *MockDataStore) Eras(ctx context.Context) model.ErasRepository {
+	if db.MockedEras != nil {
+		return db.MockedEras
+	}
+	if db.RealDS != nil {
+		return db.RealDS.Eras(ctx)
+	}
+	db.MockedEras = struct{ model.ErasRepository }{}
+	return db.MockedEras
 }
 
 func (db *MockDataStore) Radio(ctx context.Context) model.RadioRepository {

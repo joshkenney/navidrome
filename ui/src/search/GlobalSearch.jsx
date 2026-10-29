@@ -239,9 +239,7 @@ export const GlobalSearch = () => {
     switch (group) {
       case 'dates':
         return item.kind === 'released'
-          ? go(
-              `/search?type=albums&year_from=${item.yearFrom}&year_to=${item.yearTo}`,
-            )
+          ? go(`/eras?from=${item.yearFrom}&to=${item.yearTo}`)
           : go(`/timeline?from=${item.from}&to=${item.to}`)
       case 'users':
         return go(`/timeline?user=${encodeURIComponent(item.id)}`)

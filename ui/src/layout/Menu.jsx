@@ -14,6 +14,7 @@ import config from '../config'
 import { FaRadio } from 'react-icons/fa6'
 import TimelineIcon from '@material-ui/icons/Timeline'
 import TrackChangesIcon from '@material-ui/icons/TrackChanges'
+import HourglassEmptyIcon from '@material-ui/icons/HourglassEmpty'
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -82,7 +83,7 @@ const Menu = ({ dense = false }) => {
     />
   )
 
-  // The listening history pages: the timeline, and the holes in it
+  // The listening history pages (the timeline, and the holes in it) and the history of music (eras)
   const renderListeningMenuItemLinks = () => [
     <MenuItemLink
       key="timeline"
@@ -101,6 +102,16 @@ const Menu = ({ dense = false }) => {
       activeClassName={classes.active}
       primaryText={translate('listening.holes.title')}
       leftIcon={<TrackChangesIcon />}
+      sidebarIsOpen={open}
+      dense={dense}
+    />,
+    <MenuItemLink
+      key="eras"
+      data-tour="eras"
+      to="/eras"
+      activeClassName={classes.active}
+      primaryText={translate('eras.title')}
+      leftIcon={<HourglassEmptyIcon />}
       sidebarIsOpen={open}
       dense={dense}
     />,
