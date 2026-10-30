@@ -14,18 +14,21 @@ import {
   AUTO_SKIN,
   SKINS,
   SKIN_GROUPS,
+  modelOf,
   skinFor,
 } from '../audioplayer/mobile/skins'
+import { IpodBody } from '../audioplayer/mobile/IpodBody'
 
 const useStyles = makeStyles((theme) => ({
-  root: { margin: theme.spacing(1, 0, 3) },
+  // The grid fits the page: a maximum width on the grid itself would make it as wide as that, and
+  // push the page wider than a phone
+  root: { margin: theme.spacing(1, 0, 3), width: '100%', maxWidth: 760 },
   group: { marginTop: theme.spacing(1.5) },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))',
     gap: theme.spacing(1.5),
     marginTop: theme.spacing(1),
-    maxWidth: 760,
   },
   card: {
     display: 'flex',
@@ -39,95 +42,24 @@ const useStyles = makeStyles((theme) => ({
   },
   selected: { borderColor: theme.palette.primary.main },
   name: { fontSize: '0.75rem', lineHeight: 1.25 },
-  // A little iPod: case, screen and wheel
+  // A little iPod, at the scale of the real ones: the mini is smaller
   ipod: {
-    position: 'relative',
-    width: 56,
-    height: 92,
-    borderRadius: 9,
-    boxShadow: '0 1px 4px rgba(0, 0, 0, 0.35)',
-    overflow: 'hidden',
-  },
-  screen: {
-    position: 'absolute',
-    top: 7,
-    left: 7,
-    right: 7,
-    height: 30,
-    borderRadius: 2,
-    boxShadow: 'inset 0 0 0 1px rgba(0, 0, 0, 0.3)',
-  },
-  wheel: {
-    position: 'absolute',
-    left: '50%',
-    bottom: 8,
-    width: 38,
-    height: 38,
-    marginLeft: -19,
-    borderRadius: '50%',
-  },
-  ringWheel: { width: 26, height: 26, marginLeft: -13, bottom: 14 },
-  rowButtons: {
-    position: 'absolute',
-    top: 41,
-    left: 8,
-    right: 8,
-    height: 5,
-    display: 'flex',
-    justifyContent: 'space-between',
-    '& span': { width: 8, height: 5, borderRadius: 3 },
-  },
-  center: {
-    position: 'absolute',
-    top: '33%',
-    left: '33%',
-    width: '34%',
-    height: '34%',
-    borderRadius: '50%',
+    display: 'block',
+    filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4))',
   },
 }))
 
-// A small drawing of an iPod
+// A small drawing of an iPod, 0.95 px per millimetre
 export const IpodPreview = ({ skin }) => {
   const classes = useStyles()
-  const edge = `0 0 0 1px ${skin.wheelEdge}`
+  const m = modelOf(skin)
   return (
     <span
       className={classes.ipod}
-      style={{ background: skin.case }}
+      style={{ width: m.w * 0.95, height: m.h * 0.95 }}
       aria-hidden
     >
-      <span
-        className={classes.screen}
-        style={{ background: skin.lcd.background }}
-      />
-      {skin.wheelType === 'row' && (
-        <span className={classes.rowButtons}>
-          {[0, 1, 2, 3].map((i) => (
-            <span
-              key={i}
-              style={{ background: skin.rowLabel, boxShadow: edge }}
-            />
-          ))}
-        </span>
-      )}
-      {skin.wheelType === 'ring' && (
-        <span
-          className={classes.wheel}
-          style={{ background: skin.ring, boxShadow: edge }}
-        />
-      )}
-      <span
-        className={`${classes.wheel} ${
-          skin.wheelType === 'ring' ? classes.ringWheel : ''
-        }`}
-        style={{ background: skin.wheel, boxShadow: edge }}
-      >
-        <span
-          className={classes.center}
-          style={{ background: skin.center, boxShadow: edge }}
-        />
-      </span>
+      <IpodBody skin={skin} />
     </span>
   )
 }

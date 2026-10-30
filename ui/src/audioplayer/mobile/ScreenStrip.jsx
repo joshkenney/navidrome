@@ -5,7 +5,7 @@ import { IconButton } from '@material-ui/core'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import PauseIcon from '@material-ui/icons/Pause'
 import { LCD } from './ipodLook'
-import { lcdVars } from './skins'
+import { faceCss, isDark, lcdVars } from './skins'
 import { usePress } from './usePress'
 
 // Height of the strip, without the phone's safe area (the iPhone home bar)
@@ -27,7 +27,7 @@ const useStyles = makeStyles(
       display: 'flex',
       alignItems: 'center',
       gap: theme.spacing(1),
-      background: (p) => p.look.case,
+      background: (p) => faceCss(p.look),
       boxShadow: '0 -1px 4px rgba(0, 0, 0, 0.3)',
       // Above the pages, below the sidebar drawer and dialogs
       zIndex: theme.zIndex.appBar - 1,
@@ -77,7 +77,7 @@ const useStyles = makeStyles(
       background: LCD.bar,
     },
     button: {
-      color: (p) => p.look.label,
+      color: (p) => (isDark(p.look) ? '#d5d6da' : '#6d7076'),
       padding: 8,
     },
   }),

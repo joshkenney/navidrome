@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
-import { LCD, formatTime } from './ipodLook'
+import { LCD, formatTime, row } from './ipodLook'
 import { buzz } from './haptics'
 
 // How long a finger rests on a song before it can be dragged to another place in the queue
@@ -14,7 +14,7 @@ export const REMOVE_AT = 80
 const useStyles = makeStyles(
   {
     list: {
-      maxHeight: 'min(46vh, 420px)',
+      height: '100%',
       overflowY: 'auto',
       overscrollBehavior: 'contain',
       // Vertical scrolling stays native; swipes and drags are handled below
@@ -41,15 +41,15 @@ const useStyles = makeStyles(
       paddingRight: 12,
       background: '#c62828',
       color: '#fff',
-      fontSize: 13,
+      fontSize: row(0.46),
     },
     content: {
       position: 'relative',
       display: 'flex',
       alignItems: 'center',
-      gap: 6,
-      padding: '8px 10px',
-      minHeight: 44,
+      gap: row(0.22),
+      padding: `${row(0.12)} ${row(0.36)}`,
+      minHeight: row(1),
       boxSizing: 'border-box',
       background: LCD.background,
       color: LCD.text,
@@ -65,24 +65,24 @@ const useStyles = makeStyles(
       zIndex: 1,
       transition: 'none',
     },
-    marker: { width: 12, flex: '0 0 12px', fontSize: 11 },
+    marker: { width: row(0.42), flex: `0 0 ${row(0.42)}`, fontSize: row(0.38) },
     text: { flex: 1, minWidth: 0 },
     title: {
-      fontSize: 15,
-      lineHeight: '19px',
+      fontSize: row(0.55),
+      lineHeight: row(0.72),
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
     },
     artist: {
-      fontSize: 12,
-      lineHeight: '16px',
+      fontSize: row(0.42),
+      lineHeight: row(0.55),
       color: LCD.muted,
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
     },
-    time: { fontSize: 12, color: LCD.muted },
+    time: { fontSize: row(0.42), color: LCD.muted },
   },
   { name: 'NDUpNext' },
 )
@@ -216,6 +216,7 @@ export const UpNext = ({
       className={classes.list}
       role="listbox"
       aria-label={translate('player.mobile.upNext')}
+      data-no-swipe
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={reset}

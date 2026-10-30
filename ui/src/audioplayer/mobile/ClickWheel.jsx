@@ -1,26 +1,26 @@
 import React, { useRef } from 'react'
 import { useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
-import SkipPreviousIcon from '@material-ui/icons/SkipPrevious'
-import SkipNextIcon from '@material-ui/icons/SkipNext'
 import { buzz } from './haptics'
 import { angleAt, angleDelta, onRing, ticks } from './wheelMath'
+import { circleBox, modelOf } from './skins'
 
-// The centre button's radius, as a share of the wheel's (see the "center" style)
-const CENTER = 0.34
 // How far a finger moves on the ring before it is turning the wheel, not pressing a button
 const DRAG_SLOP = 8
 
 const useStyles = makeStyles(
   {
+    // Placed over the iPod's front (see IpodBody), which draws the wheel: only the touch areas are
+    // here, at the same places
+    layer: {
+      position: 'absolute',
+      inset: 0,
+      pointerEvents: 'none',
+      '& > *': { pointerEvents: 'auto' },
+    },
     wheel: {
-      position: 'relative',
-      width: 'min(72vw, 40vh, 300px)',
-      aspectRatio: '1 / 1',
+      position: 'absolute',
       borderRadius: '50%',
-      background: (p) => p.look.wheel,
-      boxShadow: (p) =>
-        `0 0 0 1px ${p.look.wheelEdge}, 0 2px 6px rgba(0, 0, 0, 0.25)`,
       touchAction: 'none',
       userSelect: 'none',
       WebkitTapHighlightColor: 'transparent',
@@ -28,113 +28,34 @@ const useStyles = makeStyles(
     button: {
       position: 'absolute',
       border: 0,
+      padding: 0,
+      margin: 0,
       background: 'transparent',
-      color: (p) => p.look.label,
-      padding: 0,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      color: 'transparent',
+      fontSize: 0,
       cursor: 'pointer',
-      WebkitTapHighlightColor: 'transparent',
-      '&:active': { opacity: 0.6 },
-      '& svg': { fontSize: 28 },
-    },
-    menu: {
-      top: '4%',
-      left: '30%',
-      width: '40%',
-      height: '20%',
-      fontSize: 14,
-      letterSpacing: 1,
-    },
-    prev: { left: '4%', top: '30%', width: '20%', height: '40%' },
-    next: { right: '4%', top: '30%', width: '20%', height: '40%' },
-    play: {
-      bottom: '4%',
-      left: '30%',
-      width: '40%',
-      height: '20%',
-      fontSize: 15,
-      letterSpacing: -2,
-    },
-    // 1st and 2nd generation: the four buttons on a ring around a smaller wheel
-    ring: {
-      position: 'relative',
-      width: 'min(80vw, 44vh, 330px)',
-      aspectRatio: '1 / 1',
       borderRadius: '50%',
-      background: (p) => p.look.ring || p.look.wheel,
-      boxShadow: (p) =>
-        `0 0 0 1px ${p.look.wheelEdge}, 0 2px 6px rgba(0, 0, 0, 0.25)`,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      userSelect: 'none',
-    },
-    innerWheel: {
-      width: '64%',
-      boxShadow: (p) =>
-        `0 0 0 1px ${p.look.wheelEdge}, inset 0 1px 4px rgba(0, 0, 0, 0.18)`,
-    },
-    ringMenu: { top: '2%', left: '30%', width: '40%', height: '15%' },
-    ringPrev: { left: '1%', top: '30%', width: '15%', height: '40%' },
-    ringNext: { right: '1%', top: '30%', width: '15%', height: '40%' },
-    ringPlay: { bottom: '2%', left: '30%', width: '40%', height: '15%' },
-    // 3rd generation: four lit buttons in a row above the wheel
-    column: {
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: 18,
-    },
-    row: { display: 'flex', gap: 12 },
-    rowButton: {
-      position: 'static',
-      width: 58,
-      height: 40,
-      borderRadius: 20,
-      background: (p) => p.look.rowButton || p.look.center,
-      color: (p) => `${p.look.rowLabel || p.look.label} !important`,
-      boxShadow: (p) =>
-        `0 0 0 1px ${p.look.wheelEdge}, 0 1px 3px rgba(0, 0, 0, 0.2)`,
-      fontSize: 11,
-      letterSpacing: 0.5,
-      textShadow: (p) =>
-        p.look.rowLabel ? `0 0 6px ${p.look.rowLabel}` : 'none',
-      '& svg': { fontSize: '22px !important' },
-    },
-    rowWheel: { width: 'min(66vw, 34vh, 270px)' },
-    // The transparent iPod's clear wheel
-    glass: {
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)',
-    },
-    center: {
-      position: 'absolute',
-      top: '33%',
-      left: '33%',
-      width: '34%',
-      height: '34%',
-      borderRadius: '50%',
-      border: 0,
-      padding: 0,
-      cursor: 'pointer',
-      background: (p) => p.look.center,
-      boxShadow: (p) =>
-        `0 0 0 1px ${p.look.wheelEdge}, inset 0 1px 2px rgba(255, 255, 255, 0.2)`,
       WebkitTapHighlightColor: 'transparent',
-      '&:active': { filter: 'brightness(0.92)' },
+      transition: 'background 120ms',
+      // Pressed, a button darkens a little, like the plastic under a thumb
+      '&:active': { background: 'rgba(0, 0, 0, 0.1)' },
     },
+    menu: { top: '3%', left: '30%', width: '40%', height: '22%' },
+    prev: { left: '3%', top: '30%', width: '22%', height: '40%' },
+    next: { right: '3%', top: '30%', width: '22%', height: '40%' },
+    play: { bottom: '3%', left: '30%', width: '40%', height: '22%' },
+    center: { transform: 'translate(-50%, -50%)', left: '50%', top: '50%' },
   },
   { name: 'NDClickWheel' },
 )
 
-// The iPod's click wheel: MENU, previous, next and play/pause around the ring, and the centre
-// button. Turning the ring clicks once every "step" degrees: onTurn gets the clicks (positive
-// clockwise), between onTurnStart and onTurnEnd. A turn can start on a button's label, which then
-// isn't pressed
+// The iPod's click wheel: MENU, previous, next and play/pause, and the centre button, laid out like
+// the iPod chosen ("skin"): on the wheel, on a ring around it (1st and 2nd generation) or in a row
+// above it (3rd generation). Turning the wheel clicks once every "step" degrees: onTurn gets the
+// clicks (positive clockwise), between onTurnStart and onTurnEnd. A turn can start on a button's
+// label, which then isn't pressed
 export const ClickWheel = ({
-  look,
+  skin,
   onMenu,
   onPrev,
   onNext,
@@ -145,9 +66,12 @@ export const ClickWheel = ({
   onTurn,
   onTurnEnd,
 }) => {
-  const classes = useStyles({ look })
+  const classes = useStyles()
   const translate = useTranslate()
   const t = (key) => translate(`player.mobile.${key}`)
+  const m = modelOf(skin)
+  // The centre button's radius, as a share of the wheel's
+  const center = m.center / m.wheel.d
   const wheel = useRef(null)
   const turn = useRef(null)
   // Set when a turn ends, so the click that ends it doesn't press the button it ended on
@@ -168,7 +92,7 @@ export const ClickWheel = ({
     if (!rect || !rect.width) return
     const cx = rect.left + rect.width / 2
     const cy = rect.top + rect.height / 2
-    if (!onRing(cx, cy, rect.width / 2, e.clientX, e.clientY, CENTER)) return
+    if (!onRing(cx, cy, rect.width / 2, e.clientX, e.clientY, center)) return
     turn.current = {
       cx,
       cy,
@@ -212,96 +136,75 @@ export const ClickWheel = ({
     }
   }
 
-  const type = look.wheelType || 'click'
-  const at = (positions) => (type === 'row' ? classes.rowButton : positions)
-  const button = (key, position, label, onClick, content, chicago) => (
+  const button = (key, label, onClick, className, style) => (
     <button
       key={key}
       type="button"
-      className={[classes.button, at(position), chicago && 'songTitle']
-        .filter(Boolean)
-        .join(' ')}
+      className={`${classes.button} ${className || ''}`}
+      style={style}
       aria-label={label}
+      data-no-swipe
       onClick={press(onClick)}
-    >
-      {content}
-    </button>
+    />
   )
-  const ring = type === 'ring'
-  const menu = button(
-    'menu',
-    ring ? classes.ringMenu : classes.menu,
-    t('menu'),
-    onMenu,
-    'MENU',
-    true,
-  )
-  const prev = button(
-    'prev',
-    ring ? classes.ringPrev : classes.prev,
-    translate('player.previousTrackText'),
-    onPrev,
-    <SkipPreviousIcon />,
-  )
-  const next = button(
-    'next',
-    ring ? classes.ringNext : classes.next,
-    translate('player.nextTrackText'),
-    onNext,
-    <SkipNextIcon />,
-  )
-  const play = button(
-    'play',
-    ring ? classes.ringPlay : classes.play,
-    t('playPause'),
-    onPlay,
-    '▶❚❚',
-    true,
-  )
+  const buttons = {
+    menu: [t('menu'), onMenu, classes.menu],
+    prev: [translate('player.previousTrackText'), onPrev, classes.prev],
+    next: [translate('player.nextTrackText'), onNext, classes.next],
+    play: [t('playPause'), onPlay, classes.play],
+  }
+  const onWheel = m.controls === 'click'
 
   const wheelElement = (
     <div
       ref={wheel}
-      className={[
-        classes.wheel,
-        ring && classes.innerWheel,
-        type === 'row' && classes.rowWheel,
-        look.glass && classes.glass,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className={classes.wheel}
+      style={circleBox(m, m.wheel)}
       data-testid="click-wheel"
-      data-wheel={type}
+      data-wheel={m.controls}
+      data-no-swipe
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endTurn}
       onPointerCancel={endTurn}
     >
-      {type === 'click' && [menu, prev, next, play]}
-      <button
-        type="button"
-        className={classes.center}
-        aria-label={t('select')}
-        onClick={press(onCenter)}
-      />
+      {onWheel &&
+        Object.entries(buttons).map(([key, [label, onClick, cls]]) =>
+          button(key, label, onClick, cls),
+        )}
+      {button('select', t('select'), onCenter, classes.center, {
+        width: `${center * 100}%`,
+        height: `${center * 100}%`,
+      })}
     </div>
   )
 
-  if (ring) {
-    return (
-      <div className={classes.ring}>
-        {[menu, prev, next, play]}
-        {wheelElement}
-      </div>
-    )
-  }
-  if (type === 'row') {
-    return (
-      <div className={classes.column}>
-        <div className={classes.row}>{[prev, menu, play, next]}</div>
-        {wheelElement}
-      </div>
-    )
-  }
-  return wheelElement
+  return (
+    <div className={classes.layer}>
+      {m.controls === 'ring' && (
+        // The ring around the wheel: its buttons are on the ring, outside the wheel
+        <div
+          className={classes.wheel}
+          style={circleBox(m, m.ring)}
+          data-no-swipe
+        >
+          {Object.entries(buttons).map(([key, [label, onClick, cls]]) =>
+            button(key, label, onClick, cls),
+          )}
+        </div>
+      )}
+      {m.controls === 'row' &&
+        ['prev', 'menu', 'play', 'next'].map((key, i) => {
+          const [label, onClick] = buttons[key]
+          return button(
+            key,
+            label,
+            onClick,
+            '',
+            circleBox(m, { cx: m.row.xs[i], cy: m.row.cy, d: m.row.d }),
+          )
+        })}
+      {wheelElement}
+    </div>
+  )
 }

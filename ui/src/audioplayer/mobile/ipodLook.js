@@ -15,6 +15,10 @@ export const LCD = {
   bevel: 'inset 0 1px 3px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.35)',
 }
 
+// Sizes on the screen are shares of a menu row's height ("--row", set by the screen's frame from
+// its own height, see MobilePlayer), so smaller screens show smaller text, like each iPod did
+export const row = (k) => `calc(var(--row, 26px) * ${k})`
+
 // "1:05", or "-1:05" for the time left
 export const formatTime = (seconds, negative = false) => {
   const s = Math.max(0, Math.floor(seconds || 0))

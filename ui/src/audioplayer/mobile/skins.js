@@ -1,75 +1,157 @@
-// The iPods the phone player can look like (Personal settings): each generation's case, wheel and
-// screen. The first iPods (1st to 4th generation, and the mini) had a black and white screen, so
-// covers show in grey there.
-//
-// wheel: "click" (a click wheel, with MENU and the arrows printed on it), "ring" (1st and 2nd
-// generation: a scroll or touch wheel, with four buttons around it) or "row" (3rd generation: four
-// lit buttons in a row above a touch wheel)
+// The iPods the phone player can look like (Personal settings). Each is drawn from a real model's
+// front (see IpodBody): its size, where its screen and wheel are, and its materials. The sizes are
+// in millimetres, measured from Apple's specifications and front drawings of each model, so the
+// screen and the wheel sit where they did, never over each other.
+
+// The fronts. "window" is the glass over the screen, "lcd" the lit screen inside it. "controls":
+// "click" (a click wheel with MENU and the arrows printed on it), "ring" (1st and 2nd generation:
+// four buttons on a ring around a scroll or touch wheel) or "row" (3rd generation: four buttons in
+// a row above a touch wheel)
+export const MODELS = {
+  // 1st (2001) and 2nd (2002) generation: 102 x 61.8 mm, 2" 160x128 screen
+  scroll: {
+    w: 61.8,
+    h: 102,
+    r: 7.5,
+    window: { x: 8.9, y: 4.6, w: 44, h: 32, r: 1.4 },
+    lcd: { x: 11.1, y: 5.6, w: 39.6, h: 30 },
+    controls: 'ring',
+    ring: { cx: 30.9, cy: 70.4, d: 56 },
+    wheel: { cx: 30.9, cy: 70.4, d: 41.5 },
+    center: 13,
+  },
+  // 3rd generation (2003): 104.1 x 61.8 mm, four buttons above a touch wheel
+  row: {
+    w: 61.8,
+    h: 104.1,
+    r: 7.5,
+    window: { x: 8, y: 5.2, w: 45.8, h: 38, r: 1.6 },
+    lcd: { x: 11.1, y: 8.3, w: 39.6, h: 31.7 },
+    controls: 'row',
+    row: { cy: 49.6, d: 10.6, xs: [12.6, 24.8, 37, 49.2] },
+    wheel: { cx: 30.9, cy: 76.8, d: 42 },
+    center: 15.2,
+  },
+  // 4th generation and iPod Photo (2004): the first click wheel
+  click4: {
+    w: 61.8,
+    h: 104.1,
+    r: 7.5,
+    window: { x: 10.6, y: 6.6, w: 40.6, h: 32.4, r: 0.8 },
+    lcd: { x: 11.1, y: 7.1, w: 39.6, h: 31.4 },
+    controls: 'click',
+    wheel: { cx: 30.9, cy: 69.6, d: 42.5 },
+    center: 15.6,
+  },
+  // 5th generation (2005): 103.5 x 61.8 mm, 2.5" 320x240 screen, smaller wheel
+  click5: {
+    w: 61.8,
+    h: 103.5,
+    r: 7.5,
+    window: { x: 4.7, y: 4.6, w: 52.4, h: 39.4, r: 1 },
+    lcd: { x: 5.5, y: 5.25, w: 50.8, h: 38.1 },
+    controls: 'click',
+    wheel: { cx: 30.9, cy: 73.2, d: 38.6 },
+    center: 15,
+  },
+  // 6th and 7th generation classic (2007-2009): anodized aluminium front, flatter corners
+  classic: {
+    w: 61.8,
+    h: 103.5,
+    r: 5.6,
+    window: { x: 4.25, y: 4.4, w: 53.3, h: 41.2, r: 0.6 },
+    lcd: { x: 5.5, y: 5.8, w: 50.8, h: 38.1 },
+    controls: 'click',
+    wheel: { cx: 30.9, cy: 75.2, d: 38.7 },
+    center: 13.6,
+  },
+  // iPod mini (2004-2005): 91 x 51 mm, 1.67" 138x110 screen, an aluminium tube
+  mini: {
+    w: 50.8,
+    h: 91.4,
+    r: 6.2,
+    window: { x: 7.4, y: 5.3, w: 36, h: 29.7, r: 1 },
+    lcd: { x: 8.4, y: 6.4, w: 34, h: 27.2 },
+    controls: 'click',
+    wheel: { cx: 25.4, cy: 63.3, d: 38.8 },
+    center: 13.2,
+  },
+}
 
 // The screens
 const COLOR_LCD = {
-  background: 'linear-gradient(180deg, #e4ebef 0%, #cfd9e0 100%)',
+  background: 'linear-gradient(180deg, #e9eff3 0%, #d3dde4 100%)',
   text: '#1c2630',
   muted: '#4c5964',
   bar: '#1c2630',
   track: 'rgba(28, 38, 48, 0.18)',
-  highlight: 'linear-gradient(180deg, #4f8fd8 0%, #2d6cbf 100%)',
+  highlight: 'linear-gradient(180deg, #5b9be0 0%, #2d6cbf 100%)',
   highlightText: '#ffffff',
   coverFilter: 'none',
 }
 // 1st and 2nd generation: a grey-green screen with a white backlight
 const MONO_GREEN = {
-  background: 'linear-gradient(180deg, #cfd3c4 0%, #b8bda8 100%)',
+  background: 'linear-gradient(180deg, #c9cebd 0%, #b3b9a3 100%)',
   text: '#22261d',
   muted: '#4c5244',
   bar: '#22261d',
   track: 'rgba(34, 38, 29, 0.2)',
   highlight: '#2a2f24',
-  highlightText: '#cfd3c4',
-  coverFilter: 'grayscale(1) contrast(1.15) sepia(0.15)',
+  highlightText: '#c9cebd',
+  coverFilter: 'grayscale(1) contrast(1.15) sepia(0.2)',
 }
 // 3rd and 4th generation and the mini: a grey screen with a bluish backlight
 const MONO_BLUE = {
-  background: 'linear-gradient(180deg, #d6dfe4 0%, #bdcad1 100%)',
+  background: 'linear-gradient(180deg, #d2dbe0 0%, #b9c6cd 100%)',
   text: '#1c2830',
   muted: '#46545e',
   bar: '#1c2830',
   track: 'rgba(28, 40, 48, 0.2)',
   highlight: '#1c2830',
-  highlightText: '#d6dfe4',
+  highlightText: '#d2dbe0',
   coverFilter: 'grayscale(1) contrast(1.15)',
 }
 
-// Cases and wheels
-const BRUSHED =
-  'repeating-linear-gradient(90deg, rgba(255,255,255,0.06) 0 1px, rgba(0,0,0,0.035) 1px 3px)'
-const WHITE = {
-  case: 'linear-gradient(180deg, #ffffff 0%, #eef0f2 55%, #dcdfe3 100%)',
-  wheel: 'radial-gradient(circle at 50% 35%, #fbfbfc 0%, #e4e5e9 70%)',
-  wheelEdge: 'rgba(0, 0, 0, 0.12)',
-  center: 'radial-gradient(circle at 50% 30%, #ffffff 0%, #ececef 80%)',
-  label: '#9a9ca2',
+// Materials. "face" is the front: glossy plastic, brushed aluminium or clear acrylic. The polished
+// steel back shows as a rim around the plastic fronts
+const plastic = (top, bottom) => ({ kind: 'plastic', top, bottom })
+const aluminium = (light, base, dark) => ({
+  kind: 'aluminium',
+  light,
+  base,
+  dark,
+})
+
+const WHITE_WHEEL = {
+  surface: ['#dadbde', '#cfd0d4'],
+  label: '#ffffff',
+  center: ['#ffffff', '#ebecee'],
 }
-const BLACK = {
-  case: 'linear-gradient(180deg, #2c2c30 0%, #121214 100%)',
-  wheel: 'radial-gradient(circle at 50% 35%, #2a2a2e 0%, #1a1a1d 70%)',
-  wheelEdge: 'rgba(255, 255, 255, 0.08)',
-  center: 'radial-gradient(circle at 50% 30%, #3a3a3f 0%, #232326 80%)',
-  label: '#c9c9cf',
+const BLACK_WHEEL = {
+  surface: ['#2e2e31', '#232326'],
+  label: '#8e8e93',
+  center: ['#2a2a2d', '#151517'],
+}
+const U2_WHEEL = {
+  surface: ['#d4202f', '#b0101f'],
+  label: '#1b1b1d',
+  center: ['#2a2a2d', '#141416'],
 }
 
-// An iPod mini in one of its anodized colours
-const mini = (id, name, face, wheel, label) => ({
+// An iPod mini in one of its anodized colours: an off-white wheel, labels in the body's colour
+const mini = (id, name, light, base, dark, label) => ({
   id,
   name,
   group: 'mini',
-  wheelType: 'click',
+  model: 'mini',
   lcd: MONO_BLUE,
-  case: `${BRUSHED}, linear-gradient(160deg, ${face[0]} 0%, ${face[1]} 50%, ${face[2]} 100%)`,
-  wheel: `radial-gradient(circle at 50% 35%, ${wheel[0]} 0%, ${wheel[1]} 75%)`,
-  wheelEdge: 'rgba(0, 0, 0, 0.12)',
-  center: `radial-gradient(circle at 50% 30%, ${face[0]} 0%, ${face[1]} 85%)`,
-  label,
+  face: aluminium(light, base, dark),
+  tube: true,
+  wheel: {
+    surface: ['#f4f4f2', '#e6e6e3'],
+    label,
+    center: ['#fbfbfa', '#ecece9'],
+  },
 })
 
 export const SKINS = [
@@ -77,193 +159,229 @@ export const SKINS = [
     id: '1g',
     name: '1st generation (2001)',
     group: 'classic',
-    wheelType: 'ring',
+    model: 'scroll',
     lcd: MONO_GREEN,
-    ...WHITE,
-    // The mechanical scroll wheel's grip
-    wheel:
-      'repeating-conic-gradient(from 0deg, #ecedef 0deg 3deg, #dcdde1 3deg 6deg)',
-    ring: 'radial-gradient(circle at 50% 30%, #ffffff 0%, #e9eaed 80%)',
+    face: plastic('#fdfdfd', '#e8e9eb'),
+    rim: true,
+    windowFrame: '#2a2c27',
+    ring: { surface: ['#fdfdfd', '#e9eaec'], label: '#8f9196', lower: true },
+    wheel: {
+      surface: ['#fafafa', '#e9eaec'],
+      label: '#8f9196',
+      center: ['#ffffff', '#ebecee'],
+    },
   },
   {
     id: '2g',
     name: '2nd generation (2002)',
     group: 'classic',
-    wheelType: 'ring',
+    model: 'scroll',
     lcd: MONO_GREEN,
-    ...WHITE,
-    ring: 'radial-gradient(circle at 50% 30%, #ffffff 0%, #e9eaed 80%)',
+    face: plastic('#fdfdfd', '#e8e9eb'),
+    rim: true,
+    windowFrame: '#2a2c27',
+    ring: { surface: ['#fdfdfd', '#e9eaec'], label: '#8f9196', lower: true },
+    wheel: {
+      surface: ['#f6f6f7', '#ececee'],
+      label: '#8f9196',
+      center: ['#ffffff', '#ebecee'],
+    },
   },
   {
     id: '3g',
     name: '3rd generation (2003)',
     group: 'classic',
-    wheelType: 'row',
+    model: 'row',
     lcd: MONO_BLUE,
-    ...WHITE,
+    face: plastic('#fdfdfd', '#e6e7e9'),
+    rim: true,
+    windowFrame: '#0d0d0e',
     // Its buttons were lit red
-    rowLabel: '#e5482b',
-    rowButton: 'radial-gradient(circle at 50% 30%, #ffffff 0%, #e6e7ea 85%)',
+    row: { surface: ['#ffffff', '#eaebed'], label: '#e8331e', glow: true },
+    wheel: {
+      surface: ['#f7f7f8', '#ebebed'],
+      label: '#9a9ca1',
+      center: ['#ffffff', '#ebecee'],
+    },
   },
   {
     id: '4g',
     name: '4th generation (2004)',
     group: 'classic',
-    wheelType: 'click',
+    model: 'click4',
     lcd: MONO_BLUE,
-    ...WHITE,
+    face: plastic('#fdfdfd', '#e6e7e9'),
+    rim: true,
+    windowFrame: '#0d0d0e',
+    wheel: WHITE_WHEEL,
   },
   {
     id: 'photo',
     name: 'iPod Photo (2004)',
     group: 'classic',
-    wheelType: 'click',
+    model: 'click4',
     lcd: COLOR_LCD,
-    ...WHITE,
+    face: plastic('#fdfdfd', '#e6e7e9'),
+    rim: true,
+    windowFrame: '#0d0d0e',
+    wheel: WHITE_WHEEL,
   },
   {
     id: '5g-white',
     name: '5th generation, white (2005)',
     group: 'classic',
-    wheelType: 'click',
+    model: 'click5',
     lcd: COLOR_LCD,
-    ...WHITE,
+    face: plastic('#ffffff', '#e9eaec'),
+    rim: true,
+    windowFrame: '#0b0b0c',
+    wheel: WHITE_WHEEL,
   },
   {
     id: '5g-black',
     name: '5th generation, black (2005)',
     group: 'classic',
-    wheelType: 'click',
+    model: 'click5',
     lcd: COLOR_LCD,
-    ...BLACK,
+    face: plastic('#2c2c2f', '#0f0f11'),
+    rim: true,
+    windowFrame: '#050506',
+    wheel: BLACK_WHEEL,
   },
   {
     id: 'classic-silver',
     name: '6th/7th generation classic, silver (2007)',
     group: 'classic',
-    wheelType: 'click',
+    model: 'classic',
     lcd: COLOR_LCD,
-    case: `${BRUSHED}, linear-gradient(160deg, #f1f2f4 0%, #c8cbd0 40%, #e6e8eb 60%, #b3b7bd 100%)`,
-    wheel: 'radial-gradient(circle at 50% 35%, #e6e8eb 0%, #c9ccd1 75%)',
-    wheelEdge: 'rgba(0, 0, 0, 0.15)',
-    center: 'radial-gradient(circle at 50% 30%, #f4f5f7 0%, #d4d7db 85%)',
-    label: '#6f737a',
+    face: aluminium('#f3f4f6', '#d3d6da', '#aeb2b8'),
+    rim: true,
+    windowFrame: '#0b0b0c',
+    wheel: {
+      surface: ['#fbfbfb', '#efefef'],
+      label: '#a1a3a8',
+      center: ['#e9eaec', '#c3c6cb'],
+    },
   },
   {
     id: 'classic-black',
     name: '6th/7th generation classic, black (2009)',
     group: 'classic',
-    wheelType: 'click',
+    model: 'classic',
     lcd: COLOR_LCD,
-    case: `${BRUSHED}, linear-gradient(160deg, #4b4c50 0%, #2a2b2e 50%, #3b3c40 100%)`,
-    wheel: 'radial-gradient(circle at 50% 35%, #2b2c30 0%, #18181b 75%)',
-    wheelEdge: 'rgba(255, 255, 255, 0.1)',
-    center: 'radial-gradient(circle at 50% 30%, #3b3c41 0%, #222327 85%)',
-    label: '#a9abb1',
+    // The 2008-2009 "black" was a space grey front with a black wheel
+    face: aluminium('#6a6c71', '#4a4c51', '#2f3034'),
+    rim: true,
+    windowFrame: '#050506',
+    wheel: {
+      surface: ['#232325', '#151517'],
+      label: '#8a8b90',
+      center: ['#2c2c2f', '#18181a'],
+    },
   },
   mini(
     'mini-silver',
     'mini, silver (2004)',
-    ['#eceef0', '#c4c7cc', '#a9adb3'],
-    ['#f2f3f5', '#d7d9dd'],
-    '#8c9097',
+    '#f1f2f4',
+    '#c9ccd1',
+    '#9fa3aa',
+    '#a3a6ab',
   ),
   mini(
     'mini-gold',
     'mini, gold (2004)',
-    ['#f0e2b8', '#d4b97a', '#b89a5a'],
-    ['#f6ecd0', '#e2cf9c'],
-    '#a68a4f',
+    '#f3e6c0',
+    '#d6bd82',
+    '#b0935a',
+    '#c1a468',
   ),
   mini(
     'mini-pink',
     'mini, pink (2004)',
-    ['#f6cfe0', '#e3a1bf', '#c97fa2'],
-    ['#fae2ec', '#efc0d5'],
-    '#b8738f',
+    '#f8d6e6',
+    '#e6a4c3',
+    '#c47b9f',
+    '#d98fb2',
   ),
   mini(
     'mini-blue',
-    'mini, blue (2004)',
-    ['#cfe2f4', '#93b9df', '#6f9cc9'],
-    ['#e1edf8', '#bcd4ec'],
-    '#5f88b4',
+    'mini, blue (2005)',
+    '#bfe4f2',
+    '#4bb3d6',
+    '#24809f',
+    '#3aa3c7',
   ),
   mini(
     'mini-green',
     'mini, green (2004)',
-    ['#dcefcd', '#a9d38e', '#86b96a'],
-    ['#e8f5dd', '#c7e3b2'],
-    '#73a35a',
+    '#def3cf',
+    '#a5d48a',
+    '#76a95c',
+    '#8fc274',
   ),
   {
     id: 'transparent',
     name: 'Transparent',
     group: 'transparent',
-    wheelType: 'click',
+    model: 'click5',
     lcd: COLOR_LCD,
-    // A clear case over the circuit board, its gold traces, chips and battery
-    case: [
-      'linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 40%, rgba(255,255,255,0.14) 100%)',
-      'radial-gradient(ellipse 22% 9% at 28% 63%, #2b2b2f 0 60%, transparent 62%)',
-      'radial-gradient(ellipse 14% 6% at 74% 58%, #2b2b2f 0 60%, transparent 62%)',
-      'linear-gradient(90deg, transparent 8%, #9c8a5d 8% 92%, transparent 92%) 0 86% / 100% 9% no-repeat',
-      'repeating-linear-gradient(90deg, rgba(214,178,74,0.35) 0 2px, transparent 2px 26px)',
-      'repeating-linear-gradient(0deg, rgba(214,178,74,0.22) 0 1px, transparent 1px 34px)',
-      'linear-gradient(160deg, #22603f 0%, #184a30 60%, #123a26 100%)',
-    ].join(', '),
-    wheel:
-      'radial-gradient(circle at 50% 35%, rgba(255,255,255,0.42) 0%, rgba(255,255,255,0.22) 75%)',
-    wheelEdge: 'rgba(255, 255, 255, 0.45)',
-    center:
-      'radial-gradient(circle at 50% 30%, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 85%)',
-    label: 'rgba(255, 255, 255, 0.92)',
-    glass: true,
+    // A clear acrylic front over the insides: circuit board, hard drive, battery
+    face: { kind: 'clear' },
+    rim: true,
+    windowFrame: '#0b0b0c',
+    wheel: {
+      surface: ['rgba(255,255,255,0.5)', 'rgba(255,255,255,0.28)'],
+      label: 'rgba(255,255,255,0.95)',
+      center: ['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.4)'],
+    },
   },
   {
     id: '4g-u2',
     name: '4th generation U2 Special Edition (2004)',
     group: 'special',
-    wheelType: 'click',
+    model: 'click4',
     lcd: MONO_BLUE,
-    ...BLACK,
-    wheel: 'radial-gradient(circle at 50% 35%, #e0283a 0%, #b30f22 75%)',
-    center: 'radial-gradient(circle at 50% 30%, #2c2c30 0%, #151517 85%)',
-    label: '#1a1a1a',
+    face: plastic('#2a2a2d', '#0e0e10'),
+    rim: true,
+    windowFrame: '#050506',
+    wheel: U2_WHEEL,
   },
   {
     id: '4g-hp',
-    name: '4th generation Harry Potter (2005)',
+    name: 'Harry Potter Collector’s Edition (2005)',
     group: 'special',
-    wheelType: 'click',
+    // A white iPod Photo, the Hogwarts crest engraved on its back
+    model: 'click4',
     lcd: COLOR_LCD,
-    ...BLACK,
-    wheel: 'radial-gradient(circle at 50% 35%, #46464b 0%, #2f2f33 75%)',
-    label: '#d8d8dc',
+    face: plastic('#fdfdfd', '#e6e7e9'),
+    rim: true,
+    windowFrame: '#0d0d0e',
+    wheel: WHITE_WHEEL,
   },
   {
     id: '5g-u2',
     name: '5th generation U2 Special Edition (2006)',
     group: 'special',
-    wheelType: 'click',
+    model: 'click5',
     lcd: COLOR_LCD,
-    ...BLACK,
-    wheel: 'radial-gradient(circle at 50% 35%, #e0283a 0%, #b30f22 75%)',
-    center: 'radial-gradient(circle at 50% 30%, #2c2c30 0%, #151517 85%)',
-    label: '#1a1a1a',
+    face: plastic('#2c2c2f', '#0f0f11'),
+    rim: true,
+    windowFrame: '#050506',
+    wheel: U2_WHEEL,
   },
   {
     id: 'red',
     name: 'Red, in the style of (PRODUCT)RED',
     group: 'special',
-    wheelType: 'click',
+    model: 'classic',
     lcd: COLOR_LCD,
-    case: `${BRUSHED}, linear-gradient(160deg, #ea3445 0%, #c4142a 55%, #a30e21 100%)`,
-    ...{
-      wheel: WHITE.wheel,
-      wheelEdge: WHITE.wheelEdge,
-      center: WHITE.center,
-      label: '#b4b6bb',
+    face: aluminium('#f04a58', '#cc1b2d', '#8f0f1d'),
+    rim: true,
+    windowFrame: '#0b0b0c',
+    wheel: {
+      surface: ['#fbfbfb', '#efefef'],
+      label: '#b6b8bc',
+      center: ['#ececee', '#cfd1d5'],
     },
   },
 ]
@@ -279,6 +397,27 @@ export const skinFor = (id, theme) =>
     (s) => s.id === (theme?.palette?.type === 'dark' ? '5g-black' : '5g-white'),
   )
 
+export const modelOf = (skin) => MODELS[skin.model]
+
+// Whether the front is dark (black and space grey iPods), for what is drawn on it
+export const isDark = (skin) => {
+  const f = skin.face
+  const hex =
+    f.kind === 'plastic' ? f.top : f.kind === 'aluminium' ? f.base : '#1a5536'
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  return 0.299 * r + 0.587 * g + 0.114 * b < 128
+}
+
+// The front's colour, as a CSS background (for the screen strip)
+export const faceCss = (skin) => {
+  const f = skin.face
+  if (f.kind === 'clear')
+    return 'linear-gradient(160deg, #2b6b49 0%, #184a30 100%)'
+  if (f.kind === 'aluminium')
+    return `linear-gradient(160deg, ${f.light} 0%, ${f.base} 55%, ${f.dark} 100%)`
+  return `linear-gradient(180deg, ${f.top} 0%, ${f.bottom} 100%)`
+}
+
 // The screen's colours, as the CSS variables the screen's styles read (see LCD in ipodLook)
 export const lcdVars = (lcd) => ({
   '--lcd-bg': lcd.background,
@@ -290,3 +429,13 @@ export const lcdVars = (lcd) => ({
   '--lcd-highlight-text': lcd.highlightText,
   '--lcd-cover-filter': lcd.coverFilter,
 })
+
+// Where something is on the front, as percentages of it (for the parts drawn over it in HTML)
+export const percentBox = (model, { x, y, w, h }) => ({
+  left: `${(x / model.w) * 100}%`,
+  top: `${(y / model.h) * 100}%`,
+  width: `${(w / model.w) * 100}%`,
+  height: `${(h / model.h) * 100}%`,
+})
+export const circleBox = (model, { cx, cy, d }) =>
+  percentBox(model, { x: cx - d / 2, y: cy - d / 2, w: d, h: d })

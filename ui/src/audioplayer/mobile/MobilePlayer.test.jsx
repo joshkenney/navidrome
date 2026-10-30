@@ -280,16 +280,41 @@ describe('<MobilePlayer />', () => {
     back.mockRestore()
   })
 
-  it('closes on a swipe down on the screen', () => {
+  it('closes when the iPod is dragged down, and goes back up if let go too soon', () => {
     renderPlayer()
     openPlayer()
     window.history.replaceState(null, '')
-    const screenArea = screen.getByText('player.mobile.nowPlaying', {
-      selector: 'span',
-    })
-    fireEvent.pointerDown(screenArea, { clientX: 100, clientY: 100 })
-    fireEvent.pointerUp(screenArea, { clientX: 105, clientY: 220 })
+    const ipod = screen.getByTestId('ipod')
+    let now = 1000
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now)
+    // A short, slow drag: it follows the finger, then goes back up
+    fireEvent.pointerDown(ipod, { clientX: 100, clientY: 100, pointerId: 1 })
+    now += 300
+    fireEvent.pointerMove(ipod, { clientX: 101, clientY: 140, pointerId: 1 })
+    expect(ipod.style.transform).toBe('translateY(40px)')
+    now += 300
+    fireEvent.pointerUp(ipod, { clientX: 101, clientY: 140, pointerId: 1 })
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(ipod.style.transform).toBe('')
+    // A long one closes it
+    fireEvent.pointerDown(ipod, { clientX: 100, clientY: 100, pointerId: 1 })
+    fireEvent.pointerMove(ipod, { clientX: 102, clientY: 180, pointerId: 1 })
+    fireEvent.pointerMove(ipod, { clientX: 102, clientY: 260, pointerId: 1 })
+    fireEvent.pointerUp(ipod, { clientX: 102, clientY: 260, pointerId: 1 })
     expect(screen.getByRole('region')).toBeInTheDocument()
+    clock.mockRestore()
+  })
+
+  it("doesn't drag the iPod from the wheel, which turns instead", () => {
+    renderPlayer()
+    openPlayer()
+    const ipod = screen.getByTestId('ipod')
+    const wheel = screen.getByTestId('click-wheel')
+    fireEvent.pointerDown(wheel, { clientX: 100, clientY: 100, pointerId: 1 })
+    fireEvent.pointerMove(wheel, { clientX: 100, clientY: 220, pointerId: 1 })
+    fireEvent.pointerUp(wheel, { clientX: 100, clientY: 220, pointerId: 1 })
+    expect(ipod.style.transform).toBe('')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('scrubs with the click wheel, seeking when the finger lifts', () => {

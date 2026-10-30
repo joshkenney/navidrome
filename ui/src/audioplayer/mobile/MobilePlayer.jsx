@@ -7,14 +7,18 @@ import { ScreenStrip } from './ScreenStrip'
 import { IpodScreen } from './IpodScreen'
 import { ClickWheel } from './ClickWheel'
 import { useAudioState } from './useAudioState'
-import { lcdVars, skinFor } from './skins'
+import { lcdVars, modelOf, percentBox, skinFor } from './skins'
+import { IpodBody } from './IpodBody'
 import { setHaptics } from './haptics'
 import { addTracks, playTracks } from '../../actions'
 import { useIpodNavigation } from './useIpodNavigation'
 import { PlayerActions } from './PlayerActions'
 
-// How far down a swipe on the screen goes to close the player
-const SWIPE_CLOSE = 60
+// Dragging the iPod down closes it past this far, or this fast (px per ms)
+const DRAG_CLOSE = 110
+const FLICK_CLOSE = 0.7
+// How far a finger moves before it is dragging the iPod down, or doing something else
+const DRAG_SLOP = 10
 // Turning the click wheel scrubs this many seconds per click: a whole turn (60 clicks) is a minute
 const SECONDS_PER_CLICK = 1
 // Degrees of a wheel click: fine for scrubbing, coarser for moving through the queue
@@ -25,29 +29,62 @@ const UNDO_MS = 5000
 
 const useStyles = makeStyles(
   (theme) => ({
-    ipod: {
+    // The whole phone screen: the iPod, held up over a blur of the song's cover
+    backdrop: {
       position: 'fixed',
       inset: 0,
       // Above the app bar and the sidebar, below dialogs (download, save queue), the tour and
       // notifications, which the player can open
       zIndex: theme.zIndex.modal - 1,
-      background: (p) => p.look.case,
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'stretch',
-      boxSizing: 'border-box',
-      padding:
-        'calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 16px)',
-      gap: 16,
-      overflow: 'hidden',
-    },
-    screen: { flex: '0 1 auto', minHeight: 0, touchAction: 'pan-y' },
-    wheelArea: {
-      flex: '1 1 auto',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: 0,
+      overflow: 'hidden',
+      background: '#0d0d0f',
+      touchAction: 'none',
+    },
+    blur: {
+      position: 'absolute',
+      inset: '-10%',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      filter: 'blur(36px) saturate(1.3) brightness(0.5)',
+      transform: 'scale(1.1)',
+    },
+    // The iPod, at its real proportions, as big as the phone allows: its screen and wheel are
+    // where they were on the real one, never over each other
+    device: {
+      position: 'relative',
+      aspectRatio: 'var(--ratio)',
+      width:
+        'min(calc(100vw - 28px), calc((100dvh - 48px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * var(--ratio)))',
+      fallbacks: [
+        {
+          width: 'min(calc(100vw - 28px), calc((100vh - 48px) * var(--ratio)))',
+        },
+      ],
+      filter:
+        'drop-shadow(0 18px 28px rgba(0,0,0,0.55)) drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
+      willChange: 'transform',
+    },
+    body: { position: 'absolute', inset: 0, display: 'block' },
+    // The lit screen, under the iPod's glass
+    lcd: {
+      position: 'absolute',
+      overflow: 'hidden',
+      borderRadius: 2,
+      containerType: 'size',
+      // About 7.5 menu rows fill a screen, like the iPod's
+      '--row': 'clamp(18px, 13.3cqh, 36px)',
+    },
+    // The glass's reflection over the screen
+    glare: {
+      position: 'absolute',
+      inset: 0,
+      pointerEvents: 'none',
+      background:
+        'linear-gradient(115deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 38%, rgba(255,255,255,0) 39%), linear-gradient(180deg, rgba(0,0,0,0.12), rgba(0,0,0,0) 12%)',
+      boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.25)',
     },
   }),
   { name: 'NDMobilePlayer' },
@@ -69,7 +106,10 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
   const audio = useAudioState(audioInstance)
   const dispatch = useDispatch()
   const [open, setOpen] = useState(false)
-  const swipe = useRef(null)
+  // Dragging the iPod down: how far (px), and whether a finger is on it
+  const drag = useRef(null)
+  const [dragY, setDragY] = useState(0)
+  const [dragging, setDragging] = useState(false)
   // The song of the queue the wheel is on in Up Next
   const [highlight, setHighlight] = useState(0)
   // The song last removed from Up Next, which Undo puts back
@@ -231,20 +271,49 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     }
   }, [open])
 
-  // A swipe down on the Now Playing screen closes the player (Up Next scrolls instead)
-  const onScreenPointerDown = (e) => {
-    swipe.current =
-      view === 'nowPlaying' ? { x: e.clientX, y: e.clientY } : null
+  // Dragging the iPod down closes it, from anywhere but the wheel and the lists (which scroll): it
+  // follows the finger, and goes back up if let go too soon
+  const onDragStart = (e) => {
+    if (e.target.closest?.('[data-no-swipe]')) return
+    drag.current = { x: e.clientX, y: e.clientY, t: Date.now(), active: false }
   }
-  const onScreenPointerUp = (e) => {
-    const from = swipe.current
-    swipe.current = null
-    if (!from) return
-    const dx = e.clientX - from.x
-    const dy = e.clientY - from.y
-    if (dy > SWIPE_CLOSE && dy > Math.abs(dx)) closePlayer()
+  const onDragMove = (e) => {
+    const d = drag.current
+    if (!d) return
+    const dy = e.clientY - d.y
+    const dx = e.clientX - d.x
+    if (!d.active) {
+      if (dy > DRAG_SLOP && dy > Math.abs(dx)) {
+        d.active = true
+        setDragging(true)
+        e.currentTarget.setPointerCapture?.(e.pointerId)
+      } else {
+        if (Math.abs(dx) > DRAG_SLOP || dy < -DRAG_SLOP) {
+          drag.current = null // A sideways swipe or a scroll up: not for us
+        }
+        return
+      }
+    }
+    setDragY(Math.max(0, dy))
   }
+  const onDragEnd = (e) => {
+    const d = drag.current
+    drag.current = null
+    if (!d?.active) return
+    setDragging(false)
+    const dy = e.clientY - d.y
+    const speed = dy / Math.max(1, Date.now() - d.t)
+    if (dy > DRAG_CLOSE || speed > FLICK_CLOSE) {
+      closePlayer()
+    } else {
+      setDragY(0)
+    }
+  }
+  useEffect(() => {
+    if (open) setDragY(0)
+  }, [open])
 
+  const model = modelOf(look)
   return (
     <>
       {!open && (
@@ -258,38 +327,57 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
       )}
       <Slide direction="up" in={open} mountOnEnter unmountOnExit>
         <div
-          className={classes.ipod}
+          className={classes.backdrop}
           role="dialog"
           aria-modal="true"
           aria-label={translate('player.mobile.ipod')}
           data-skin={look.id}
           style={lcdVars(look.lcd)}
+          onPointerDown={onDragStart}
+          onPointerMove={onDragMove}
+          onPointerUp={onDragEnd}
+          onPointerCancel={onDragEnd}
         >
-          <div
-            className={classes.screen}
-            onPointerDown={onScreenPointerDown}
-            onPointerUp={onScreenPointerUp}
-            onPointerCancel={() => (swipe.current = null)}
-          >
-            <IpodScreen
-              audio={audio}
-              controls={controls}
-              scrubTime={scrubTime}
-              view={view}
-              menu={nav}
-              onActions={setActionsItem}
-              upNext={{
-                highlight,
-                onPlay: playFromList,
-                onMove: moveInList,
-                onRemove: removeFromList,
-                onLongPress: (index) => setActionsItem(audio.queue[index]),
+          {audio.item.cover && (
+            <div
+              className={classes.blur}
+              style={{
+                backgroundImage: `url("${audio.item.cover}")`,
+                opacity: 1 - Math.min(0.8, dragY / 500),
               }}
+              aria-hidden
             />
-          </div>
-          <div className={classes.wheelArea}>
+          )}
+          <div
+            className={classes.device}
+            data-testid="ipod"
+            style={{
+              '--ratio': `${model.w} / ${model.h}`,
+              transform: dragY ? `translateY(${dragY}px)` : undefined,
+              transition: dragging ? 'none' : 'transform 220ms ease-out',
+            }}
+          >
+            <IpodBody skin={look} className={classes.body} />
+            <div className={classes.lcd} style={percentBox(model, model.lcd)}>
+              <IpodScreen
+                audio={audio}
+                controls={controls}
+                scrubTime={scrubTime}
+                view={view}
+                menu={nav}
+                onActions={setActionsItem}
+                upNext={{
+                  highlight,
+                  onPlay: playFromList,
+                  onMove: moveInList,
+                  onRemove: removeFromList,
+                  onLongPress: (index) => setActionsItem(audio.queue[index]),
+                }}
+              />
+              <div className={classes.glare} />
+            </div>
             <ClickWheel
-              look={look}
+              skin={look}
               onMenu={onMenu}
               onPrev={controls.prev}
               onNext={controls.next}

@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { AUTO_SKIN, SKINS, SKIN_GROUPS, lcdVars, skinFor } from './skins'
+import {
+  AUTO_SKIN,
+  MODELS,
+  SKINS,
+  SKIN_GROUPS,
+  lcdVars,
+  modelOf,
+  skinFor,
+} from './skins'
 
 describe('skins', () => {
   it('describes every iPod completely', () => {
@@ -8,13 +16,36 @@ describe('skins', () => {
       expect(ids.has(s.id)).toBe(false)
       ids.add(s.id)
       expect(SKIN_GROUPS).toContain(s.group)
-      expect(['click', 'ring', 'row']).toContain(s.wheelType)
-      ;['case', 'wheel', 'wheelEdge', 'center', 'label'].forEach((k) =>
-        expect(s[k], `${s.id}.${k}`).toBeTruthy(),
-      )
+      expect(MODELS[s.model], `${s.id} model`).toBeTruthy()
+      expect(['plastic', 'aluminium', 'clear']).toContain(s.face.kind)
+      expect(s.wheel.surface).toHaveLength(2)
+      expect(s.wheel.center).toHaveLength(2)
+      expect(s.wheel.label).toBeTruthy()
+      if (modelOf(s).controls === 'ring') expect(s.ring).toBeTruthy()
+      if (modelOf(s).controls === 'row') expect(s.row).toBeTruthy()
       Object.values(lcdVars(s.lcd)).forEach((v) =>
         expect(v, `${s.id} screen`).toBeTruthy(),
       )
+    })
+  })
+
+  it("keeps every model's screen above its wheel and buttons, inside the front", () => {
+    Object.entries(MODELS).forEach(([name, m]) => {
+      const screenBottom = m.window.y + m.window.h
+      const wheelTop = m.wheel.cy - m.wheel.d / 2
+      const tops = [wheelTop]
+      if (m.ring) tops.push(m.ring.cy - m.ring.d / 2)
+      if (m.row) tops.push(m.row.cy - m.row.d / 2)
+      tops.forEach((top) => expect(top, name).toBeGreaterThan(screenBottom))
+      // The screen inside its glass, the glass and the wheel inside the front
+      expect(m.lcd.x).toBeGreaterThanOrEqual(m.window.x)
+      expect(m.lcd.y).toBeGreaterThanOrEqual(m.window.y)
+      expect(m.lcd.x + m.lcd.w).toBeLessThanOrEqual(m.window.x + m.window.w)
+      expect(m.lcd.y + m.lcd.h).toBeLessThanOrEqual(screenBottom)
+      expect(m.window.x + m.window.w).toBeLessThan(m.w)
+      const outer = m.ring || m.wheel
+      expect(outer.cy + outer.d / 2, name).toBeLessThan(m.h)
+      expect(outer.d, name).toBeLessThan(m.w)
     })
   })
 

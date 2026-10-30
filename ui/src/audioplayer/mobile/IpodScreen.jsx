@@ -2,7 +2,7 @@ import React from 'react'
 import { useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { IpodLabel } from '../../ipods/IpodLabel'
-import { LCD, formatTime } from './ipodLook'
+import { LCD, formatTime, row } from './ipodLook'
 import { UpNext } from './UpNext'
 import { IpodMenu } from './IpodMenu'
 import { usePress } from './usePress'
@@ -10,9 +10,8 @@ import { usePress } from './usePress'
 const useStyles = makeStyles(
   {
     root: {
-      borderRadius: 8,
+      height: '100%',
       background: LCD.background,
-      boxShadow: LCD.bevel,
       color: LCD.text,
       overflow: 'hidden',
       display: 'flex',
@@ -20,17 +19,18 @@ const useStyles = makeStyles(
       userSelect: 'none',
     },
     header: {
+      flex: '0 0 auto',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: '4px 8px',
-      fontSize: 13,
-      lineHeight: '18px',
+      height: row(0.82),
+      padding: `0 ${row(0.3)}`,
+      fontSize: row(0.46),
       borderBottom: `1px solid ${LCD.track}`,
       background:
-        'linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0))',
+        'linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0))',
     },
-    headerSide: { width: 28, display: 'flex', alignItems: 'center' },
+    headerSide: { width: row(1.1), display: 'flex', alignItems: 'center' },
     headerTitle: {
       flex: 1,
       minWidth: 0,
@@ -41,8 +41,8 @@ const useStyles = makeStyles(
     },
     battery: {
       marginLeft: 'auto',
-      width: 20,
-      height: 9,
+      width: row(0.78),
+      height: row(0.36),
       border: `1px solid ${LCD.text}`,
       borderRadius: 2,
       position: 'relative',
@@ -50,29 +50,38 @@ const useStyles = makeStyles(
         content: '""',
         position: 'absolute',
         inset: 1,
-        right: 4,
+        right: '25%',
         background: LCD.text,
       },
       '&::after': {
         content: '""',
         position: 'absolute',
         right: -3,
-        top: 2,
+        top: '25%',
         width: 2,
-        height: 3,
+        height: '50%',
         background: LCD.text,
       },
     },
-    body: {
+    // What is under the header, filling the screen
+    content: { flex: '1 1 auto', minHeight: 0, position: 'relative' },
+    nowPlaying: {
+      height: '100%',
       display: 'flex',
-      gap: 10,
-      padding: 10,
+      flexDirection: 'column',
+    },
+    body: {
+      flex: '1 1 auto',
+      minHeight: 0,
+      display: 'flex',
+      gap: row(0.4),
+      padding: row(0.35),
       alignItems: 'center',
     },
     // A still, square cover: never the spinning record
     cover: {
-      width: '42%',
-      maxWidth: 220,
+      height: '100%',
+      maxWidth: '48%',
       aspectRatio: '1 / 1',
       objectFit: 'cover',
       flex: '0 0 auto',
@@ -85,27 +94,42 @@ const useStyles = makeStyles(
     info: {
       flex: 1,
       minWidth: 0,
+      maxHeight: '100%',
+      overflow: 'hidden',
       display: 'flex',
       flexDirection: 'column',
-      gap: 4,
+      gap: row(0.12),
     },
-    title: { fontSize: 16, lineHeight: '20px', wordBreak: 'break-word' },
-    line: {
-      fontSize: 13,
-      lineHeight: '17px',
-      color: LCD.muted,
+    title: {
+      fontSize: row(0.6),
+      lineHeight: row(0.74),
+      wordBreak: 'break-word',
       overflow: 'hidden',
-      textOverflow: 'ellipsis',
       display: '-webkit-box',
       WebkitLineClamp: 2,
       WebkitBoxOrient: 'vertical',
     },
-    ipod: { fontSize: 12, color: LCD.muted },
-    footer: { padding: '0 10px 10px' },
-    position: { fontSize: 12, color: LCD.muted, marginBottom: 4 },
+    line: {
+      fontSize: row(0.46),
+      lineHeight: row(0.6),
+      color: LCD.muted,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+    ipod: { fontSize: row(0.42), color: LCD.muted },
+    footer: {
+      flex: '0 0 auto',
+      padding: `0 ${row(0.35)} ${row(0.3)}`,
+    },
+    position: {
+      fontSize: row(0.42),
+      color: LCD.muted,
+      marginBottom: row(0.12),
+    },
     bar: {
       position: 'relative',
-      height: 10,
+      height: row(0.36),
       borderRadius: 2,
       background: LCD.track,
       boxShadow: 'inset 0 1px 1px rgba(0, 0, 0, 0.25)',
@@ -122,11 +146,9 @@ const useStyles = makeStyles(
     diamond: {
       position: 'absolute',
       top: '50%',
-      width: 12,
-      height: 12,
-      marginLeft: -6,
-      marginTop: -6,
-      transform: 'rotate(45deg)',
+      width: row(0.46),
+      height: row(0.46),
+      transform: 'translate(-50%, -50%) rotate(45deg)',
       background: LCD.background,
       border: `2px solid ${LCD.bar}`,
       boxSizing: 'border-box',
@@ -143,8 +165,8 @@ const useStyles = makeStyles(
     times: {
       display: 'flex',
       justifyContent: 'space-between',
-      fontSize: 12,
-      marginTop: 3,
+      fontSize: row(0.42),
+      marginTop: row(0.1),
     },
   },
   { name: 'NDIpodScreen' },
@@ -181,7 +203,7 @@ export const IpodScreen = ({
   const artist = song.artist || item.singer || ''
 
   const nowPlaying = (
-    <>
+    <div className={classes.nowPlaying}>
       <div className={classes.body}>
         {item.cover && (
           <img
@@ -230,6 +252,7 @@ export const IpodScreen = ({
                 step={1}
                 value={Math.floor(shown)}
                 aria-label={t('seek')}
+                data-no-swipe
                 onChange={(e) => controls.seek(Number(e.target.value))}
               />
             </div>
@@ -240,7 +263,7 @@ export const IpodScreen = ({
           </>
         )}
       </div>
-    </>
+    </div>
   )
 
   return (
@@ -258,21 +281,23 @@ export const IpodScreen = ({
           <span className={classes.battery} />
         </span>
       </div>
-      {menu?.isMenu ? (
-        <IpodMenu
-          lcd={LCD}
-          label={menu.title}
-          items={menu.items}
-          highlight={menu.highlight}
-          loaded={menu.loaded}
-          onSelect={menu.select}
-          onLoadMore={menu.loadMore}
-        />
-      ) : view === 'upNext' ? (
-        <UpNext queue={queue} current={index} {...upNext} />
-      ) : (
-        nowPlaying
-      )}
+      <div className={classes.content}>
+        {menu?.isMenu ? (
+          <IpodMenu
+            lcd={LCD}
+            label={menu.title}
+            items={menu.items}
+            highlight={menu.highlight}
+            loaded={menu.loaded}
+            onSelect={menu.select}
+            onLoadMore={menu.loadMore}
+          />
+        ) : view === 'upNext' ? (
+          <UpNext queue={queue} current={index} {...upNext} />
+        ) : (
+          nowPlaying
+        )}
+      </div>
     </div>
   )
 }

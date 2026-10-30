@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ClickWheel } from './ClickWheel'
 import { resetHaptics } from './haptics'
+import { skinFor } from './skins'
 
 // jsdom has no PointerEvent: without it, simulated pointer events have no coordinates
 if (!window.PointerEvent) {
@@ -11,12 +12,7 @@ if (!window.PointerEvent) {
 
 vi.mock('react-admin', () => ({ useTranslate: () => (key) => key }))
 
-const look = {
-  wheel: '#000',
-  wheelEdge: '#111',
-  center: '#222',
-  label: '#ccc',
-}
+const skin = skinFor('5g-white')
 
 // A 200x200 wheel at the top left of the page: its centre is at (100, 100)
 const renderWheel = (props = {}) => {
@@ -30,7 +26,7 @@ const renderWheel = (props = {}) => {
     onTurn: vi.fn(),
     onTurnEnd: vi.fn(),
   }
-  render(<ClickWheel look={look} {...handlers} {...props} />)
+  render(<ClickWheel skin={skin} {...handlers} {...props} />)
   const wheel = screen.getByTestId('click-wheel')
   wheel.getBoundingClientRect = () => ({
     left: 0,
@@ -108,27 +104,30 @@ describe('<ClickWheel />', () => {
   })
 
   it.each([
-    ['ring', '1st and 2nd generation: buttons on a ring around the wheel'],
-    ['row', '3rd generation: buttons in a row above the wheel'],
-  ])('lays out the buttons of a %s iPod (%s), and still scrubs', (type) => {
-    const h = renderWheel({ look: { ...look, wheelType: type } })
-    expect(h.wheel).toHaveAttribute('data-wheel', type)
-    // The buttons are off the wheel, the centre button on it
-    expect(h.wheel.contains(screen.getByLabelText('player.mobile.menu'))).toBe(
-      false,
-    )
-    expect(
-      h.wheel.contains(screen.getByLabelText('player.mobile.select')),
-    ).toBe(true)
-    fireEvent.click(screen.getByLabelText('player.mobile.menu'))
-    fireEvent.click(screen.getByLabelText('player.nextTrackText'))
-    expect(h.onMenu).toHaveBeenCalled()
-    expect(h.onNext).toHaveBeenCalled()
-    fireEvent.pointerDown(h.wheel, at(100, 10))
-    fireEvent.pointerMove(h.wheel, at(190, 100))
-    fireEvent.pointerUp(h.wheel, at(190, 100))
-    expect(turnedBy(h.onTurn)).toBe(15)
-  })
+    ['ring', '1g', '1st generation: buttons on a ring around the wheel'],
+    ['row', '3g', '3rd generation: buttons in a row above the wheel'],
+  ])(
+    'lays out the buttons of a %s iPod (%s, %s), and still scrubs',
+    (type, id) => {
+      const h = renderWheel({ skin: skinFor(id) })
+      expect(h.wheel).toHaveAttribute('data-wheel', type)
+      // The buttons are off the wheel, the centre button on it
+      expect(
+        h.wheel.contains(screen.getByLabelText('player.mobile.menu')),
+      ).toBe(false)
+      expect(
+        h.wheel.contains(screen.getByLabelText('player.mobile.select')),
+      ).toBe(true)
+      fireEvent.click(screen.getByLabelText('player.mobile.menu'))
+      fireEvent.click(screen.getByLabelText('player.nextTrackText'))
+      expect(h.onMenu).toHaveBeenCalled()
+      expect(h.onNext).toHaveBeenCalled()
+      fireEvent.pointerDown(h.wheel, at(100, 10))
+      fireEvent.pointerMove(h.wheel, at(190, 100))
+      fireEvent.pointerUp(h.wheel, at(190, 100))
+      expect(turnedBy(h.onTurn)).toBe(15)
+    },
+  )
 
   it("doesn't turn for a small wobble, or from the centre button", () => {
     const h = renderWheel()

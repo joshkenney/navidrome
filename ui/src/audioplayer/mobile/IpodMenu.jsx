@@ -1,11 +1,12 @@
 import React, { useEffect, useRef } from 'react'
 import { useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
+import { row } from './ipodLook'
 
 const useStyles = makeStyles(
   {
     list: {
-      height: 'min(46vh, 420px)',
+      height: '100%',
       overflowY: 'auto',
       overscrollBehavior: 'contain',
       margin: 0,
@@ -15,9 +16,9 @@ const useStyles = makeStyles(
     row: {
       display: 'flex',
       alignItems: 'center',
-      gap: 8,
-      minHeight: 44,
-      padding: '6px 10px',
+      gap: row(0.3),
+      minHeight: row(1),
+      padding: `${row(0.12)} ${row(0.36)}`,
       boxSizing: 'border-box',
       cursor: 'pointer',
       userSelect: 'none',
@@ -34,25 +35,25 @@ const useStyles = makeStyles(
     },
     text: { flex: 1, minWidth: 0 },
     label: {
-      fontSize: 15,
-      lineHeight: '19px',
+      fontSize: row(0.55),
+      lineHeight: row(0.72),
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
     },
     sub: {
-      fontSize: 12,
-      lineHeight: '16px',
+      fontSize: row(0.42),
+      lineHeight: row(0.55),
       color: (p) => p.lcd.muted,
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
     },
-    side: { fontSize: 12, color: (p) => p.lcd.muted },
-    more: { fontSize: 18, lineHeight: 1, color: (p) => p.lcd.muted },
+    side: { fontSize: row(0.42), color: (p) => p.lcd.muted },
+    more: { fontSize: row(0.66), lineHeight: 1, color: (p) => p.lcd.muted },
     note: {
-      padding: 12,
-      fontSize: 13,
+      padding: row(0.4),
+      fontSize: row(0.48),
       color: (p) => p.lcd.muted,
     },
   },
@@ -88,6 +89,7 @@ export const IpodMenu = ({
       className={classes.list}
       role="listbox"
       aria-label={label}
+      data-no-swipe
       onScroll={onScroll}
     >
       {!loaded && (
