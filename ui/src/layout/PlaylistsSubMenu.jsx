@@ -100,18 +100,21 @@ const PlaylistsSubMenu = ({ state, setState, sidebarIsOpen, dense }) => {
 
   return (
     <>
-      <SubMenu
-        handleToggle={() => handleToggle('menuPlaylists')}
-        isOpen={state.menuPlaylists}
-        sidebarIsOpen={sidebarIsOpen}
-        name={'menu.playlists'}
-        icon={<QueueMusicIcon />}
-        dense={dense}
-        actionIcon={<BiCog />}
-        onAction={onPlaylistConfig}
-      >
-        {myPlaylists.map(renderPlaylistMenuItemLink)}
-      </SubMenu>
+      {/* The tour points here for Replay (the playlist of songs played through) */}
+      <div data-tour="playlists">
+        <SubMenu
+          handleToggle={() => handleToggle('menuPlaylists')}
+          isOpen={state.menuPlaylists}
+          sidebarIsOpen={sidebarIsOpen}
+          name={'menu.playlists'}
+          icon={<QueueMusicIcon />}
+          dense={dense}
+          actionIcon={<BiCog />}
+          onAction={onPlaylistConfig}
+        >
+          {myPlaylists.map(renderPlaylistMenuItemLink)}
+        </SubMenu>
+      </div>
       {sharedPlaylists?.length > 0 && (
         <SubMenu
           handleToggle={() => handleToggle('menuSharedPlaylists')}

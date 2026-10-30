@@ -9,6 +9,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"net/http"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -1186,35 +1187,90 @@ func (api *Router) deleteRadioHistory(w http.ResponseWriter, r *http.Request) {
 // shows once per user, whatever the device
 const tourVersionKey = "TourVersion"
 
+// tourSeenKey is the user prop holding the steps of the UI tour the user saw (their keys, comma
+// separated), so only new steps show when the tour grows. tourVersionKey is the version number
+// the tour used before, still read for users who haven't seen a step since
+const tourSeenKey = "TourSeen"
+
+// Step keys are short words, like "replay" or "clickWheel"
+var tourStepKey = regexp.MustCompile(`^[A-Za-z0-9]{1,40}$`)
+
 type tourVersion struct {
-	Version int `json:"version"`
+	Version int      `json:"version"`
+	Seen    []string `json:"seen"`
+}
+
+// tourPut is what the UI saves: the steps it showed (added to the ones seen before), or, from
+// older versions of the UI, the version of the tour seen
+type tourPut struct {
+	Version *int     `json:"version"`
+	Seen    []string `json:"seen"`
+}
+
+func (api *Router) loadTour(ctx context.Context, userID string) (tourVersion, error) {
+	props := api.ds.UserProps(ctx)
+	value, err := props.DefaultGet(userID, tourVersionKey, "0")
+	if err != nil {
+		return tourVersion{}, err
+	}
+	seen, err := props.DefaultGet(userID, tourSeenKey, "")
+	if err != nil {
+		return tourVersion{}, err
+	}
+	version, _ := strconv.Atoi(value)
+	res := tourVersion{Version: version, Seen: []string{}}
+	if seen != "" {
+		res.Seen = strings.Split(seen, ",")
+	}
+	return res, nil
 }
 
 func (api *Router) getTourVersion(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	user, _ := request.UserFrom(ctx)
-	value, err := api.ds.UserProps(ctx).DefaultGet(user.ID, tourVersionKey, "0")
+	tour, err := api.loadTour(ctx, user.ID)
 	if err != nil {
 		log.Error(ctx, "Error loading tour version", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	version, _ := strconv.Atoi(value)
-	writeJSON(ctx, w, tourVersion{Version: version})
+	writeJSON(ctx, w, tour)
 }
 
 func (api *Router) putTourVersion(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var body tourVersion
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Version < 0 {
+	var body tourPut
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil ||
+		(body.Version != nil && *body.Version < 0) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
+	for _, key := range body.Seen {
+		if !tourStepKey.MatchString(key) {
+			http.Error(w, "invalid step", http.StatusBadRequest)
+			return
+		}
+	}
 	user, _ := request.UserFrom(ctx)
-	if err := api.ds.UserProps(ctx).Put(user.ID, tourVersionKey, strconv.Itoa(body.Version)); err != nil {
+	tour, err := api.loadTour(ctx, user.ID)
+	if err == nil && body.Version != nil {
+		tour.Version = *body.Version
+		err = api.ds.UserProps(ctx).Put(user.ID, tourVersionKey, strconv.Itoa(tour.Version))
+	}
+	if err == nil && len(body.Seen) > 0 {
+		// A step once seen stays seen
+		for _, key := range body.Seen {
+			if !slices.Contains(tour.Seen, key) {
+				tour.Seen = append(tour.Seen, key)
+			}
+		}
+		slices.Sort(tour.Seen)
+		err = api.ds.UserProps(ctx).Put(user.ID, tourSeenKey, strings.Join(tour.Seen, ","))
+	}
+	if err != nil {
 		log.Error(ctx, "Error saving tour version", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(ctx, w, body)
+	writeJSON(ctx, w, tour)
 }

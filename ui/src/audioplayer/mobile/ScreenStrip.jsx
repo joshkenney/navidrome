@@ -131,7 +131,7 @@ export const ScreenStrip = ({ audio, controls, look, onOpen, onActions }) => {
   return (
     <div
       className={classes.root}
-      data-tour="player"
+      data-tour="mobilePlayer"
       role="region"
       aria-label={translate('player.mobile.nowPlaying')}
       onPointerDown={onPointerDown}

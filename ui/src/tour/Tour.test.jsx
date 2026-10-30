@@ -4,11 +4,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { MENU_OPEN_DELAY, Tour } from './Tour'
 import {
   startTour,
+  TOUR_SEEN_KEY,
   TOUR_START_DELAY,
   TOUR_URL,
   TOUR_VERSION_KEY,
 } from './tourEvents'
-import { TOUR_STEPS, TOUR_VERSION, stepsToShow } from './steps'
+import { TOUR_STEPS, TOUR_V3_KEYS, stepsToShow } from './steps'
 import { httpClient } from '../dataProvider'
 import { WELCOME_CLOSED_EVENT } from '../dialogs/WelcomeDialog'
 
@@ -20,10 +21,16 @@ vi.mock('react-admin', async (importOriginal) => ({
     opts ? `${key}:${opts.current}/${opts.total}` : key,
 }))
 
-// The elements the tour points at, minus the player (nothing is playing)
-const targets = TOUR_STEPS.map((s) => s.target).filter(
-  (t) => t && t !== 'player',
+// The elements the tour points at, minus the players (nothing is playing, on a computer)
+const OFF_SCREEN = ['player', 'mobilePlayer']
+const targets = [
+  ...new Set(TOUR_STEPS.map((s) => s.target).filter(Boolean)),
+].filter((t) => !OFF_SCREEN.includes(t))
+// The steps shown on this page, and the ones added after the tour's version 3
+const onScreen = TOUR_STEPS.filter((s) => !OFF_SCREEN.includes(s.target)).map(
+  (s) => s.key,
 )
+const addedSinceV3 = onScreen.filter((k) => !TOUR_V3_KEYS.includes(k))
 
 // The user menu's button opens a menu holding "Take the tour"
 const onMenu = vi.fn()
@@ -66,19 +73,24 @@ const Page = () => {
 }
 
 describe('<Tour />', () => {
+  // What the server remembers: the version of the tour seen (older UIs), and the steps seen
   let savedVersion
+  let savedSeen
 
   beforeEach(() => {
     vi.useFakeTimers()
     vi.clearAllMocks()
     localStorage.clear()
     savedVersion = 0
+    savedSeen = []
     httpClient.mockImplementation((url, options) => {
       if (options?.method === 'PUT') {
-        savedVersion = JSON.parse(options.body).version
-        return Promise.resolve({ json: { version: savedVersion } })
+        const { seen = [] } = JSON.parse(options.body)
+        savedSeen = [...new Set([...savedSeen, ...seen])]
       }
-      return Promise.resolve({ json: { version: savedVersion } })
+      return Promise.resolve({
+        json: { version: savedVersion, seen: savedSeen },
+      })
     })
     // jsdom has no layout: give the marked elements a size
     vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(
@@ -125,7 +137,7 @@ describe('<Tour />', () => {
     render(<Page />)
     await waitForStart()
     expect(title()).toBe('tour.steps.welcome.title')
-    const total = TOUR_STEPS.length - 1 // The player isn't on screen
+    const total = onScreen.length // The players aren't on screen
     expect(screen.getByText(`tour.progress:1/${total}`)).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('tour.next'))
@@ -143,7 +155,7 @@ describe('<Tour />', () => {
       fireEvent.click(screen.getByText('tour.done'))
     })
     expect(screen.queryByRole('dialog')).toBeNull()
-    expect(savedVersion).toBe(TOUR_VERSION)
+    expect(savedSeen.sort()).toEqual([...onScreen].sort())
   })
 
   it('opens the user menu to show "Take the tour", and closes it after', async () => {
@@ -167,11 +179,38 @@ describe('<Tour />', () => {
     expect(screen.queryByText('take the tour')).toBeNull()
   })
 
-  it('shows to people who saw an older version of the tour', async () => {
-    savedVersion = TOUR_VERSION - 1
+  it("shows people who saw the tour before only what's new, after a welcome back", async () => {
+    savedVersion = 3 // Seen before steps were remembered one by one
     render(<Page />)
     await waitForStart()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(title()).toBe('tour.steps.whatsNew.title')
+    const shown = []
+    for (let i = 0; i < addedSinceV3.length; i++) {
+      fireEvent.click(screen.getByText('tour.next'))
+      shown.push(title().replace(/^tour\.steps\.|\.title$/g, ''))
+    }
+    expect(shown).toEqual(addedSinceV3)
+    await act(async () => {
+      fireEvent.click(screen.getByText('tour.done'))
+    })
+    // Remembered without the welcome-back card
+    expect(savedSeen.sort()).toEqual([...addedSinceV3].sort())
+  })
+
+  it('shows nothing when no step is new', async () => {
+    savedSeen = [...onScreen]
+    render(<Page />)
+    await waitForStart()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('waits for a new step to be on screen, without remembering it until then', async () => {
+    // Only the phone player's step is new, and nothing plays on a phone here
+    savedSeen = [...onScreen, 'player']
+    render(<Page />)
+    await waitForStart()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(savedSeen).not.toContain('clickWheel')
   })
 
   it('is remembered when skipped, with Esc too', async () => {
@@ -183,9 +222,11 @@ describe('<Tour />', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(httpClient).toHaveBeenCalledWith(TOUR_URL, {
       method: 'PUT',
-      body: JSON.stringify({ version: TOUR_VERSION }),
+      body: JSON.stringify({ seen: onScreen }),
     })
-    expect(localStorage.getItem(TOUR_VERSION_KEY)).toBe(String(TOUR_VERSION))
+    expect(JSON.parse(localStorage.getItem(TOUR_SEEN_KEY)).sort()).toEqual(
+      [...onScreen].sort(),
+    )
   })
 
   it('moves with the arrow keys', async () => {
@@ -197,8 +238,8 @@ describe('<Tour />', () => {
     expect(title()).toBe('tour.steps.welcome.title')
   })
 
-  it('does not show again once seen, but can be replayed', async () => {
-    savedVersion = TOUR_VERSION
+  it('does not show again once seen, but can be replayed whole', async () => {
+    savedSeen = [...onScreen]
     render(<Page />)
     await waitForStart()
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -220,12 +261,20 @@ describe('<Tour />', () => {
     expect(title()).toBe('tour.steps.welcome.title')
   })
 
-  it('uses the version saved in the browser when the server is unreachable', async () => {
-    localStorage.setItem(TOUR_VERSION_KEY, String(TOUR_VERSION))
+  it('uses the steps saved in the browser when the server is unreachable', async () => {
+    localStorage.setItem(TOUR_SEEN_KEY, JSON.stringify(onScreen))
     httpClient.mockRejectedValue(new Error('offline'))
     render(<Page />)
     await waitForStart()
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it("counts the version an older UI saved in the browser, showing only what's new", async () => {
+    localStorage.setItem(TOUR_VERSION_KEY, '3')
+    httpClient.mockRejectedValue(new Error('offline'))
+    render(<Page />)
+    await waitForStart()
+    expect(title()).toBe('tour.steps.whatsNew.title')
   })
 })
 
@@ -241,6 +290,7 @@ describe('stepsToShow', () => {
 
   it('leaves out the steps whose element is not on screen', () => {
     const keys = stepsToShow().map((s) => s.key)
-    expect(keys).toEqual(['welcome', 'search'])
+    // The centred steps always show
+    expect(keys).toEqual(['welcome', 'search', 'downloads', 'listeningMatch'])
   })
 })

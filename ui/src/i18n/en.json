@@ -918,6 +918,42 @@
       "takeTour": {
         "title": "Take the tour again",
         "text": "Come back here any time to take this tour again."
+      },
+      "whatsNew": {
+        "title": "Welcome back! Here's what's new",
+        "text": "A few things were added since your last visit. This quick tour shows only those. The whole tour is still in the user menu."
+      },
+      "essentials": {
+        "title": "Tribe Essentials",
+        "text": "In iPod Facts, every tribe of iPods has its Essentials: the songs most of its iPods carry and few others do. Play them, or download them all at once."
+      },
+      "clickWheel": {
+        "title": "Your iPod",
+        "text": "Tap this strip for the whole iPod. Spin the click wheel to scrub, press the centre for Up Next, swipe the cover to skip, and hold a song for more."
+      },
+      "timeline": {
+        "title": "Timeline",
+        "text": "Your listening, day by day. Tap your top iPods and artists to see only their plays, then play or download them."
+      },
+      "holes": {
+        "title": "Holes",
+        "text": "What's on the server that you've never heard, and the favourites you've stopped listening to."
+      },
+      "eras": {
+        "title": "Eras",
+        "text": "Travel through the history of the music on every iPod. Pick a decade or a year, and play it."
+      },
+      "replay": {
+        "title": "Replay",
+        "text": "Every song you play past 85% lands in your own Replay playlist, here. Play it again, or download it."
+      },
+      "downloads": {
+        "title": "Better downloads",
+        "text": "Select songs to download them together. When another iPod has a song in better quality, downloading it recommends that copy, and an album can be completed with the songs other iPods have."
+      },
+      "listeningMatch": {
+        "title": "Listeners like you",
+        "text": "After you log in, you may see what a listener with taste like yours has been playing lately, with the artists you share."
       }
     }
   },

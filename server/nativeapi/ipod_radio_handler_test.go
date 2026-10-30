@@ -219,6 +219,38 @@ var _ = Describe("iPod Radio endpoint", Ordered, func() {
 			Expect(put(ctx, `{"version": -1}`)).To(Equal(http.StatusBadRequest))
 			Expect(put(ctx, `nope`)).To(Equal(http.StatusBadRequest))
 		})
+
+		seen := func(c context.Context) []string {
+			r := httptest.NewRequest(http.MethodGet, "/ipods/tour", nil).WithContext(c)
+			w := httptest.NewRecorder()
+			api.getTourVersion(w, r)
+			var v tourVersion
+			Expect(json.Unmarshal(w.Body.Bytes(), &v)).To(Succeed())
+			return v.Seen
+		}
+
+		It("remembers the steps each user saw, adding new ones to them", func() {
+			u := model.User{ID: "tour-seen", UserName: "tour-seen", NewPassword: "x"}
+			Expect(ds.User(ctx).Put(&u)).To(Succeed())
+			user := request.WithUser(context.Background(), u)
+			Expect(seen(user)).To(BeEmpty())
+			Expect(put(user, `{"seen": ["welcome", "search"]}`)).To(Equal(http.StatusOK))
+			Expect(put(user, `{"seen": ["replay", "search"]}`)).To(Equal(http.StatusOK))
+			Expect(seen(user)).To(Equal([]string{"replay", "search", "welcome"}))
+			// Saving steps leaves the old version alone, and the other way round
+			Expect(put(user, `{"version": 3}`)).To(Equal(http.StatusOK))
+			Expect(get(user)).To(Equal(3))
+			Expect(seen(user)).To(Equal([]string{"replay", "search", "welcome"}))
+		})
+
+		It("rejects step names that aren't plain words", func() {
+			u := model.User{ID: "tour-bad", UserName: "tour-bad", NewPassword: "x"}
+			Expect(ds.User(ctx).Put(&u)).To(Succeed())
+			user := request.WithUser(context.Background(), u)
+			Expect(put(user, `{"seen": ["a,b"]}`)).To(Equal(http.StatusBadRequest))
+			Expect(put(user, `{"seen": [""]}`)).To(Equal(http.StatusBadRequest))
+			Expect(seen(user)).To(BeEmpty())
+		})
 	})
 
 	Describe("radio history", func() {

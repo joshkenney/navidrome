@@ -113,7 +113,7 @@ describe('<MobilePlayer />', () => {
     const strip = screen.getByRole('region', {
       name: 'player.mobile.nowPlaying',
     })
-    expect(strip).toHaveAttribute('data-tour', 'player')
+    expect(strip).toHaveAttribute('data-tour', 'mobilePlayer')
     expect(strip).toHaveTextContent('Song 2')
     expect(strip).toHaveTextContent('Weezer')
     expect(screen.queryByRole('dialog')).toBeNull()

@@ -10,9 +10,17 @@ import { Button, Paper, Popper, Portal, Typography } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
 import { httpClient } from '../dataProvider'
 import { WELCOME_CLOSED_EVENT } from '../dialogs/WelcomeDialog'
-import { TOUR_VERSION, stepsToShow, tourTarget } from './steps'
+import {
+  TOUR_V3,
+  TOUR_V3_KEYS,
+  WHATS_NEW,
+  newStepsToShow,
+  stepsToShow,
+  tourTarget,
+} from './steps'
 import {
   START_TOUR_EVENT,
+  TOUR_SEEN_KEY,
   TOUR_START_DELAY,
   TOUR_URL,
   TOUR_VERSION_KEY,
@@ -69,31 +77,48 @@ const useStyles = makeStyles((theme) => ({
   grow: { flex: 1 },
 }))
 
-const readLocalVersion = () => {
+// The steps seen, as saved in this browser (with the version of the tour an older UI saved)
+const readLocal = () => {
   try {
-    return parseInt(localStorage.getItem(TOUR_VERSION_KEY), 10) || 0
+    return {
+      seen: JSON.parse(localStorage.getItem(TOUR_SEEN_KEY)) || [],
+      version: parseInt(localStorage.getItem(TOUR_VERSION_KEY), 10) || 0,
+    }
   } catch (e) {
-    return 0
+    return { seen: [], version: 0 }
   }
 }
 
-const saveVersion = (version) => {
+// All the steps seen: the ones remembered, and the ones of the tour's version 3 for people who saw it
+const seenSteps = (...sources) => {
+  const seen = new Set()
+  sources.forEach(({ seen: keys = [], version = 0 }) => {
+    keys.forEach((key) => seen.add(key))
+    if (version >= TOUR_V3) TOUR_V3_KEYS.forEach((key) => seen.add(key))
+  })
+  return [...seen]
+}
+
+// Remembers steps as seen, on the server (so it follows the user on any device) and here
+const saveSeen = (keys) => {
+  if (!keys.length) return Promise.resolve()
   try {
-    localStorage.setItem(TOUR_VERSION_KEY, String(version))
+    const seen = seenSteps(readLocal(), { seen: keys })
+    localStorage.setItem(TOUR_SEEN_KEY, JSON.stringify(seen))
   } catch (e) {
     // The server copy is enough
   }
   return httpClient(TOUR_URL, {
     method: 'PUT',
-    body: JSON.stringify({ version }),
+    body: JSON.stringify({ seen: keys }),
   }).catch(() => {})
 }
 
-// The version of the tour the user saw, from the server (so it follows them on any device)
-const loadVersion = () =>
+// The steps the user saw, from the server, and this browser when it can't be reached
+const loadSeen = () =>
   httpClient(TOUR_URL)
-    .then(({ json }) => Math.max(json?.version || 0, readLocalVersion()))
-    .catch(() => readLocalVersion())
+    .then(({ json }) => seenSteps(json || {}, readLocal()))
+    .catch(() => seenSteps(readLocal()))
 
 const rectOf = (el) => {
   const r = el.getBoundingClientRect()
@@ -106,7 +131,7 @@ const rectOf = (el) => {
 }
 
 // The UI tour: it lights up one feature at a time, with a bubble explaining it. It shows once per
-// user (after the welcome dialog), and again from the user menu
+// user (after the welcome dialog), then only what's new, and all of it again from the user menu
 export const Tour = () => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -118,19 +143,21 @@ export const Tour = () => {
   const open = steps.length > 0
   const step = steps[index]
 
-  const show = useCallback(() => {
+  const show = useCallback((run = stepsToShow()) => {
     setIndex(0)
-    setSteps(stepsToShow())
+    setSteps(run)
   }, [])
 
-  // First visit: wait for the welcome dialog, then show the steps the user hasn't seen
+  // On opening the app: wait for the welcome dialog, then show the steps the user hasn't seen (all
+  // of them the first time, what's new afterwards)
   useEffect(() => {
     let cancelled = false
     let timer
     const start = () => {
       timer = setTimeout(() => {
-        loadVersion().then((seen) => {
-          if (!cancelled && seen < TOUR_VERSION) show()
+        loadSeen().then((seen) => {
+          const run = newStepsToShow(seen)
+          if (!cancelled && run.length) show(run)
         })
       }, TOUR_START_DELAY)
     }
@@ -154,7 +181,7 @@ export const Tour = () => {
   }, [show])
 
   useEffect(() => {
-    const onStart = () => show()
+    const onStart = () => show(stepsToShow())
     window.addEventListener(START_TOUR_EVENT, onStart)
     return () => window.removeEventListener(START_TOUR_EVENT, onStart)
   }, [show])
@@ -190,10 +217,11 @@ export const Tour = () => {
     }
   }, [step])
 
+  // Finishing or skipping remembers the steps of this run as seen (not the "What's new" card)
   const finish = useCallback(() => {
+    saveSeen(steps.filter((s) => s !== WHATS_NEW).map((s) => s.key))
     setSteps([])
-    saveVersion(TOUR_VERSION)
-  }, [])
+  }, [steps])
   const next = useCallback(() => {
     if (index + 1 >= steps.length) finish()
     else setIndex(index + 1)
