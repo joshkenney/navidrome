@@ -3,6 +3,7 @@ import { useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { IpodLabel } from '../../ipods/IpodLabel'
 import { LCD, formatTime } from './ipodLook'
+import { UpNext } from './UpNext'
 
 const useStyles = makeStyles(
   {
@@ -138,9 +139,15 @@ const useStyles = makeStyles(
   { name: 'NDIpodScreen' },
 )
 
-// The iPod's screen, showing the song playing ("Now Playing"). While the wheel scrubs, it shows
-// where to ("scrubTime"), with a diamond on the bar, like the iPod
-export const IpodScreen = ({ audio, controls, scrubTime = null }) => {
+// The iPod's screen, showing the song playing ("Now Playing") or the queue ("Up Next", see UpNext).
+// While the wheel scrubs, it shows where to ("scrubTime"), with a diamond on the bar, like the iPod
+export const IpodScreen = ({
+  audio,
+  controls,
+  scrubTime = null,
+  view = 'nowPlaying',
+  upNext = {},
+}) => {
   const classes = useStyles()
   const translate = useTranslate()
   const t = (key, opts) => translate(`player.mobile.${key}`, opts)
@@ -153,17 +160,8 @@ export const IpodScreen = ({ audio, controls, scrubTime = null }) => {
   const title = song.title || item.name || ''
   const artist = song.artist || item.singer || ''
 
-  return (
-    <div className={classes.root}>
-      <div className={`${classes.header} songTitle`}>
-        <span className={classes.headerSide} aria-hidden>
-          {playing ? '▶' : '❚❚'}
-        </span>
-        <span>{t('nowPlaying')}</span>
-        <span className={classes.headerSide} aria-hidden>
-          <span className={classes.battery} />
-        </span>
-      </div>
+  const nowPlaying = (
+    <>
       <div className={classes.body}>
         {item.cover && (
           <img
@@ -221,6 +219,25 @@ export const IpodScreen = ({ audio, controls, scrubTime = null }) => {
           </>
         )}
       </div>
+    </>
+  )
+
+  return (
+    <div className={classes.root}>
+      <div className={`${classes.header} songTitle`}>
+        <span className={classes.headerSide} aria-hidden>
+          {playing ? '▶' : '❚❚'}
+        </span>
+        <span>{t(view === 'upNext' ? 'upNext' : 'nowPlaying')}</span>
+        <span className={classes.headerSide} aria-hidden>
+          <span className={classes.battery} />
+        </span>
+      </div>
+      {view === 'upNext' ? (
+        <UpNext queue={queue} current={index} {...upNext} />
+      ) : (
+        nowPlaying
+      )}
     </div>
   )
 }

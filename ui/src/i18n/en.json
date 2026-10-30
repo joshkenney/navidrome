@@ -682,7 +682,11 @@
       "playPause": "Play or pause",
       "select": "Select",
       "seek": "Position in the song",
-      "position": "%{n} of %{total}"
+      "position": "%{n} of %{total}",
+      "upNext": "Up Next",
+      "remove": "Remove",
+      "removed": "Removed \"%{name}\"",
+      "undo": "Undo"
     }
   },
   "about": {

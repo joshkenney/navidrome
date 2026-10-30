@@ -25,6 +25,7 @@ const song = (n, extra = {}) => ({
   singer: 'Weezer',
   cover: `cover-${n}.jpg`,
   song: {
+    id: `s${n}`,
     title: `Song ${n}`,
     artist: 'Weezer',
     album: 'Blue Album',
@@ -43,9 +44,28 @@ const fakeAudio = () => {
 }
 
 const renderPlayer = ({ queue = [song(1), song(2)], current = 'u2' } = {}) => {
-  const store = createStore(() => ({
-    player: { queue, current: { uuid: current } },
-  }))
+  // Adding tracks appends them, like the real reducer
+  const reducer = (
+    state = { player: { queue, current: { uuid: current } } },
+    action,
+  ) =>
+    action.type === 'PLAYER_ADD_TRACKS'
+      ? {
+          ...state,
+          player: {
+            ...state.player,
+            queue: [
+              ...state.player.queue,
+              ...Object.values(action.data).map((s) => ({
+                uuid: `added-${s.id}`,
+                name: s.title,
+                song: s,
+              })),
+            ],
+          },
+        }
+      : state
+  const store = createStore(reducer)
   const controls = {
     togglePlay: vi.fn(),
     next: vi.fn(),
@@ -60,7 +80,19 @@ const renderPlayer = ({ queue = [song(1), song(2)], current = 'u2' } = {}) => {
       <MobilePlayer audioInstance={fakeAudio()} controls={controls} />
     </Provider>,
   )
-  return { ...utils, controls }
+  return { ...utils, controls, store }
+}
+
+// The wheel is 200x200 at the top left of the page
+const layOutWheel = () => {
+  const wheel = screen.getByTestId('click-wheel')
+  wheel.getBoundingClientRect = () => ({
+    left: 0,
+    top: 0,
+    width: 200,
+    height: 200,
+  })
+  return wheel
 }
 
 const openPlayer = () =>
@@ -184,6 +216,100 @@ describe('<MobilePlayer />', () => {
     fireEvent.pointerUp(wheel, { clientX: 190, clientY: 100, pointerId: 1 })
     expect(controls.seek).toHaveBeenCalledWith(65)
     expect(screen.queryByTestId('scrub-diamond')).toBeNull()
+  })
+
+  it('opens Up Next with the centre button, on the song playing, and goes back with MENU', () => {
+    renderPlayer({ queue: [song(1), song(2), song(3)] })
+    openPlayer()
+    fireEvent.click(screen.getByLabelText('player.mobile.select'))
+    const list = screen.getByRole('listbox', { name: 'player.mobile.upNext' })
+    expect(list).toBeInTheDocument()
+    expect(screen.getByTestId('upnext-1')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    fireEvent.click(screen.getByLabelText('player.mobile.menu'))
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('moves through Up Next with the wheel, and plays the song picked with the centre button', () => {
+    const { controls } = renderPlayer({
+      queue: [song(1), song(2), song(3), song(4)],
+      current: 'u1',
+    })
+    openPlayer()
+    fireEvent.click(screen.getByLabelText('player.mobile.select'))
+    const wheel = layOutWheel()
+    // A quarter turn clockwise: 90° is 3 clicks of 24°, from the first song to the last (clamped)
+    fireEvent.pointerDown(wheel, { clientX: 100, clientY: 10, pointerId: 1 })
+    fireEvent.pointerMove(wheel, { clientX: 190, clientY: 100, pointerId: 1 })
+    fireEvent.pointerUp(wheel, { clientX: 190, clientY: 100, pointerId: 1 })
+    expect(screen.getByTestId('upnext-3')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(controls.seek).not.toHaveBeenCalled()
+    // A tap on the centre button (a touch, then a click)
+    const center = screen.getByLabelText('player.mobile.select')
+    fireEvent.pointerDown(center, { clientX: 100, clientY: 100, pointerId: 2 })
+    fireEvent.pointerUp(center, { clientX: 100, clientY: 100, pointerId: 2 })
+    fireEvent.click(center)
+    expect(controls.playAt).toHaveBeenCalledWith(3)
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('removes a song from Up Next, and Undo puts it back where it was', () => {
+    const { controls } = renderPlayer({
+      queue: [song(1), song(2), song(3)],
+      current: 'u1',
+    })
+    openPlayer()
+    fireEvent.click(screen.getByLabelText('player.mobile.select'))
+    const row = screen.getByTestId('upnext-1')
+    fireEvent.pointerDown(row, { clientX: 200, clientY: 10, pointerId: 1 })
+    fireEvent.pointerMove(screen.getByRole('listbox'), {
+      clientX: 100,
+      clientY: 12,
+      pointerId: 1,
+    })
+    fireEvent.pointerUp(screen.getByRole('listbox'), {
+      clientX: 100,
+      clientY: 12,
+      pointerId: 1,
+    })
+    expect(controls.remove).toHaveBeenCalledWith(1)
+    expect(
+      screen.getByText(`player.mobile.removed:{"name":"Song 2"}`),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByText('player.mobile.undo'))
+    // The song comes back at the end of the queue (4 songs in this fake queue, which the real
+    // player would have shortened), and is moved back to where it was
+    expect(controls.move).toHaveBeenCalledWith(3, 1)
+  })
+
+  it('moves on to the next song before removing the one playing', () => {
+    const { controls } = renderPlayer({
+      queue: [song(1), song(2), song(3)],
+      current: 'u2',
+    })
+    openPlayer()
+    fireEvent.click(screen.getByLabelText('player.mobile.select'))
+    const row = screen.getByTestId('upnext-1')
+    fireEvent.pointerDown(row, { clientX: 200, clientY: 10, pointerId: 1 })
+    fireEvent.pointerMove(screen.getByRole('listbox'), {
+      clientX: 100,
+      clientY: 12,
+      pointerId: 1,
+    })
+    fireEvent.pointerUp(screen.getByRole('listbox'), {
+      clientX: 100,
+      clientY: 12,
+      pointerId: 1,
+    })
+    expect(controls.next).toHaveBeenCalled()
+    // Not removed until the player has moved on (here it never does)
+    expect(controls.remove).not.toHaveBeenCalled()
   })
 
   it('hides the progress for radio streams', () => {

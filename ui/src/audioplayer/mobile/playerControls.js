@@ -26,10 +26,15 @@ export const makeControls = (audio, playerRef) => {
       }
     },
     playAt: (index) => audio?.playByIndex?.(index),
-    // Moves the song at "from" to "to", shifting the ones in between (not swapping them)
+    // Moves the song at "from" to "to", shifting the ones in between (not swapping them). Run on
+    // its own, outside React's event handling, like the player's queue panel (SortableJS) does:
+    // inside it, the player's new order isn't applied yet when it reports it, and the queue it is
+    // then given back makes it restore the old one
     move: (from, to) => {
       if (from === to) return
-      player()?.onAudioListsSortEnd?.({ oldIndex: from, newIndex: to })
+      setTimeout(() =>
+        player()?.onAudioListsSortEnd?.({ oldIndex: from, newIndex: to }),
+      )
     },
     // Removes the song at "index"; when it is the one playing, the next one plays
     remove: (index) => {

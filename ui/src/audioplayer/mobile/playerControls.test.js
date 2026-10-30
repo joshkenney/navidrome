@@ -53,15 +53,21 @@ describe('makeControls', () => {
   })
 
   it('moves songs in the queue through the player, like its own queue panel', () => {
+    vi.useFakeTimers()
     const p = player()
     const c = makeControls(audio(), { current: p })
     c.move(0, 1)
+    // Outside React's event handling, so the player applies its new order at once
+    expect(p.onAudioListsSortEnd).not.toHaveBeenCalled()
+    vi.runAllTimers()
     expect(p.onAudioListsSortEnd).toHaveBeenCalledWith({
       oldIndex: 0,
       newIndex: 1,
     })
     c.move(1, 1)
+    vi.runAllTimers()
     expect(p.onAudioListsSortEnd).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
   })
 
   it("removes a song by the player's own key for it", () => {
