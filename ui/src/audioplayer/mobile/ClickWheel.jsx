@@ -57,6 +57,58 @@ const useStyles = makeStyles(
       fontSize: 15,
       letterSpacing: -2,
     },
+    // 1st and 2nd generation: the four buttons on a ring around a smaller wheel
+    ring: {
+      position: 'relative',
+      width: 'min(80vw, 44vh, 330px)',
+      aspectRatio: '1 / 1',
+      borderRadius: '50%',
+      background: (p) => p.look.ring || p.look.wheel,
+      boxShadow: (p) =>
+        `0 0 0 1px ${p.look.wheelEdge}, 0 2px 6px rgba(0, 0, 0, 0.25)`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      userSelect: 'none',
+    },
+    innerWheel: {
+      width: '64%',
+      boxShadow: (p) =>
+        `0 0 0 1px ${p.look.wheelEdge}, inset 0 1px 4px rgba(0, 0, 0, 0.18)`,
+    },
+    ringMenu: { top: '2%', left: '30%', width: '40%', height: '15%' },
+    ringPrev: { left: '1%', top: '30%', width: '15%', height: '40%' },
+    ringNext: { right: '1%', top: '30%', width: '15%', height: '40%' },
+    ringPlay: { bottom: '2%', left: '30%', width: '40%', height: '15%' },
+    // 3rd generation: four lit buttons in a row above the wheel
+    column: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 18,
+    },
+    row: { display: 'flex', gap: 12 },
+    rowButton: {
+      position: 'static',
+      width: 58,
+      height: 40,
+      borderRadius: 20,
+      background: (p) => p.look.rowButton || p.look.center,
+      color: (p) => `${p.look.rowLabel || p.look.label} !important`,
+      boxShadow: (p) =>
+        `0 0 0 1px ${p.look.wheelEdge}, 0 1px 3px rgba(0, 0, 0, 0.2)`,
+      fontSize: 11,
+      letterSpacing: 0.5,
+      textShadow: (p) =>
+        p.look.rowLabel ? `0 0 6px ${p.look.rowLabel}` : 'none',
+      '& svg': { fontSize: '22px !important' },
+    },
+    rowWheel: { width: 'min(66vw, 34vh, 270px)' },
+    // The transparent iPod's clear wheel
+    glass: {
+      backdropFilter: 'blur(6px)',
+      WebkitBackdropFilter: 'blur(6px)',
+    },
     center: {
       position: 'absolute',
       top: '33%',
@@ -160,48 +212,72 @@ export const ClickWheel = ({
     }
   }
 
-  return (
+  const type = look.wheelType || 'click'
+  const at = (positions) => (type === 'row' ? classes.rowButton : positions)
+  const button = (key, position, label, onClick, content, chicago) => (
+    <button
+      key={key}
+      type="button"
+      className={[classes.button, at(position), chicago && 'songTitle']
+        .filter(Boolean)
+        .join(' ')}
+      aria-label={label}
+      onClick={press(onClick)}
+    >
+      {content}
+    </button>
+  )
+  const ring = type === 'ring'
+  const menu = button(
+    'menu',
+    ring ? classes.ringMenu : classes.menu,
+    t('menu'),
+    onMenu,
+    'MENU',
+    true,
+  )
+  const prev = button(
+    'prev',
+    ring ? classes.ringPrev : classes.prev,
+    translate('player.previousTrackText'),
+    onPrev,
+    <SkipPreviousIcon />,
+  )
+  const next = button(
+    'next',
+    ring ? classes.ringNext : classes.next,
+    translate('player.nextTrackText'),
+    onNext,
+    <SkipNextIcon />,
+  )
+  const play = button(
+    'play',
+    ring ? classes.ringPlay : classes.play,
+    t('playPause'),
+    onPlay,
+    '▶❚❚',
+    true,
+  )
+
+  const wheelElement = (
     <div
       ref={wheel}
-      className={classes.wheel}
+      className={[
+        classes.wheel,
+        ring && classes.innerWheel,
+        type === 'row' && classes.rowWheel,
+        look.glass && classes.glass,
+      ]
+        .filter(Boolean)
+        .join(' ')}
       data-testid="click-wheel"
+      data-wheel={type}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endTurn}
       onPointerCancel={endTurn}
     >
-      <button
-        type="button"
-        className={`${classes.button} ${classes.menu} songTitle`}
-        aria-label={t('menu')}
-        onClick={press(onMenu)}
-      >
-        MENU
-      </button>
-      <button
-        type="button"
-        className={`${classes.button} ${classes.prev}`}
-        aria-label={translate('player.previousTrackText')}
-        onClick={press(onPrev)}
-      >
-        <SkipPreviousIcon />
-      </button>
-      <button
-        type="button"
-        className={`${classes.button} ${classes.next}`}
-        aria-label={translate('player.nextTrackText')}
-        onClick={press(onNext)}
-      >
-        <SkipNextIcon />
-      </button>
-      <button
-        type="button"
-        className={`${classes.button} ${classes.play} songTitle`}
-        aria-label={t('playPause')}
-        onClick={press(onPlay)}
-      >
-        ▶❚❚
-      </button>
+      {type === 'click' && [menu, prev, next, play]}
       <button
         type="button"
         className={classes.center}
@@ -210,4 +286,22 @@ export const ClickWheel = ({
       />
     </div>
   )
+
+  if (ring) {
+    return (
+      <div className={classes.ring}>
+        {[menu, prev, next, play]}
+        {wheelElement}
+      </div>
+    )
+  }
+  if (type === 'row') {
+    return (
+      <div className={classes.column}>
+        <div className={classes.row}>{[prev, menu, play, next]}</div>
+        {wheelElement}
+      </div>
+    )
+  }
+  return wheelElement
 }

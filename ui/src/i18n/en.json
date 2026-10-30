@@ -637,6 +637,17 @@
         "lastfmScrobbling": "Scrobble to Last.fm",
         "listenBrainzScrobbling": "Scrobble to ListenBrainz",
         "activitySharing": "Share my listening activity",
+        "ipod": "Your iPod (on phones)",
+        "ipodHelp": "The iPod the player looks like on your phone. The first ones (up to the 4th generation, and the mini) had a black and white screen.",
+        "ipodAuto": "Match the theme",
+        "ipodGroups": {
+          "classic": "Classic iPods",
+          "mini": "iPod mini",
+          "transparent": "Transparent",
+          "special": "Special editions"
+        },
+        "ipodHaptics": "Click wheel clicks",
+        "ipodHapticsHelp": "The click wheel clicks through your phone's vibration. Android phones, and iPhones with iOS 18 or later.",
         "replaygain": "ReplayGain Mode",
         "preAmp": "ReplayGain PreAmp (dB)",
         "gain": {

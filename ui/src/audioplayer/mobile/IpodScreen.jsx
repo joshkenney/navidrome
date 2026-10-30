@@ -80,6 +80,7 @@ const useStyles = makeStyles(
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.35)',
       background: LCD.track,
       touchAction: 'none',
+      filter: LCD.coverFilter,
     },
     info: {
       flex: 1,

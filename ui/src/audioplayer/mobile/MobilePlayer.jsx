@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { useTranslate } from 'react-admin'
 import { Button, Slide, Snackbar } from '@material-ui/core'
 import { makeStyles, useTheme } from '@material-ui/core/styles'
@@ -7,7 +7,8 @@ import { ScreenStrip } from './ScreenStrip'
 import { IpodScreen } from './IpodScreen'
 import { ClickWheel } from './ClickWheel'
 import { useAudioState } from './useAudioState'
-import { edition } from './ipodLook'
+import { lcdVars, skinFor } from './skins'
+import { setHaptics } from './haptics'
 import { addTracks, playTracks } from '../../actions'
 import { useIpodNavigation } from './useIpodNavigation'
 import { PlayerActions } from './PlayerActions'
@@ -57,7 +58,12 @@ const useStyles = makeStyles(
 // only drives it (see playerControls)
 export const MobilePlayer = ({ audioInstance, controls }) => {
   const theme = useTheme()
-  const look = edition(theme)
+  // The iPod chosen in Personal settings, or one matching the theme
+  const settings = useSelector((state) => state.settings) || {}
+  const look = skinFor(settings.ipodSkin, theme)
+  useEffect(() => {
+    setHaptics(settings.ipodHaptics !== false)
+  }, [settings.ipodHaptics])
   const classes = useStyles({ look })
   const translate = useTranslate()
   const audio = useAudioState(audioInstance)
@@ -256,6 +262,8 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
           role="dialog"
           aria-modal="true"
           aria-label={translate('player.mobile.ipod')}
+          data-skin={look.id}
+          style={lcdVars(look.lcd)}
         >
           <div
             className={classes.screen}

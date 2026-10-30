@@ -4,7 +4,8 @@ import { makeStyles } from '@material-ui/core/styles'
 import { IconButton } from '@material-ui/core'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import PauseIcon from '@material-ui/icons/Pause'
-import { LCD, edition } from './ipodLook'
+import { LCD } from './ipodLook'
+import { lcdVars } from './skins'
 import { usePress } from './usePress'
 
 // Height of the strip, without the phone's safe area (the iPhone home bar)
@@ -56,6 +57,7 @@ const useStyles = makeStyles(
       objectFit: 'cover',
       borderRadius: 2,
       background: LCD.track,
+      filter: LCD.coverFilter,
     },
     text: {
       flex: 1,
@@ -132,6 +134,7 @@ export const ScreenStrip = ({ audio, controls, look, onOpen, onActions }) => {
     <div
       className={classes.root}
       data-tour="mobilePlayer"
+      style={lcdVars(look.lcd)}
       role="region"
       aria-label={translate('player.mobile.nowPlaying')}
       onPointerDown={onPointerDown}

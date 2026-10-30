@@ -58,9 +58,7 @@ export const ActivitySharingToggle = () => {
           />
         }
         label={
-          <span>
-            {translate('menu.personal.options.activitySharing')}
-          </span>
+          <span>{translate('menu.personal.options.activitySharing')}</span>
         }
       />
     </FormControl>

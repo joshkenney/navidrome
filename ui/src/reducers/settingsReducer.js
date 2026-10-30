@@ -1,4 +1,6 @@
 import {
+  SET_IPOD_HAPTICS,
+  SET_IPOD_SKIN,
   SET_NOTIFICATIONS_STATE,
   SET_OMITTED_FIELDS,
   SET_TOGGLEABLE_FIELDS,
@@ -11,6 +13,9 @@ const initialState = {
   omittedFields: {},
   // Saved under a new key (it was "font"), so existing users start with the iPod fonts too
   uiFont: 'ipod',
+  // The phone player's iPod ("auto": matching the theme) and its click wheel's clicks
+  ipodSkin: 'auto',
+  ipodHaptics: true,
 }
 
 export const settingsReducer = (previousState = initialState, payload) => {
@@ -41,6 +46,16 @@ export const settingsReducer = (previousState = initialState, payload) => {
       return {
         ...previousState,
         uiFont: data,
+      }
+    case SET_IPOD_SKIN:
+      return {
+        ...previousState,
+        ipodSkin: data,
+      }
+    case SET_IPOD_HAPTICS:
+      return {
+        ...previousState,
+        ipodHaptics: data,
       }
     default:
       return previousState

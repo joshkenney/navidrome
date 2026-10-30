@@ -4,6 +4,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { SelectLanguage } from './SelectLanguage'
 import { SelectTheme } from './SelectTheme'
 import { SelectFont } from './SelectFont'
+import { SelectIpod } from './SelectIpod'
 import { SelectDefaultView } from './SelectDefaultView'
 import { NotificationsToggle } from './NotificationsToggle'
 import { LastfmScrobbleToggle } from './LastfmScrobbleToggle'
@@ -34,6 +35,7 @@ const Personal = () => {
         {config.lastFMEnabled && <LastfmScrobbleToggle />}
         {config.listenBrainzEnabled && <ListenBrainzScrobbleToggle />}
         <ActivitySharingToggle />
+        <SelectIpod />
       </SimpleForm>
     </Card>
   )
