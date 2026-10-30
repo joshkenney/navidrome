@@ -14,6 +14,7 @@ import {
   List,
   ListItem,
   ListItemSecondaryAction,
+  ListItemAvatar,
   ListItemText,
   ListSubheader,
   MenuItem,
@@ -30,7 +31,7 @@ import config from '../config'
 import { APP_NAME } from '../common/Title'
 import { IpodLabel } from '../ipods/IpodLabel'
 import { ActivityChart } from './ActivityChart'
-import { CountList } from './CountList'
+import { CountList, CountThumb, thumbSize, useIsMobileList } from './CountList'
 import { useOpenItem } from './useOpenItem'
 import { PLAYS_PAGE, fetchListeners, fetchTimeline, playEntries } from './api'
 import {
@@ -84,6 +85,18 @@ const useStyles = makeStyles((theme) => ({
     gap: theme.spacing(1),
   },
   empty: { padding: theme.spacing(3, 0) },
+  // Phones: larger text and taller rows (see CountList)
+  mobileItem: { minHeight: 64 },
+  mobilePrimary: {
+    fontSize: '1rem',
+    lineHeight: 1.3,
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+    wordBreak: 'break-word',
+  },
+  mobileSecondary: { fontSize: '0.875rem', lineHeight: 1.4 },
   more: {
     display: 'flex',
     justifyContent: 'center',
@@ -123,6 +136,7 @@ const dayHeading = (time) =>
 // silences in between. Other listeners' timelines can be seen when they share their activity
 const TimelinePage = () => {
   const classes = useStyles()
+  const isMobile = useIsMobileList()
   const translate = useTranslate()
   const dispatch = useDispatch()
   const notify = useNotify()
@@ -521,7 +535,7 @@ const TimelinePage = () => {
                 />
               )}
             </div>
-            <List dense>
+            <List dense={!isMobile}>
               {playsByDay.map((group) => (
                 <li key={group.heading}>
                   <ul style={{ padding: 0 }}>
@@ -532,12 +546,31 @@ const TimelinePage = () => {
                       <ListItem
                         key={`${p.id}-${p.submissionTime}-${i}`}
                         button
+                        className={isMobile ? classes.mobileItem : undefined}
                         onClick={() => open('album', { ...p, id: p.albumId })}
                       >
+                        <ListItemAvatar
+                          style={{ minWidth: thumbSize(isMobile) + 12 }}
+                        >
+                          <CountThumb
+                            kind="song"
+                            item={p}
+                            size={thumbSize(isMobile)}
+                          />
+                        </ListItemAvatar>
                         <ListItemText
                           primary={`${p.title} — ${p.artist}`}
-                          primaryTypographyProps={{ noWrap: true }}
-                          secondaryTypographyProps={{ component: 'div' }}
+                          primaryTypographyProps={
+                            isMobile
+                              ? { className: classes.mobilePrimary }
+                              : { noWrap: true }
+                          }
+                          secondaryTypographyProps={{
+                            component: 'div',
+                            className: isMobile
+                              ? classes.mobileSecondary
+                              : undefined,
+                          }}
                           secondary={
                             <div className={classes.meta}>
                               <span>

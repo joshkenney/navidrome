@@ -104,6 +104,17 @@ const getCoverArtUrl = (record, size, square) => {
   }
 }
 
+// The cover of an album ("al-<id>"), a song ("mf-<id>") or an artist ("ar-<id>"), by its ID. The
+// server sends its placeholder when there is no picture
+const getCoverArtUrlById = (artId, { updatedAt, size, square } = {}) =>
+  baseUrl(
+    url('getCoverArt', artId, {
+      ...(updatedAt && { _: updatedAt }),
+      ...(size && { size }),
+      ...(square && { square }),
+    }),
+  )
+
 const getDiscCoverArtUrl = (albumId, discNumber, updatedAt, size) => {
   const options = {
     ...(updatedAt && { _: updatedAt }),
@@ -152,6 +163,7 @@ export default {
   getScanStatus,
   getNowPlaying,
   getCoverArtUrl,
+  getCoverArtUrlById,
   getDiscCoverArtUrl,
   getAvatarUrl,
   streamUrl,
