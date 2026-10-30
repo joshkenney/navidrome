@@ -4,6 +4,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { IpodLabel } from '../../ipods/IpodLabel'
 import { LCD, formatTime } from './ipodLook'
 import { UpNext } from './UpNext'
+import { IpodMenu } from './IpodMenu'
 import { usePress } from './usePress'
 
 const useStyles = makeStyles(
@@ -30,6 +31,14 @@ const useStyles = makeStyles(
         'linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0))',
     },
     headerSide: { width: 28, display: 'flex', alignItems: 'center' },
+    headerTitle: {
+      flex: 1,
+      minWidth: 0,
+      textAlign: 'center',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
     battery: {
       marginLeft: 'auto',
       width: 20,
@@ -148,6 +157,7 @@ export const IpodScreen = ({
   scrubTime = null,
   view = 'nowPlaying',
   upNext = {},
+  menu,
   onActions,
 }) => {
   const classes = useStyles()
@@ -238,12 +248,26 @@ export const IpodScreen = ({
         <span className={classes.headerSide} aria-hidden>
           {playing ? '▶' : '❚❚'}
         </span>
-        <span>{t(view === 'upNext' ? 'upNext' : 'nowPlaying')}</span>
+        <span className={classes.headerTitle}>
+          {menu?.isMenu
+            ? menu.title
+            : t(view === 'upNext' ? 'upNext' : 'nowPlaying')}
+        </span>
         <span className={classes.headerSide} aria-hidden>
           <span className={classes.battery} />
         </span>
       </div>
-      {view === 'upNext' ? (
+      {menu?.isMenu ? (
+        <IpodMenu
+          lcd={LCD}
+          label={menu.title}
+          items={menu.items}
+          highlight={menu.highlight}
+          loaded={menu.loaded}
+          onSelect={menu.select}
+          onLoadMore={menu.loadMore}
+        />
+      ) : view === 'upNext' ? (
         <UpNext queue={queue} current={index} {...upNext} />
       ) : (
         nowPlaying

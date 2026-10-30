@@ -19,6 +19,34 @@ vi.mock('./PlayerActions', () => ({
   PlayerActions: ({ item }) =>
     item ? <div data-testid="actions">{item.name}</div> : null,
 }))
+// The iPod's library: Weezer's Blue Album on Bob's iPod (library 2), among other artists
+vi.mock('./ipodBrowse', () => {
+  const ok = (data) => Promise.resolve({ data, total: data.length })
+  return {
+    PAGE: 100,
+    fetchArtists: vi.fn(() =>
+      ok([
+        { id: 'ar0', name: 'Pavement' },
+        { id: 'ar1', name: 'Weezer' },
+      ]),
+    ),
+    fetchArtistAlbums: vi.fn(() =>
+      ok([
+        { id: 'al0', name: 'Pinkerton', maxYear: 1996 },
+        { id: 'al1', name: 'Blue Album', maxYear: 1994 },
+      ]),
+    ),
+    fetchAlbumSongs: vi.fn(() =>
+      ok([
+        { id: 's1', title: 'Song 1', duration: 200 },
+        { id: 's2', title: 'Song 2', duration: 200 },
+      ]),
+    ),
+    fetchAlbums: vi.fn(() => ok([])),
+    fetchSongs: vi.fn(() => ok([])),
+    fetchShuffle: vi.fn(() => ok([])),
+  }
+})
 vi.mock('../../ipods/useIpodName', () => ({
   useIpodName: (id, name) => name,
 }))
@@ -33,7 +61,10 @@ const song = (n, extra = {}) => ({
     id: `s${n}`,
     title: `Song ${n}`,
     artist: 'Weezer',
+    albumArtist: 'Weezer',
+    albumArtistId: 'ar1',
     album: 'Blue Album',
+    albumId: 'al1',
     libraryId: 2,
     libraryName: "Bob's iPod",
   },
@@ -173,15 +204,74 @@ describe('<MobilePlayer />', () => {
     expect(controls.seek).toHaveBeenCalledWith(120)
   })
 
-  it('closes with MENU, which goes back in history like the phone Back button', () => {
+  it("climbs with MENU like an iPod: the album's songs, the artist, the iPod's artists, Music, the main menu", async () => {
+    renderPlayer()
+    openPlayer()
+    const menu = () =>
+      fireEvent.click(screen.getByLabelText('player.mobile.menu'))
+    const header = () =>
+      screen.getByRole('dialog').querySelector('span[class*=headerTitle]')
+        .textContent
+    const selected = () =>
+      screen.getByRole('option', { selected: true }).textContent
+
+    menu()
+    expect(header()).toBe('Blue Album')
+    expect(await screen.findByText('Song 1')).toBeInTheDocument()
+    expect(selected()).toContain('Song 2') // the song playing
+    menu()
+    expect(header()).toBe('Weezer')
+    expect(await screen.findByText('Pinkerton')).toBeInTheDocument()
+    expect(selected()).toContain('Blue Album')
+    menu()
+    expect(header()).toBe('player.mobile.artists')
+    expect(await screen.findByText('Pavement')).toBeInTheDocument()
+    expect(selected()).toContain('Weezer')
+    menu()
+    expect(header()).toBe('player.mobile.music')
+    expect(selected()).toContain('player.mobile.artists')
+    menu()
+    expect(header()).toBe("Bob's iPod")
+    expect(selected()).toContain('player.mobile.music')
+  })
+
+  it('goes down the menus with the centre button, and plays a song picked', async () => {
+    const { store } = renderPlayer()
+    const dispatch = vi.spyOn(store, 'dispatch')
+    openPlayer()
+    const menu = () =>
+      fireEvent.click(screen.getByLabelText('player.mobile.menu'))
+    menu()
+    await screen.findByText('Song 1')
+    // From the album's songs, back to the artists, then down again to Pinkerton
+    menu()
+    await screen.findByText('Pinkerton')
+    fireEvent.click(screen.getByText('Pinkerton'))
+    await screen.findByText('Song 1')
+    fireEvent.click(screen.getByText('Song 1'))
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'PLAYER_PLAY_TRACKS', id: 's1' }),
+    )
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'player.mobile.nowPlaying',
+    )
+  })
+
+  it('closes with MENU from the main menu, going back in history like the phone Back button', () => {
     const back = vi
       .spyOn(window.history, 'back')
       .mockImplementation(() =>
         window.dispatchEvent(new PopStateEvent('popstate')),
       )
-    renderPlayer()
+    // A radio stream: no album nor iPod, so the main menu is just above Now Playing
+    renderPlayer({
+      queue: [song(1, { isRadio: true, song: {} })],
+      current: 'u1',
+    })
     openPlayer()
     expect(window.history.state).toEqual({ ndPlayer: true })
+    fireEvent.click(screen.getByLabelText('player.mobile.menu'))
+    expect(back).not.toHaveBeenCalled()
     act(() => {
       fireEvent.click(screen.getByLabelText('player.mobile.menu'))
     })

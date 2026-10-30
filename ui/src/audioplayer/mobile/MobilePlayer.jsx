@@ -8,7 +8,8 @@ import { IpodScreen } from './IpodScreen'
 import { ClickWheel } from './ClickWheel'
 import { useAudioState } from './useAudioState'
 import { edition } from './ipodLook'
-import { addTracks } from '../../actions'
+import { addTracks, playTracks } from '../../actions'
+import { useIpodNavigation } from './useIpodNavigation'
 import { PlayerActions } from './PlayerActions'
 
 // How far down a swipe on the screen goes to close the player
@@ -63,8 +64,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
   const dispatch = useDispatch()
   const [open, setOpen] = useState(false)
   const swipe = useRef(null)
-  // "nowPlaying" or "upNext", and the song of the queue the wheel is on in Up Next
-  const [view, setView] = useState('nowPlaying')
+  // The song of the queue the wheel is on in Up Next
   const [highlight, setHighlight] = useState(0)
   // The song last removed from Up Next, which Undo puts back
   const [removed, setRemoved] = useState(null)
@@ -76,12 +76,52 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
   const scrubRef = useRef(null)
   const scrubbable = !audio.isRadio && audio.duration > 0
 
+  // Opening adds a history entry, so the phone's Back button closes the player
+  const openPlayer = useCallback(() => {
+    setOpen(true)
+    window.history.pushState({ ndPlayer: true }, '')
+  }, [])
+  const closePlayer = useCallback(() => {
+    if (window.history.state?.ndPlayer) {
+      window.history.back() // popstate closes it
+    } else {
+      setOpen(false)
+    }
+  }, [])
+
+  // The iPod's menus (see useIpodNavigation), on the iPod of the song playing
+  const playSongs = useCallback(
+    (songs, selectedId) => {
+      const byId = Object.fromEntries(songs.map((song) => [song.id, song]))
+      dispatch(playTracks(byId, Object.keys(byId), selectedId))
+    },
+    [dispatch],
+  )
+  const nav = useIpodNavigation({
+    song: audio.song,
+    t: (key, opts) => translate(`player.mobile.${key}`, opts),
+    playSongs,
+    onClose: closePlayer,
+  })
+  const view = nav.screen.type
+  // Opening the player shows the song playing, with the menus leading to it above
+  const songRef = useRef(audio.song)
+  songRef.current = audio.song
+  const { reset } = nav
+  useEffect(() => {
+    if (open) reset(songRef.current)
+  }, [open, reset])
+
   const startScrub = () => {
     if (view !== 'nowPlaying' || !scrubbable) return
     scrubRef.current = audio.currentTime
     setScrubTime(audio.currentTime)
   }
   const scrub = (clicks) => {
+    if (nav.isMenu) {
+      nav.moveHighlight(clicks)
+      return
+    }
     if (view === 'upNext') {
       const last = audio.queue.length - 1
       setHighlight((h) => Math.max(0, Math.min(last, h + clicks)))
@@ -101,15 +141,18 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     setScrubTime(null)
   }
 
-  // The centre button opens Up Next on the song playing, and there plays the highlighted song
-  const showNowPlaying = () => setView('nowPlaying')
+  // The centre button opens Up Next on the song playing, and there plays the highlighted song. In
+  // a menu, it picks the highlighted item
+  const showNowPlaying = () => nav.back()
   const onCenter = () => {
-    if (view === 'upNext') {
+    if (nav.isMenu) {
+      nav.select()
+    } else if (view === 'upNext') {
       if (highlight !== audio.index) controls.playAt(highlight)
       showNowPlaying()
     } else {
       setHighlight(audio.index)
-      setView('upNext')
+      nav.push({ type: 'upNext' })
     }
   }
   const playFromList = (index) => {
@@ -160,22 +203,9 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     controls.move(audio.queue.length - 1, undo.to)
   }, [audio.queue.length, controls])
 
-  // MENU goes back from Up Next, and closes the player from Now Playing
-  const onMenu = () => (view === 'upNext' ? showNowPlaying() : closePlayer())
-
-  // Opening adds a history entry, so the phone's Back button closes the player
-  const openPlayer = useCallback(() => {
-    setView('nowPlaying')
-    setOpen(true)
-    window.history.pushState({ ndPlayer: true }, '')
-  }, [])
-  const closePlayer = useCallback(() => {
-    if (window.history.state?.ndPlayer) {
-      window.history.back() // popstate closes it
-    } else {
-      setOpen(false)
-    }
-  }, [])
+  // MENU goes up a screen, like an iPod: from Now Playing to the album's songs, the artist, the
+  // iPod's artists, Music and the main menu, which it closes
+  const onMenu = () => nav.back(audio.song)
   // Closes the player for a page about to open: going back in history would race the new page,
   // so the player's history entry is just forgotten
   const leavePlayer = useCallback(() => {
@@ -225,7 +255,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
           className={classes.ipod}
           role="dialog"
           aria-modal="true"
-          aria-label={translate('player.mobile.nowPlaying')}
+          aria-label={translate('player.mobile.ipod')}
         >
           <div
             className={classes.screen}
@@ -238,6 +268,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
               controls={controls}
               scrubTime={scrubTime}
               view={view}
+              menu={nav}
               onActions={setActionsItem}
               upNext={{
                 highlight,
@@ -256,7 +287,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
               onNext={controls.next}
               onPlay={controls.togglePlay}
               onCenter={onCenter}
-              step={view === 'upNext' ? LIST_STEP : SCRUB_STEP}
+              step={view === 'nowPlaying' ? SCRUB_STEP : LIST_STEP}
               onTurnStart={startScrub}
               onTurn={scrub}
               onTurnEnd={endScrub}

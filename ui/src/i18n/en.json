@@ -694,7 +694,15 @@
       "goToIpod": "Go to this iPod (%{name})",
       "startRadio": "Start iPod Radio from this song",
       "saveQueue": "Save the queue as a playlist",
-      "clearQueue": "Clear the queue"
+      "clearQueue": "Clear the queue",
+      "ipod": "iPod",
+      "music": "Music",
+      "artists": "Artists",
+      "albums": "Albums",
+      "songs": "Songs",
+      "shuffleSongs": "Shuffle Songs",
+      "loading": "Loading…",
+      "empty": "Nothing here"
     }
   },
   "about": {
