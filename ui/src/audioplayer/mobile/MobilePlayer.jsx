@@ -20,8 +20,14 @@ const DRAG_CLOSE = 110
 const FLICK_CLOSE = 0.7
 // How far a finger moves before it is dragging the iPod down, or doing something else
 const DRAG_SLOP = 10
-// Turning the click wheel scrubs this many seconds per click: a whole turn (60 clicks) is a minute
+// On Now Playing, turning the click wheel sets the volume, a whole range in two thirds of a turn,
+// and the volume shows this long after. The centre button switches it to scrubbing instead, this
+// many seconds per click (a whole turn, 60 clicks, is a minute), until the centre button is pressed
+// again or the wheel is left alone a while
+const VOLUME_PER_CLICK = 1 / 40
+const VOLUME_SHOWN_MS = 2500
 const SECONDS_PER_CLICK = 1
+const SCRUB_IDLE_MS = 5000
 // Degrees of a wheel click: fine for scrubbing, coarser for moving through the queue
 const SCRUB_STEP = 6
 const LIST_STEP = 24
@@ -187,6 +193,27 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
   const [scrubTime, setScrubTime] = useState(null)
   const scrubRef = useRef(null)
   const scrubbable = !audio.isRadio && audio.duration > 0
+  // What the wheel does on Now Playing, and what the bottom of the screen shows: the song's
+  // progress, the volume (the wheel turned), or scrubbing (the centre button pressed)
+  const [mode, setMode] = useState('progress')
+  const modeTimer = useRef(null)
+  const leaveMode = useCallback(() => {
+    clearTimeout(modeTimer.current)
+    // Not while a finger is scrubbing
+    if (scrubRef.current !== null) {
+      modeTimer.current = setTimeout(leaveMode, SCRUB_IDLE_MS)
+      return
+    }
+    setMode('progress')
+  }, [])
+  const showMode = (next, ms) => {
+    clearTimeout(modeTimer.current)
+    setMode(next)
+    modeTimer.current = setTimeout(leaveMode, ms)
+  }
+  useEffect(() => () => clearTimeout(modeTimer.current), [])
+  // Whether the phone keeps the volume to itself (iPhones), found out the first time it's turned
+  const volumeLocked = useRef(null)
 
   // Opening adds a history entry, so the phone's Back button closes the player
   const openPlayer = useCallback(() => {
@@ -224,10 +251,35 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     if (open) reset(songRef.current)
   }, [open, reset])
 
+  // Leaving Now Playing, or closing the iPod, ends the volume or scrubbing
+  useEffect(() => {
+    if (view !== 'nowPlaying' || !open) {
+      clearTimeout(modeTimer.current)
+      setMode('progress')
+    }
+  }, [view, open])
+  // Up Next opens on the song playing
+  const indexRef = useRef(audio.index)
+  indexRef.current = audio.index
+  useEffect(() => {
+    if (view === 'upNext') setHighlight(indexRef.current)
+  }, [view])
+
   const startScrub = () => {
-    if (view !== 'nowPlaying' || !scrubbable) return
+    if (view !== 'nowPlaying' || mode !== 'scrub' || !scrubbable) return
     scrubRef.current = audio.currentTime
     setScrubTime(audio.currentTime)
+    clearTimeout(modeTimer.current)
+  }
+  const turnVolume = (clicks) => {
+    if (volumeLocked.current === null) {
+      volumeLocked.current = !!controls.volumeLocked?.()
+    }
+    if (!volumeLocked.current && controls.setVolume) {
+      const level = controls.volume?.() ?? audio.volume
+      controls.setVolume(level + clicks * VOLUME_PER_CLICK)
+    }
+    showMode('volume', VOLUME_SHOWN_MS)
   }
   const scrub = (clicks) => {
     if (nav.isMenu) {
@@ -239,6 +291,10 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
       setHighlight((h) => Math.max(0, Math.min(last, h + clicks)))
       return
     }
+    if (mode !== 'scrub') {
+      turnVolume(clicks)
+      return
+    }
     if (scrubRef.current === null) return
     const to = Math.min(
       audio.duration,
@@ -248,23 +304,29 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     setScrubTime(to)
   }
   const endScrub = () => {
-    if (scrubRef.current !== null) controls.seek(scrubRef.current)
+    if (scrubRef.current === null) return
+    controls.seek(scrubRef.current)
     scrubRef.current = null
     setScrubTime(null)
+    // Still scrubbing for a while, for another turn
+    showMode('scrub', SCRUB_IDLE_MS)
   }
 
-  // The centre button opens Up Next on the song playing, and there plays the highlighted song. In
-  // a menu, it picks the highlighted item
-  const showNowPlaying = () => nav.back()
+  // The centre button: on Now Playing it switches the wheel to scrubbing, and back; in Up Next it
+  // plays the highlighted song; in a menu, it picks the highlighted item
+  // Up Next is reached from the main menu: a song picked there shows Now Playing
+  const showNowPlaying = () => nav.push({ type: 'nowPlaying' })
   const onCenter = () => {
     if (nav.isMenu) {
       nav.select()
     } else if (view === 'upNext') {
       if (highlight !== audio.index) controls.playAt(highlight)
       showNowPlaying()
-    } else {
-      setHighlight(audio.index)
-      nav.push({ type: 'upNext' })
+    } else if (mode === 'scrub') {
+      clearTimeout(modeTimer.current)
+      setMode('progress')
+    } else if (scrubbable) {
+      showMode('scrub', SCRUB_IDLE_MS)
     }
   }
   const playFromList = (index) => {
@@ -435,6 +497,8 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
                 coverLook={look.lcd.cover}
                 controls={controls}
                 scrubTime={scrubTime}
+                mode={mode}
+                volumeLocked={!!volumeLocked.current}
                 view={view}
                 menu={nav}
                 onActions={setActionsItem}

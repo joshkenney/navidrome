@@ -12,6 +12,7 @@ const AUDIO_EVENTS = [
   'durationchange',
   'ended',
   'emptied',
+  'volumechange',
 ]
 
 const readAudio = (audio) => ({
@@ -20,6 +21,8 @@ const readAudio = (audio) => ({
   playing: !!audio && !audio.paused,
   // Playing, but waiting for data
   loading: !!audio && !audio.paused && audio.readyState < 3,
+  // As the player's volume bar has it (see playerControls)
+  volume: audio ? Math.sqrt(audio.volume) : 1,
 })
 
 // The state of the song playing, for the phone player: where it is, from the <audio> element, and

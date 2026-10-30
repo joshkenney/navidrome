@@ -26,6 +26,25 @@ export const makeControls = (audio, playerRef) => {
       }
     },
     playAt: (index) => audio?.playByIndex?.(index),
+    // The volume, as the player's volume bar has it (0 to 1): what is heard is its square. Set on
+    // the audio element, the player picks it up (its "volumechange") and keeps it
+    volume: () => (audio ? Math.sqrt(audio.volume) : 1),
+    setVolume: (level) => {
+      if (!audio) return
+      const bar = Math.min(1, Math.max(0, level))
+      audio.volume = bar * bar
+    },
+    // Whether the browser keeps the volume to itself: iPhones only change it with their buttons,
+    // and ignore a page setting it
+    volumeLocked: () => {
+      if (!audio) return true
+      const before = audio.volume
+      const probe = before > 0.5 ? before - 0.25 : before + 0.25
+      audio.volume = probe
+      const locked = Math.abs(audio.volume - probe) > 0.01
+      audio.volume = before
+      return locked
+    },
     // Moves the song at "from" to "to", shifting the ones in between (not swapping them). Run on
     // its own, outside React's event handling, like the player's queue panel (SortableJS) does:
     // inside it, the player's new order isn't applied yet when it reports it, and the queue it is

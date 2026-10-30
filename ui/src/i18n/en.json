@@ -707,6 +707,8 @@
       "position": "%{n} of %{total}",
       "battery": "Battery %{percent}%",
       "batteryCharging": "Battery %{percent}%, charging",
+      "volume": "Volume",
+      "volumeLocked": "Volume: use the side buttons",
       "batteryUnknown": "Battery",
       "upNext": "Up Next",
       "remove": "Remove",

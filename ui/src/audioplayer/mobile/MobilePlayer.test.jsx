@@ -135,8 +135,25 @@ const layOutWheel = () => {
   return wheel
 }
 
+const at = (x, y, pointerId = 1) => ({ clientX: x, clientY: y, pointerId })
+
 const openPlayer = () =>
   fireEvent.click(screen.getByRole('button', { name: 'player.mobile.open' }))
+
+// Up Next is in the iPod's main menu: MENU up to it from Now Playing, then down to Up Next
+const openUpNext = async () => {
+  const menu = () =>
+    fireEvent.click(screen.getByLabelText('player.mobile.menu'))
+  menu()
+  await screen.findByText('Song 1')
+  menu()
+  await screen.findByText('Pinkerton')
+  menu()
+  await screen.findByText('Pavement')
+  menu() // Music
+  menu() // The main menu
+  fireEvent.click(await screen.findByTestId('menu-upNext'))
+}
 
 describe('<MobilePlayer />', () => {
   beforeEach(() => {
@@ -323,49 +340,102 @@ describe('<MobilePlayer />', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('scrubs with the click wheel, seeking when the finger lifts', () => {
+  it('scrubs with the click wheel after the centre button, seeking when the finger lifts', () => {
+    vi.useFakeTimers()
     const { controls } = renderPlayer()
     openPlayer()
-    const wheel = screen.getByTestId('click-wheel')
-    wheel.getBoundingClientRect = () => ({
-      left: 0,
-      top: 0,
-      width: 200,
-      height: 200,
-    })
+    const wheel = layOutWheel()
+    const centerButton = screen.getByLabelText('player.mobile.select')
+    // A tap on the centre button (a touch, then a click)
+    const tapCenter = () => {
+      fireEvent.pointerDown(centerButton, at(100, 100, 2))
+      fireEvent.pointerUp(centerButton, at(100, 100, 2))
+      fireEvent.click(centerButton)
+    }
+    // The centre button: scrubbing, a diamond where the song is
+    tapCenter()
+    expect(screen.getByTestId('scrub-diamond')).toBeInTheDocument()
     // A quarter turn clockwise: 15 clicks of a second, from 0:50
     fireEvent.pointerDown(wheel, { clientX: 100, clientY: 10, pointerId: 1 })
     fireEvent.pointerMove(wheel, { clientX: 190, clientY: 100, pointerId: 1 })
-    expect(screen.getByTestId('scrub-diamond')).toBeInTheDocument()
     expect(screen.getByRole('dialog')).toHaveTextContent('1:05')
     expect(controls.seek).not.toHaveBeenCalled()
     fireEvent.pointerUp(wheel, { clientX: 190, clientY: 100, pointerId: 1 })
     expect(controls.seek).toHaveBeenCalledWith(65)
+    // Still scrubbing, for another turn; the centre button again: back to the song's progress
+    expect(screen.getByTestId('scrub-diamond')).toBeInTheDocument()
+    tapCenter()
     expect(screen.queryByTestId('scrub-diamond')).toBeNull()
+    // Left alone, scrubbing ends by itself
+    tapCenter()
+    act(() => vi.advanceTimersByTime(5000))
+    expect(screen.queryByTestId('scrub-diamond')).toBeNull()
+    expect(controls.seek).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
   })
 
-  it('opens Up Next with the centre button, on the song playing, and goes back with MENU', () => {
+  it('sets the volume by turning the wheel on Now Playing, showing it a moment', () => {
+    vi.useFakeTimers()
+    const { controls } = renderPlayer()
+    let level = 0.5
+    controls.volume = vi.fn(() => level)
+    controls.setVolume = vi.fn((v) => (level = v))
+    controls.volumeLocked = vi.fn(() => false)
+    openPlayer()
+    const wheel = layOutWheel()
+    // A quarter turn clockwise: 15 clicks of 1/40
+    fireEvent.pointerDown(wheel, { clientX: 100, clientY: 10, pointerId: 1 })
+    fireEvent.pointerMove(wheel, { clientX: 190, clientY: 100, pointerId: 1 })
+    fireEvent.pointerUp(wheel, { clientX: 190, clientY: 100, pointerId: 1 })
+    expect(level).toBeCloseTo(0.5 + 15 / 40)
+    expect(screen.getByTestId('volume')).toBeInTheDocument()
+    expect(screen.queryByTestId('scrub-diamond')).toBeNull()
+    expect(controls.seek).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(2500))
+    expect(screen.queryByTestId('volume')).toBeNull()
+    vi.useRealTimers()
+  })
+
+  it('shows the volume but says to use the side buttons where the phone keeps it (iPhones)', () => {
+    const { controls } = renderPlayer()
+    controls.setVolume = vi.fn()
+    controls.volumeLocked = vi.fn(() => true)
+    openPlayer()
+    const wheel = layOutWheel()
+    fireEvent.pointerDown(wheel, { clientX: 100, clientY: 10, pointerId: 1 })
+    fireEvent.pointerMove(wheel, { clientX: 190, clientY: 100, pointerId: 1 })
+    expect(screen.getByTestId('volume')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'player.mobile.volumeLocked',
+    )
+    expect(controls.setVolume).not.toHaveBeenCalled()
+  })
+
+  it('opens Up Next from the main menu, on the song playing, and goes back with MENU', async () => {
     renderPlayer({ queue: [song(1), song(2), song(3)] })
     openPlayer()
-    fireEvent.click(screen.getByLabelText('player.mobile.select'))
+    await openUpNext()
     const list = screen.getByRole('listbox', { name: 'player.mobile.upNext' })
     expect(list).toBeInTheDocument()
     expect(screen.getByTestId('upnext-1')).toHaveAttribute(
       'aria-selected',
       'true',
     )
+    // MENU: back to the main menu
     fireEvent.click(screen.getByLabelText('player.mobile.menu'))
-    expect(screen.queryByRole('listbox')).toBeNull()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('listbox', { name: 'player.mobile.upNext' }),
+    ).toBeNull()
+    expect(screen.getByTestId('menu-upNext')).toBeInTheDocument()
   })
 
-  it('moves through Up Next with the wheel, and plays the song picked with the centre button', () => {
+  it('moves through Up Next with the wheel, and plays the song picked with the centre button', async () => {
     const { controls } = renderPlayer({
       queue: [song(1), song(2), song(3), song(4)],
       current: 'u1',
     })
     openPlayer()
-    fireEvent.click(screen.getByLabelText('player.mobile.select'))
+    await openUpNext()
     const wheel = layOutWheel()
     // A quarter turn clockwise: 90° is 3 clicks of 24°, from the first song to the last (clamped)
     fireEvent.pointerDown(wheel, { clientX: 100, clientY: 10, pointerId: 1 })
@@ -385,13 +455,13 @@ describe('<MobilePlayer />', () => {
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
-  it('removes a song from Up Next, and Undo puts it back where it was', () => {
+  it('removes a song from Up Next, and Undo puts it back where it was', async () => {
     const { controls } = renderPlayer({
       queue: [song(1), song(2), song(3)],
       current: 'u1',
     })
     openPlayer()
-    fireEvent.click(screen.getByLabelText('player.mobile.select'))
+    await openUpNext()
     const row = screen.getByTestId('upnext-1')
     fireEvent.pointerDown(row, { clientX: 200, clientY: 10, pointerId: 1 })
     fireEvent.pointerMove(screen.getByRole('listbox'), {
@@ -414,13 +484,13 @@ describe('<MobilePlayer />', () => {
     expect(controls.move).toHaveBeenCalledWith(3, 1)
   })
 
-  it('moves on to the next song before removing the one playing', () => {
+  it('moves on to the next song before removing the one playing', async () => {
     const { controls } = renderPlayer({
       queue: [song(1), song(2), song(3)],
       current: 'u2',
     })
     openPlayer()
-    fireEvent.click(screen.getByLabelText('player.mobile.select'))
+    await openUpNext()
     const row = screen.getByTestId('upnext-1')
     fireEvent.pointerDown(row, { clientX: 200, clientY: 10, pointerId: 1 })
     fireEvent.pointerMove(screen.getByRole('listbox'), {

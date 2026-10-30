@@ -64,6 +64,22 @@ const SegmentedBattery = ({ level, charging, className }) => {
   )
 }
 
+// A speaker, quiet (no sound waves) or loud, at the ends of the volume bar
+const Speaker = ({ loud, className }) => (
+  <svg className={className} viewBox="0 0 13 10" aria-hidden>
+    <path d="M1 3.4 H3.6 L6.6 1 V9 L3.6 6.6 H1 Z" fill="currentColor" />
+    {loud && (
+      <path
+        d="M8.3 3.2 Q9.4 5 8.3 6.8 M10 1.6 Q12.2 5 10 8.4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinecap="round"
+      />
+    )}
+  </svg>
+)
+
 const useStyles = makeStyles(
   {
     // The black and white screens, drawn after Apple's 25th-anniversary iPod: bigger text, a thick
@@ -329,13 +345,21 @@ const useStyles = makeStyles(
       boxShadow: `0 0 0 1px ${LCD.accent}`,
       boxSizing: 'border-box',
       '$mono &': {
-        width: row(0.36),
-        height: row(0.36),
+        width: row(0.42),
+        height: row(0.42),
         background: LCD.text,
         border: 'none',
         boxShadow: 'none',
       },
     },
+    // The volume, while the wheel turns it: a bar between a quiet and a loud speaker
+    volume: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: row(0.2),
+      '& $bar': { flex: 1 },
+    },
+    speaker: { flex: '0 0 auto', height: row(0.46), width: 'auto' },
     // The slider over the bar, for touch and screen readers
     range: {
       position: 'absolute',
@@ -376,12 +400,26 @@ export const IpodScreen = ({
   mono = false,
   // Whether Now Playing shows the album (the mini's didn't)
   album = true,
+  // What the bottom of Now Playing shows: the song's "progress", the "volume" (the wheel turning
+  // it), or "scrub" (the wheel scrubbing, a diamond where to)
+  mode = 'progress',
+  // Whether the phone keeps the volume to itself (iPhones): a hint to use its buttons instead
+  volumeLocked = false,
 }) => {
   const classes = useStyles()
   const translate = useTranslate()
   const t = (key, opts) => translate(`player.mobile.${key}`, opts)
-  const { song, item, queue, index, playing, currentTime, duration, isRadio } =
-    audio
+  const {
+    song,
+    item,
+    queue,
+    index,
+    playing,
+    currentTime,
+    duration,
+    isRadio,
+    volume = 1,
+  } = audio
 
   // The cover: swipe it to skip, hold it for more
   const cover = usePress({
@@ -399,8 +437,8 @@ export const IpodScreen = ({
       })
     : t('batteryUnknown')
 
-  const scrubbing = scrubTime !== null
-  const shown = scrubbing ? scrubTime : currentTime
+  const scrubbing = scrubTime !== null || mode === 'scrub'
+  const shown = scrubTime !== null ? scrubTime : currentTime
   const progress = duration > 0 ? Math.min(100, (shown / duration) * 100) : 0
   const title = song.title || item.name || ''
   const artist = song.artist || item.singer || ''
@@ -482,34 +520,65 @@ export const IpodScreen = ({
       )}
       <div className={`${classes.footer} songTitle`}>
         {art && position && <div className={classes.position}>{position}</div>}
-        {!isRadio && (
+        {mode === 'volume' ? (
           <>
-            <div className={classes.bar}>
-              <div className={classes.fill} style={{ width: `${progress}%` }} />
-              {scrubbing && (
+            <div className={classes.volume} data-testid="volume">
+              <Speaker className={classes.speaker} />
+              <div
+                className={classes.bar}
+                role="meter"
+                aria-label={t('volume')}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(volume * 100)}
+              >
                 <div
-                  className={classes.diamond}
-                  style={{ left: `${progress}%` }}
-                  data-testid="scrub-diamond"
+                  className={classes.fill}
+                  style={{ width: `${volume * 100}%` }}
                 />
-              )}
-              <input
-                className={classes.range}
-                type="range"
-                min={0}
-                max={Math.max(1, Math.floor(duration))}
-                step={1}
-                value={Math.floor(shown)}
-                aria-label={t('seek')}
-                data-no-swipe
-                onChange={(e) => controls.seek(Number(e.target.value))}
-              />
+              </div>
+              <Speaker className={classes.speaker} loud />
             </div>
             <div className={classes.times}>
-              <span>{formatTime(shown)}</span>
-              <span>{formatTime(duration - shown, true)}</span>
+              {volumeLocked ? t('volumeLocked') : '\u00a0'}
             </div>
           </>
+        ) : (
+          !isRadio && (
+            <>
+              <div className={classes.bar}>
+                {/* Scrubbing, the early iPods showed just the diamond on an empty bar */}
+                {!(mono && scrubbing) && (
+                  <div
+                    className={classes.fill}
+                    style={{ width: `${progress}%` }}
+                  />
+                )}
+                {scrubbing && (
+                  <div
+                    className={classes.diamond}
+                    style={{ left: `${progress}%` }}
+                    data-testid="scrub-diamond"
+                  />
+                )}
+                <input
+                  className={classes.range}
+                  type="range"
+                  min={0}
+                  max={Math.max(1, Math.floor(duration))}
+                  step={1}
+                  value={Math.floor(shown)}
+                  aria-label={t('seek')}
+                  data-no-swipe
+                  onChange={(e) => controls.seek(Number(e.target.value))}
+                />
+              </div>
+              <div className={classes.times}>
+                <span>{formatTime(shown)}</span>
+                <span>{formatTime(duration - shown, true)}</span>
+              </div>
+            </>
+          )
         )}
       </div>
     </div>
