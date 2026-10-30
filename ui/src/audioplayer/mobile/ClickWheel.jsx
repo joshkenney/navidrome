@@ -144,7 +144,7 @@ export const ClickWheel = ({
     }
     const clicks = ticks(tr.total, step)
     if (clicks !== tr.clicks) {
-      buzz(3)
+      buzz('tick')
       onTurn?.(clicks - tr.clicks)
       tr.clicks = clicks
     }

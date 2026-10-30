@@ -154,7 +154,7 @@ export const UpNext = ({
     g.timer = setTimeout(() => {
       if (gesture.current !== g || g.mode !== 'pending') return
       g.mode = 'drag'
-      buzz(8)
+      buzz('hold')
       setDrag({ from: index, over: index })
     }, HOLD_MS)
     gesture.current = g
@@ -192,7 +192,7 @@ export const UpNext = ({
     if (g.mode === 'pending') {
       onPlay(g.index)
     } else if (g.mode === 'swipe' && dx <= -REMOVE_AT) {
-      buzz(8)
+      buzz('hold')
       onRemove(g.index)
     } else if (g.mode === 'drag') {
       const over = overIndex(e.clientY)

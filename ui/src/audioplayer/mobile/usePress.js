@@ -22,7 +22,7 @@ export const usePress = ({ onLongPress, onSwipeLeft, onSwipeRight }) => {
         if (press.current !== p || p.moved) return
         handled.current = true
         press.current = null
-        buzz(8)
+        buzz('hold')
         onLongPress()
       }, LONG_PRESS_MS)
     }

@@ -2,6 +2,7 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ClickWheel } from './ClickWheel'
+import { resetHaptics } from './haptics'
 
 // jsdom has no PointerEvent: without it, simulated pointer events have no coordinates
 if (!window.PointerEvent) {
@@ -48,6 +49,7 @@ const turnedBy = (onTurn) =>
 
 describe('<ClickWheel />', () => {
   beforeEach(() => {
+    resetHaptics()
     navigator.vibrate = vi.fn()
   })
 
@@ -66,7 +68,7 @@ describe('<ClickWheel />', () => {
     expect(navigator.vibrate).toHaveBeenCalled()
   })
 
-  it('clicks once every 6° when turned clockwise, with a buzz each time', () => {
+  it('clicks once every 6° when turned clockwise, buzzing as it clicks', () => {
     const h = renderWheel()
     // From the top of the ring (-90°) to its right (0°): a quarter turn clockwise
     fireEvent.pointerDown(h.wheel, at(100, 10))
@@ -76,7 +78,8 @@ describe('<ClickWheel />', () => {
     expect(h.onTurnStart).toHaveBeenCalledTimes(1)
     expect(turnedBy(h.onTurn)).toBe(15)
     expect(h.onTurnEnd).toHaveBeenCalledTimes(1)
-    expect(navigator.vibrate).toHaveBeenCalledTimes(h.onTurn.mock.calls.length)
+    // A wheel click's pulse (no faster than the phone can click)
+    expect(navigator.vibrate).toHaveBeenCalledWith(10)
     expect(h.wheel.setPointerCapture).toHaveBeenCalled()
   })
 
