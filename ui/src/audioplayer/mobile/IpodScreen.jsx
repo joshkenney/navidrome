@@ -7,6 +7,7 @@ import { UpNext } from './UpNext'
 import { IpodMenu } from './IpodMenu'
 import { usePress } from './usePress'
 import { Marquee } from './Marquee'
+import { useBattery } from './useBattery'
 
 const useStyles = makeStyles(
   {
@@ -49,13 +50,6 @@ const useStyles = makeStyles(
       border: `1px solid ${LCD.text}`,
       borderRadius: 2,
       position: 'relative',
-      '&::before': {
-        content: '""',
-        position: 'absolute',
-        inset: 1,
-        right: '25%',
-        background: LCD.text,
-      },
       '&::after': {
         content: '""',
         position: 'absolute',
@@ -65,6 +59,22 @@ const useStyles = makeStyles(
         height: '50%',
         background: LCD.text,
       },
+    },
+    // The charge left: the phone's (see useBattery)
+    batteryFill: {
+      position: 'absolute',
+      left: 1,
+      top: 1,
+      bottom: 1,
+      background: LCD.text,
+      transition: 'width 600ms ease-out',
+    },
+    bolt: {
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      overflow: 'visible',
     },
     // What is under the header, filling the screen
     content: { flex: '1 1 auto', minHeight: 0, position: 'relative' },
@@ -225,6 +235,15 @@ export const IpodScreen = ({
     onLongPress: onActions && (() => onActions(item)),
   })
 
+  // The phone's battery; full where the phone keeps it to itself (iPhones)
+  const battery = useBattery()
+  const batteryLevel = battery ? Math.max(0.04, battery.level) : 1
+  const batteryLabel = battery
+    ? t(battery.charging ? 'batteryCharging' : 'battery', {
+        percent: Math.round(battery.level * 100),
+      })
+    : t('batteryUnknown')
+
   const scrubbing = scrubTime !== null
   const shown = scrubbing ? scrubTime : currentTime
   const progress = duration > 0 ? Math.min(100, (shown / duration) * 100) : 0
@@ -322,8 +341,35 @@ export const IpodScreen = ({
             ? menu.title
             : t(view === 'upNext' ? 'upNext' : 'nowPlaying')}
         </Marquee>
-        <span className={classes.headerSide} aria-hidden>
-          <span className={classes.battery} />
+        <span className={classes.headerSide}>
+          <span
+            className={classes.battery}
+            role="img"
+            aria-label={batteryLabel}
+            title={batteryLabel}
+            data-testid="battery"
+          >
+            <span
+              className={classes.batteryFill}
+              style={{ width: `calc((100% - 2px) * ${batteryLevel})` }}
+            />
+            {battery?.charging && (
+              // A lightning bolt, in the screen's background colour over the charge
+              <svg
+                className={classes.bolt}
+                viewBox="0 0 20 10"
+                preserveAspectRatio="none"
+                aria-hidden
+              >
+                <path
+                  d="M11 0.5 L6 5.6 H9.4 L8 9.5 L13.6 4.2 H10 Z"
+                  fill={battery.level > 0.45 ? LCD.background : LCD.text}
+                  stroke={LCD.text}
+                  strokeWidth="0.4"
+                />
+              </svg>
+            )}
+          </span>
         </span>
       </div>
       <div className={classes.content}>
