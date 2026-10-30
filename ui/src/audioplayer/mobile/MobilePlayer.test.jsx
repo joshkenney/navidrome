@@ -165,6 +165,27 @@ describe('<MobilePlayer />', () => {
     expect(screen.getByRole('region')).toBeInTheDocument()
   })
 
+  it('scrubs with the click wheel, seeking when the finger lifts', () => {
+    const { controls } = renderPlayer()
+    openPlayer()
+    const wheel = screen.getByTestId('click-wheel')
+    wheel.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 200,
+    })
+    // A quarter turn clockwise: 15 clicks of a second, from 0:50
+    fireEvent.pointerDown(wheel, { clientX: 100, clientY: 10, pointerId: 1 })
+    fireEvent.pointerMove(wheel, { clientX: 190, clientY: 100, pointerId: 1 })
+    expect(screen.getByTestId('scrub-diamond')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toHaveTextContent('1:05')
+    expect(controls.seek).not.toHaveBeenCalled()
+    fireEvent.pointerUp(wheel, { clientX: 190, clientY: 100, pointerId: 1 })
+    expect(controls.seek).toHaveBeenCalledWith(65)
+    expect(screen.queryByTestId('scrub-diamond')).toBeNull()
+  })
+
   it('hides the progress for radio streams', () => {
     renderPlayer({
       queue: [song(1, { isRadio: true })],

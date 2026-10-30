@@ -13,9 +13,16 @@ export const makeControls = (audio, playerRef) => {
     togglePlay: () => audio?.togglePlay?.(),
     next: () => audio?.playNext?.(),
     prev: () => audio?.playPrev?.(),
+    // Through the player's own seek, like its progress bar: the player plays again whenever the
+    // song is ready to, unless it knows it is seeking, so a paused song would start playing
     seek: (seconds) => {
-      if (audio && Number.isFinite(seconds)) {
-        audio.currentTime = Math.max(0, seconds)
+      if (!audio || !Number.isFinite(seconds)) return
+      const to = Math.max(0, seconds)
+      const p = player()
+      if (p?.onAudioSeeked) {
+        p.onAudioSeeked(to)
+      } else {
+        audio.currentTime = to
       }
     },
     playAt: (index) => audio?.playByIndex?.(index),

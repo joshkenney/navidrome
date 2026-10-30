@@ -10,6 +10,8 @@ import { edition } from './ipodLook'
 
 // How far down a swipe on the screen goes to close the player
 const SWIPE_CLOSE = 60
+// Turning the click wheel scrubs this many seconds per click: a whole turn (60 clicks) is a minute
+const SECONDS_PER_CLICK = 1
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -52,6 +54,30 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
   const audio = useAudioState(audioInstance)
   const [open, setOpen] = useState(false)
   const swipe = useRef(null)
+  // Where the wheel is scrubbing to, shown on the screen until the finger lifts and it seeks there
+  const [scrubTime, setScrubTime] = useState(null)
+  const scrubRef = useRef(null)
+  const scrubbable = !audio.isRadio && audio.duration > 0
+
+  const startScrub = () => {
+    if (!scrubbable) return
+    scrubRef.current = audio.currentTime
+    setScrubTime(audio.currentTime)
+  }
+  const scrub = (clicks) => {
+    if (scrubRef.current === null) return
+    const to = Math.min(
+      audio.duration,
+      Math.max(0, scrubRef.current + clicks * SECONDS_PER_CLICK),
+    )
+    scrubRef.current = to
+    setScrubTime(to)
+  }
+  const endScrub = () => {
+    if (scrubRef.current !== null) controls.seek(scrubRef.current)
+    scrubRef.current = null
+    setScrubTime(null)
+  }
 
   // Opening adds a history entry, so the phone's Back button closes the player
   const openPlayer = useCallback(() => {
@@ -114,7 +140,11 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
             onPointerUp={onScreenPointerUp}
             onPointerCancel={() => (swipe.current = null)}
           >
-            <IpodScreen audio={audio} controls={controls} />
+            <IpodScreen
+              audio={audio}
+              controls={controls}
+              scrubTime={scrubTime}
+            />
           </div>
           <div className={classes.wheelArea}>
             <ClickWheel
@@ -123,6 +153,9 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
               onPrev={controls.prev}
               onNext={controls.next}
               onPlay={controls.togglePlay}
+              onTurnStart={startScrub}
+              onTurn={scrub}
+              onTurnEnd={endScrub}
             />
           </div>
         </div>

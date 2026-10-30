@@ -106,6 +106,19 @@ const useStyles = makeStyles(
       borderRadius: 2,
       background: LCD.bar,
     },
+    // Where the wheel is scrubbing to
+    diamond: {
+      position: 'absolute',
+      top: '50%',
+      width: 12,
+      height: 12,
+      marginLeft: -6,
+      marginTop: -6,
+      transform: 'rotate(45deg)',
+      background: LCD.background,
+      border: `2px solid ${LCD.bar}`,
+      boxSizing: 'border-box',
+    },
     // The slider over the bar, for touch and screen readers
     range: {
       position: 'absolute',
@@ -125,15 +138,17 @@ const useStyles = makeStyles(
   { name: 'NDIpodScreen' },
 )
 
-// The iPod's screen, showing the song playing ("Now Playing")
-export const IpodScreen = ({ audio, controls }) => {
+// The iPod's screen, showing the song playing ("Now Playing"). While the wheel scrubs, it shows
+// where to ("scrubTime"), with a diamond on the bar, like the iPod
+export const IpodScreen = ({ audio, controls, scrubTime = null }) => {
   const classes = useStyles()
   const translate = useTranslate()
   const t = (key, opts) => translate(`player.mobile.${key}`, opts)
   const { song, item, queue, index, playing, currentTime, duration, isRadio } =
     audio
 
-  const shown = currentTime
+  const scrubbing = scrubTime !== null
+  const shown = scrubbing ? scrubTime : currentTime
   const progress = duration > 0 ? Math.min(100, (shown / duration) * 100) : 0
   const title = song.title || item.name || ''
   const artist = song.artist || item.singer || ''
@@ -181,6 +196,13 @@ export const IpodScreen = ({ audio, controls }) => {
           <>
             <div className={classes.bar}>
               <div className={classes.fill} style={{ width: `${progress}%` }} />
+              {scrubbing && (
+                <div
+                  className={classes.diamond}
+                  style={{ left: `${progress}%` }}
+                  data-testid="scrub-diamond"
+                />
+              )}
               <input
                 className={classes.range}
                 type="range"

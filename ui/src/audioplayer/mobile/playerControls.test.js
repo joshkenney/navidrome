@@ -31,7 +31,17 @@ describe('makeControls', () => {
     expect(a.playByIndex).toHaveBeenCalledWith(3)
   })
 
-  it('seeks, never before the start', () => {
+  it("seeks through the player's own seek, so a paused song stays paused", () => {
+    const a = audio()
+    const p = { ...player(), onAudioSeeked: vi.fn() }
+    const c = makeControls(a, { current: p })
+    c.seek(42)
+    expect(p.onAudioSeeked).toHaveBeenCalledWith(42)
+    c.seek(-3)
+    expect(p.onAudioSeeked).toHaveBeenLastCalledWith(0)
+  })
+
+  it('seeks the audio itself when the player is not there, never before the start', () => {
     const a = audio()
     const c = makeControls(a, { current: null })
     c.seek(42)
