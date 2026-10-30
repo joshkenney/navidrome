@@ -8,17 +8,18 @@
 // four buttons on a ring around a scroll or touch wheel) or "row" (3rd generation: four buttons in
 // a row above a touch wheel)
 export const MODELS = {
-  // 1st (2001) and 2nd (2002) generation: 102 x 61.8 mm, 2" 160x128 screen
+  // 1st (2001) and 2nd (2002) generation: 102 x 61.8 mm, 2" 160x128 screen. Its proportions are
+  // those of Apple's own drawing of it, for the iPod's 25th anniversary (2026)
   scroll: {
     w: 61.8,
     h: 102,
-    r: 7.5,
-    window: { x: 8.9, y: 4.6, w: 44, h: 32, r: 1.4 },
-    lcd: { x: 11.1, y: 5.6, w: 39.6, h: 30 },
+    r: 5.7,
+    window: { x: 9.5, y: 4.8, w: 42.8, h: 35, r: 1.3 },
+    lcd: { x: 11.3, y: 6.6, w: 39.2, h: 31.4 },
     controls: 'ring',
-    ring: { cx: 30.9, cy: 70.4, d: 56 },
-    wheel: { cx: 30.9, cy: 70.4, d: 41.5 },
-    center: 13,
+    ring: { cx: 30.9, cy: 70, d: 52 },
+    wheel: { cx: 30.9, cy: 70, d: 40.2 },
+    center: 14.5,
   },
   // 3rd generation (2003): 104.1 x 61.8 mm, four buttons above a touch wheel
   row: {
@@ -116,95 +117,101 @@ const CLASSIC_LCD = {
 }
 // The black and white screens (1st to 4th generation, and the mini) showed no covers, only text,
 // and lit up with a backlight that went out after a few seconds (see MobilePlayer), leaving the
-// bare reflective screen: "unlit". The backlights differed a lot from one generation to the next
+// bare reflective screen: "unlit". They are drawn after Apple's 25th-anniversary iPod: a warm
+// dark grey ink, a solid ink bar on the item the wheel is on, and the backlight's bulbs glowing
+// at the screen's edges ("bulbs": how brightly). The backlights' colours differed from one
+// generation to the next
+const INK = '#484647'
+// The screen's glass, set in the dark frame round it
+const GLASS = 'inset 0 0 10px 2px rgba(77, 77, 77, 0.85)'
 
-// The bare screen, its backlight off: grey-olive, readable by the light falling on it
+// The bare screen, its backlight off: a warm grey, readable by the light falling on it
 const UNLIT = {
-  background: 'linear-gradient(180deg, #b4b7a4 0%, #9fa38f 100%)',
-  text: '#25281e',
-  muted: '#4a4e40',
-  bar: '#25281e',
-  track: 'rgba(37, 40, 30, 0.22)',
-  highlight: '#2b2e23',
-  highlightText: '#aeb19e',
-  glow: 'inset 0 0 6px rgba(0, 0, 0, 0.35)',
+  background: 'linear-gradient(135deg, #a5a59b 0%, #d6d5d0 100%)',
+  text: INK,
+  muted: '#5e5c5b',
+  bar: INK,
+  track: 'rgba(72, 70, 71, 0.12)',
+  highlight: INK,
+  highlightText: '#afaea7',
+  glow: GLASS,
+  bulbs: 0,
 }
 
-// The pixel grid of the early screens, which showed between the dots
+// The pixel grid of the 3rd generation's screen, which showed between the dots
 const PIXEL_GRID =
   'repeating-linear-gradient(0deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px)'
-// The 1st and 2nd generation's coarser dots
-const COARSE_GRID =
-  'repeating-linear-gradient(0deg, rgba(40,46,52,0.09) 0 1px, transparent 1px 4px), repeating-linear-gradient(90deg, rgba(40,46,52,0.09) 0 1px, transparent 1px 4px)'
 
-// 1st and 2nd generation: a cheap, uneven white backlight turned up too far. It glows, blown out
-// near the top left and dimmer in the corners, the light bleeding round the text, which smears a
-// little, and the coarse pixel grid shows
-const FUGLY = {
+// The parts every black and white screen shares
+const MONO = {
   mono: true,
-  background:
-    'radial-gradient(ellipse 80% 70% at 36% 30%, #ffffff 0%, #fdfefe 34%, #eef1f3 66%, #d6dcdf 100%)',
-  text: '#2a2f34',
-  muted: '#545b62',
-  bar: '#2a2f34',
-  track: 'rgba(42, 47, 52, 0.2)',
-  highlight: '#2a2f34',
-  highlightText: '#ffffff',
-  glow: 'inset 0 0 16px rgba(255, 255, 255, 0.85), inset 0 0 3px rgba(0, 0, 0, 0.4)',
-  grid: COARSE_GRID,
-  ghost:
-    '0 0 1.5px rgba(255, 255, 255, 0.95), 0.6px 0.4px 0 rgba(42, 47, 52, 0.3), -0.4px 0 1px rgba(42, 47, 52, 0.22)',
+  text: INK,
+  muted: '#5e5c5b',
+  bar: INK,
+  track: 'rgba(72, 70, 71, 0.12)',
+  highlight: INK,
   unlit: UNLIT,
+}
+
+// 1st and 2nd generation: the grey screen lit a pale, cool white, brighter towards the bulbs at
+// its edges, a ring of shadow inside the frame and a soft white bloom
+const FUGLY = {
+  ...MONO,
+  background: 'linear-gradient(135deg, #b3bfd1 0%, #c7d2e4 45%, #d8e2f3 100%)',
+  highlightText: '#b5c3d8',
+  glow: `${GLASS}, inset 0 0 0 4px rgba(71, 71, 71, 0.55), inset 0 0 14px 7px rgba(255, 255, 255, 0.22)`,
+  bulbs: 0.16,
 }
 
 // 3rd generation: a muted, greyish blue, not as blue as the 4th generation's
 const MUTED_BLUE = {
-  mono: true,
+  ...MONO,
   background:
     'radial-gradient(ellipse 85% 75% at 50% 38%, #eef2f5 0%, #d6dfe7 50%, #bccad6 88%, #abbbca 100%)',
-  text: '#1c2733',
-  muted: '#425060',
-  bar: '#1c2733',
-  track: 'rgba(28, 39, 51, 0.18)',
-  highlight: '#1c2733',
   highlightText: '#e1e8ee',
-  glow: 'inset 0 0 10px rgba(60, 82, 108, 0.3), inset 0 0 2px rgba(0, 0, 0, 0.3)',
+  glow: `${GLASS}, inset 0 0 10px rgba(60, 82, 108, 0.3)`,
   grid: PIXEL_GRID,
-  unlit: UNLIT,
+  bulbs: 0.1,
 }
 
 // 4th generation: a cooler, bluer white
 const ICY = {
-  mono: true,
+  ...MONO,
   background:
     'radial-gradient(ellipse 90% 80% at 50% 35%, #eef6ff 0%, #c9e1f8 50%, #9fc4ea 88%, #86b0dc 100%)',
-  text: '#0e2340',
-  muted: '#2f4a6e',
-  bar: '#0e2340',
-  track: 'rgba(14, 35, 64, 0.18)',
-  highlight: '#0e2340',
   highlightText: '#dcecfc',
-  glow: 'inset 0 0 10px rgba(40, 90, 160, 0.35), inset 0 0 2px rgba(0, 0, 0, 0.3)',
-  unlit: UNLIT,
+  glow: `${GLASS}, inset 0 0 10px rgba(40, 90, 160, 0.35)`,
+  bulbs: 0.1,
 }
 
-// The mini: a plain white backlight
+// The mini: a plain white backlight. Its small screen showed the song and the artist playing, not
+// the album
 const MINI_LIGHT = {
-  mono: true,
+  ...MONO,
   background: 'linear-gradient(180deg, #e2e9ec 0%, #c7d2d8 100%)',
-  text: '#1c2830',
-  muted: '#46545e',
-  bar: '#1c2830',
-  track: 'rgba(28, 40, 48, 0.2)',
-  highlight: '#1c2830',
   highlightText: '#dde5e9',
-  glow: 'inset 0 0 8px rgba(0, 0, 0, 0.2)',
-  unlit: UNLIT,
+  glow: GLASS,
+  bulbs: 0.08,
+  noAlbum: true,
 }
 
 // Materials. "face" is the front: glossy plastic, brushed aluminium or clear acrylic. The polished
 // steel back shows as a rim around the plastic fronts
 const plastic = (top, bottom) => ({ kind: 'plastic', top, bottom })
+// The 1st and 2nd generation, as Apple drew them for the iPod's 25th anniversary: white plastic
+// greying towards the bottom left, a polished chrome rim, a raised ring of buttons catching the
+// light, a finely textured scroll wheel set into it and a bordered centre button
+const ANNIVERSARY = {
+  face: { kind: 'plastic', top: '#f6f6f6', bottom: '#d6d6d6', diagonal: true },
+  rim: 'chrome',
+  windowFrame: '#525254',
+  ring: {
+    surface: ['#f4f4f4', '#e6e6e6'],
+    label: '#898989',
+    lower: true,
+    raised: true,
+  },
+}
 const aluminium = (light, base, dark, finish) => ({
   kind: 'aluminium',
   light,
@@ -255,14 +262,14 @@ export const SKINS = [
     group: 'classic',
     model: 'scroll',
     lcd: FUGLY,
-    face: plastic('#fdfdfd', '#e8e9eb'),
-    rim: true,
-    windowFrame: '#2a2c27',
-    ring: { surface: ['#fdfdfd', '#e9eaec'], label: '#8f9196', lower: true },
+    ...ANNIVERSARY,
+    // Its mechanical scroll wheel turned, a fine grain on it
     wheel: {
-      surface: ['#fafafa', '#e9eaec'],
-      label: '#8f9196',
-      center: ['#ffffff', '#ebecee'],
+      surface: ['#f1eeee', '#e4e4e4'],
+      label: '#898989',
+      center: ['#f2f2f2', '#c9c8c8'],
+      border: '#7e7e7e',
+      textured: true,
     },
   },
   {
@@ -271,14 +278,13 @@ export const SKINS = [
     group: 'classic',
     model: 'scroll',
     lcd: FUGLY,
-    face: plastic('#fdfdfd', '#e8e9eb'),
-    rim: true,
-    windowFrame: '#2a2c27',
-    ring: { surface: ['#fdfdfd', '#e9eaec'], label: '#8f9196', lower: true },
+    ...ANNIVERSARY,
+    // Its touch wheel didn't turn: smooth, a little whiter
     wheel: {
-      surface: ['#f6f6f7', '#ececee'],
-      label: '#8f9196',
-      center: ['#ffffff', '#ebecee'],
+      surface: ['#f6f5f5', '#ebebeb'],
+      label: '#898989',
+      center: ['#f4f4f4', '#cdcccc'],
+      border: '#858585',
     },
   },
   {
@@ -538,6 +544,7 @@ export const lcdVars = (lcd) => ({
   '--lcd-glow': lcd.glow || 'none',
   '--lcd-grid': lcd.grid || 'none',
   '--lcd-ghost': lcd.ghost || 'none',
+  '--lcd-bulbs': String(lcd.bulbs || 0),
 })
 
 // The screen's colours with its backlight on or off (only the black and white screens go dark)

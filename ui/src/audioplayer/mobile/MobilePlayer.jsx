@@ -10,6 +10,7 @@ import { useAudioState } from './useAudioState'
 import { lcdVars, modelOf, percentBox, screenOf, skinFor } from './skins'
 import { IpodBody } from './IpodBody'
 import { setHaptics } from './haptics'
+import { setClicks } from './clicks'
 import { addTracks, playTracks } from '../../actions'
 import { useIpodNavigation } from './useIpodNavigation'
 import { PlayerActions } from './PlayerActions'
@@ -26,8 +27,17 @@ const SCRUB_STEP = 6
 const LIST_STEP = 24
 // How long the "removed" notice (and its Undo) stays
 const UNDO_MS = 5000
-// The black and white iPods' backlight goes out this long after the last touch, like theirs
+// The black and white iPods' backlight goes out this long after the last touch, like theirs,
+// unless another timer is chosen in Personal settings (seconds, 0 for never on, or "always")
 export const BACKLIGHT_MS = 10000
+
+// The backlight's bulbs, behind the black and white screens' edges: three down each side, warm
+const BULB = 'rgb(254, 249, 220)'
+const bulb = (x, y, w, h, reach) =>
+  `radial-gradient(${w}% ${h}% at ${x}% ${y}%, ${BULB} 0%, rgba(254, 249, 220, 0.85) 6%, rgba(254, 249, 220, 0.15) ${reach}%, transparent 50%)`
+const BULBS = [19, 53, 83]
+  .flatMap((y) => [bulb(0, y, 50, 70, 20), bulb(100, y, 20, 83, 33)])
+  .join(', ')
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -87,6 +97,16 @@ const useStyles = makeStyles(
       backgroundImage: 'var(--lcd-grid, none)',
       boxShadow: 'var(--lcd-glow, none)',
     },
+    // The bulbs glowing through the lit screen's edges (how brightly: --lcd-bulbs, 0 unlit)
+    bulbs: {
+      position: 'absolute',
+      inset: 0,
+      pointerEvents: 'none',
+      backgroundImage: BULBS,
+      mixBlendMode: 'plus-lighter',
+      opacity: 'var(--lcd-bulbs, 0)',
+      transition: 'opacity 300ms ease-out',
+    },
     // The glass's reflection over the screen
     glare: {
       position: 'absolute',
@@ -111,19 +131,42 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
   useEffect(() => {
     setHaptics(settings.ipodHaptics !== false)
   }, [settings.ipodHaptics])
+  useEffect(() => {
+    setClicks(settings.ipodClicks !== false)
+  }, [settings.ipodClicks])
   const classes = useStyles({ look })
   const translate = useTranslate()
   const audio = useAudioState(audioInstance)
   const dispatch = useDispatch()
   const [open, setOpen] = useState(false)
-  // The backlight: on while the iPod is touched, out BACKLIGHT_MS after (black and white screens)
-  const [lit, setLit] = useState(true)
+  // The backlight (black and white screens): on when the iPod is touched, out after the timer.
+  // Holding MENU turns it off, or on until it is held again ("pinned")
+  const timer = settings.ipodBacklight ?? BACKLIGHT_MS / 1000
+  const [lit, setLit] = useState(timer !== 0)
+  const litNow = useRef(lit)
+  const litBeforeTouch = useRef(lit)
+  const pinned = useRef(false)
   const backlightTimer = useRef(null)
-  const wake = useCallback(() => {
-    setLit(true)
-    clearTimeout(backlightTimer.current)
-    backlightTimer.current = setTimeout(() => setLit(false), BACKLIGHT_MS)
+  const light = useCallback((on) => {
+    litNow.current = on
+    setLit(on)
   }, [])
+  const wake = useCallback(() => {
+    litBeforeTouch.current = litNow.current
+    clearTimeout(backlightTimer.current)
+    if (pinned.current) return
+    light(timer !== 0)
+    if (timer && timer !== 'always') {
+      backlightTimer.current = setTimeout(() => light(false), timer * 1000)
+    }
+  }, [timer, light])
+  const toggleBacklight = useCallback(() => {
+    clearTimeout(backlightTimer.current)
+    // The touch holding MENU woke it: what counts is how it was before
+    pinned.current = !litBeforeTouch.current
+    light(pinned.current)
+    litBeforeTouch.current = pinned.current
+  }, [light])
   useEffect(() => {
     if (open) wake()
     return () => clearTimeout(backlightTimer.current)
@@ -387,6 +430,8 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
               <IpodScreen
                 audio={audio}
                 art={!look.lcd.mono}
+                mono={!!look.lcd.mono}
+                album={!look.lcd.noAlbum}
                 coverLook={look.lcd.cover}
                 controls={controls}
                 scrubTime={scrubTime}
@@ -401,12 +446,14 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
                   onLongPress: (index) => setActionsItem(audio.queue[index]),
                 }}
               />
+              <div className={classes.bulbs} />
               <div className={classes.backlight} />
               <div className={classes.glare} />
             </div>
             <ClickWheel
               skin={look}
               onMenu={onMenu}
+              onMenuHold={look.lcd.mono ? toggleBacklight : undefined}
               onPrev={controls.prev}
               onNext={controls.next}
               onPlay={controls.togglePlay}

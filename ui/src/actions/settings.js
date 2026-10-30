@@ -4,6 +4,8 @@ export const SET_OMITTED_FIELDS = 'SET_OMITTED_FIELDS'
 export const SET_UI_FONT = 'SET_UI_FONT'
 export const SET_IPOD_SKIN = 'SET_IPOD_SKIN'
 export const SET_IPOD_HAPTICS = 'SET_IPOD_HAPTICS'
+export const SET_IPOD_CLICKS = 'SET_IPOD_CLICKS'
+export const SET_IPOD_BACKLIGHT = 'SET_IPOD_BACKLIGHT'
 
 export const setNotificationsState = (enabled) => ({
   type: SET_NOTIFICATIONS_STATE,
@@ -35,4 +37,17 @@ export const setIpodSkin = (skin) => ({
 export const setIpodHaptics = (on) => ({
   type: SET_IPOD_HAPTICS,
   data: on,
+})
+
+// Whether the phone player's click wheel clicks out loud
+export const setIpodClicks = (on) => ({
+  type: SET_IPOD_CLICKS,
+  data: on,
+})
+
+// How long the black and white iPods' backlight stays on after a touch: seconds, 0 (never on) or
+// "always"
+export const setIpodBacklight = (timer) => ({
+  type: SET_IPOD_BACKLIGHT,
+  data: timer,
 })

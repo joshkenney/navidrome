@@ -25,8 +25,52 @@ export const lowResCover = (src) => {
   return `${src}${src.includes('?') ? '&' : '?'}size=${LOW_RES}`
 }
 
+// The black and white screens' battery: an outline and four bars of charge, a bolt while it charges
+const SegmentedBattery = ({ level, charging, className }) => {
+  const bars = Math.min(4, Math.max(0, Math.ceil(level * 4)))
+  return (
+    <svg className={className} viewBox="0 0 24 11" aria-hidden>
+      <rect
+        x="0.75"
+        y="0.75"
+        width="20.5"
+        height="9.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <rect x="21.25" y="3" width="2" height="5" fill="currentColor" />
+      {charging ? (
+        <path
+          d="M12.5 1.6 L7.8 6 H10.9 L9.4 9.4 L15 4.7 H11.9 Z"
+          fill="currentColor"
+        />
+      ) : (
+        [0, 1, 2, 3]
+          .slice(0, bars)
+          .map((i) => (
+            <rect
+              key={i}
+              x={2.5 + i * 4.6}
+              y="2.5"
+              width="3.6"
+              height="6"
+              fill="currentColor"
+              data-testid="battery-bar"
+            />
+          ))
+      )}
+    </svg>
+  )
+}
+
 const useStyles = makeStyles(
   {
+    // The black and white screens, drawn after Apple's 25th-anniversary iPod: bigger text, a thick
+    // rule under the title, an outlined progress bar, all a little soft
+    mono: {
+      '& $header, & $content': { opacity: 0.85 },
+    },
     root: {
       height: '100%',
       background: LCD.background,
@@ -49,6 +93,14 @@ const useStyles = makeStyles(
       borderBottom: `1px solid ${LCD.track}`,
       background:
         'linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0))',
+      '$mono &': {
+        height: row(1.05),
+        margin: `0 ${row(0.15)}`,
+        padding: `0 ${row(0.15)}`,
+        fontSize: row(0.62),
+        borderBottom: `${row(0.075)} solid ${LCD.text}`,
+        background: 'none',
+      },
     },
     headerSide: { width: row(1.1), display: 'flex', alignItems: 'center' },
     headerTitle: {
@@ -75,6 +127,13 @@ const useStyles = makeStyles(
         height: '50%',
         background: LCD.text,
       },
+    },
+    batteryWrap: { marginLeft: 'auto', display: 'flex' },
+    monoBattery: {
+      display: 'block',
+      height: row(0.44),
+      width: 'auto',
+      overflow: 'visible',
     },
     // The charge left: the phone's (see useBattery)
     batteryFill: {
@@ -123,6 +182,7 @@ const useStyles = makeStyles(
     textTitle: {
       fontSize: row(0.62),
       lineHeight: row(0.78),
+      '$mono &': { fontSize: row(0.7), lineHeight: row(0.9) },
       maxWidth: '100%',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
@@ -131,6 +191,7 @@ const useStyles = makeStyles(
     textLine: {
       fontSize: row(0.52),
       lineHeight: row(0.7),
+      '$mono &': { fontSize: row(0.64), lineHeight: row(0.86) },
       maxWidth: '100%',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
@@ -225,12 +286,27 @@ const useStyles = makeStyles(
       color: LCD.muted,
       marginBottom: row(0.12),
     },
+    // Where the song is in the queue, at the top: "12 of 1,029"
+    positionTop: {
+      flex: '0 0 auto',
+      padding: `${row(0.18)} ${row(0.4)} 0`,
+      fontSize: row(0.5),
+      lineHeight: row(0.7),
+    },
     bar: {
       position: 'relative',
       height: row(0.36),
       borderRadius: 2,
       background: LCD.track,
       boxShadow: 'inset 0 1px 1px rgba(0, 0, 0, 0.25)',
+      '$mono &': {
+        height: row(0.5),
+        boxSizing: 'border-box',
+        border: `${row(0.055)} solid ${LCD.text}`,
+        borderRadius: row(0.25),
+        background: 'transparent',
+        boxShadow: 'none',
+      },
     },
     fill: {
       position: 'absolute',
@@ -239,6 +315,7 @@ const useStyles = makeStyles(
       bottom: 0,
       borderRadius: 2,
       background: LCD.bar,
+      '$mono &': { borderRadius: `${row(0.25)} 0 0 ${row(0.25)}` },
     },
     // Where the wheel is scrubbing to
     diamond: {
@@ -251,6 +328,13 @@ const useStyles = makeStyles(
       border: `1.5px solid ${LCD.background}`,
       boxShadow: `0 0 0 1px ${LCD.accent}`,
       boxSizing: 'border-box',
+      '$mono &': {
+        width: row(0.36),
+        height: row(0.36),
+        background: LCD.text,
+        border: 'none',
+        boxShadow: 'none',
+      },
     },
     // The slider over the bar, for touch and screen readers
     range: {
@@ -266,6 +350,8 @@ const useStyles = makeStyles(
       justifyContent: 'space-between',
       fontSize: row(0.42),
       marginTop: row(0.1),
+      fontVariantNumeric: 'tabular-nums',
+      '$mono &': { fontSize: row(0.6), marginTop: row(0.14) },
     },
   },
   { name: 'NDIpodScreen' },
@@ -286,6 +372,10 @@ export const IpodScreen = ({
   // How the screen shows the cover: "lowRes" (the iPod Photo's small, grainy covers), "tilt"
   // (the classic's, in perspective), or plain
   coverLook,
+  // A black and white screen, with the early iPods' software
+  mono = false,
+  // Whether Now Playing shows the album (the mini's didn't)
+  album = true,
 }) => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -314,6 +404,12 @@ export const IpodScreen = ({
   const progress = duration > 0 ? Math.min(100, (shown / duration) * 100) : 0
   const title = song.title || item.name || ''
   const artist = song.artist || item.singer || ''
+  const position =
+    queue.length > 1 &&
+    t('position', {
+      n: (index + 1).toLocaleString(),
+      total: queue.length.toLocaleString(),
+    })
 
   const nowPlaying = (
     <div className={classes.nowPlaying}>
@@ -362,24 +458,30 @@ export const IpodScreen = ({
           </div>
         </div>
       ) : (
-        <div
-          className={`${classes.textOnly} songTitle`}
-          data-testid="now-playing-text"
-          {...cover.handlers}
-        >
-          <Marquee className={classes.textTitle}>{title}</Marquee>
-          {artist && <Marquee className={classes.textLine}>{artist}</Marquee>}
-          {song.album && (
-            <Marquee className={classes.textLine}>{song.album}</Marquee>
+        <>
+          {position && (
+            <div
+              className={`${classes.positionTop} songTitle`}
+              data-testid="now-playing-position"
+            >
+              {position}
+            </div>
           )}
-        </div>
+          <div
+            className={`${classes.textOnly} songTitle`}
+            data-testid="now-playing-text"
+            {...cover.handlers}
+          >
+            <Marquee className={classes.textTitle}>{title}</Marquee>
+            {artist && <Marquee className={classes.textLine}>{artist}</Marquee>}
+            {album && song.album && (
+              <Marquee className={classes.textLine}>{song.album}</Marquee>
+            )}
+          </div>
+        </>
       )}
       <div className={`${classes.footer} songTitle`}>
-        {queue.length > 1 && (
-          <div className={classes.position}>
-            {t('position', { n: index + 1, total: queue.length })}
-          </div>
-        )}
+        {art && position && <div className={classes.position}>{position}</div>}
         {!isRadio && (
           <>
             <div className={classes.bar}>
@@ -414,7 +516,10 @@ export const IpodScreen = ({
   )
 
   return (
-    <div className={classes.root}>
+    <div
+      className={`${classes.root} ${mono ? classes.mono : ''}`}
+      data-mono={mono ? 'true' : undefined}
+    >
       <div className={`${classes.header} songTitle`}>
         <span className={classes.headerSide} aria-hidden>
           {playing ? '▶' : '❚❚'}
@@ -425,34 +530,50 @@ export const IpodScreen = ({
             : t(view === 'upNext' ? 'upNext' : 'nowPlaying')}
         </Marquee>
         <span className={classes.headerSide}>
-          <span
-            className={classes.battery}
-            role="img"
-            aria-label={batteryLabel}
-            title={batteryLabel}
-            data-testid="battery"
-          >
+          {mono ? (
             <span
-              className={classes.batteryFill}
-              style={{ width: `calc((100% - 2px) * ${batteryLevel})` }}
-            />
-            {battery?.charging && (
-              // A lightning bolt, in the screen's background colour over the charge
-              <svg
-                className={classes.bolt}
-                viewBox="0 0 20 10"
-                preserveAspectRatio="none"
-                aria-hidden
-              >
-                <path
-                  d="M11 0.5 L6 5.6 H9.4 L8 9.5 L13.6 4.2 H10 Z"
-                  fill={battery.level > 0.45 ? LCD.background : LCD.text}
-                  stroke={LCD.text}
-                  strokeWidth="0.4"
-                />
-              </svg>
-            )}
-          </span>
+              className={classes.batteryWrap}
+              role="img"
+              aria-label={batteryLabel}
+              title={batteryLabel}
+              data-testid="battery"
+            >
+              <SegmentedBattery
+                className={classes.monoBattery}
+                level={battery ? battery.level : 1}
+                charging={!!battery?.charging}
+              />
+            </span>
+          ) : (
+            <span
+              className={classes.battery}
+              role="img"
+              aria-label={batteryLabel}
+              title={batteryLabel}
+              data-testid="battery"
+            >
+              <span
+                className={classes.batteryFill}
+                style={{ width: `calc((100% - 2px) * ${batteryLevel})` }}
+              />
+              {battery?.charging && (
+                // A lightning bolt, in the screen's background colour over the charge
+                <svg
+                  className={classes.bolt}
+                  viewBox="0 0 20 10"
+                  preserveAspectRatio="none"
+                  aria-hidden
+                >
+                  <path
+                    d="M11 0.5 L6 5.6 H9.4 L8 9.5 L13.6 4.2 H10 Z"
+                    fill={battery.level > 0.45 ? LCD.background : LCD.text}
+                    stroke={LCD.text}
+                    strokeWidth="0.4"
+                  />
+                </svg>
+              )}
+            </span>
+          )}
         </span>
       </div>
       <div className={classes.content}>

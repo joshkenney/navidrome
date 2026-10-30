@@ -45,6 +45,33 @@ describe('<SelectIpod />', () => {
     })
   })
 
+  it('turns the click wheel sounds off', () => {
+    render(<SelectIpod />)
+    fireEvent.click(screen.getByLabelText('menu.personal.options.ipodClicks'))
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'SET_IPOD_CLICKS',
+      data: false,
+    })
+  })
+
+  it('times the backlight', () => {
+    render(<SelectIpod />)
+    // The default: 10 seconds
+    expect(
+      screen.getByText('menu.personal.options.ipodBacklightTimes.10'),
+    ).toBeInTheDocument()
+    fireEvent.mouseDown(
+      screen.getByText('menu.personal.options.ipodBacklightTimes.10'),
+    )
+    fireEvent.click(
+      screen.getByText('menu.personal.options.ipodBacklightTimes.always'),
+    )
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'SET_IPOD_BACKLIGHT',
+      data: 'always',
+    })
+  })
+
   it('turns the click wheel clicks off', () => {
     render(<SelectIpod />)
     fireEvent.click(screen.getByLabelText('menu.personal.options.ipodHaptics'))

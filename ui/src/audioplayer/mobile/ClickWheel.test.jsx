@@ -49,6 +49,27 @@ describe('<ClickWheel />', () => {
     navigator.vibrate = vi.fn()
   })
 
+  it('calls onMenuHold, not onMenu, when MENU is held, and onMenu on a tap', () => {
+    vi.useFakeTimers()
+    const onMenuHold = vi.fn()
+    const h = renderWheel({ onMenuHold })
+    const menu = screen.getByLabelText('player.mobile.menu')
+    fireEvent.pointerDown(menu, at(100, 20))
+    vi.advanceTimersByTime(700)
+    fireEvent.pointerUp(menu, at(100, 20))
+    fireEvent.click(menu)
+    expect(onMenuHold).toHaveBeenCalledTimes(1)
+    expect(h.onMenu).not.toHaveBeenCalled()
+    // A tap
+    fireEvent.pointerDown(menu, at(100, 20))
+    vi.advanceTimersByTime(100)
+    fireEvent.pointerUp(menu, at(100, 20))
+    fireEvent.click(menu)
+    expect(h.onMenu).toHaveBeenCalledTimes(1)
+    expect(onMenuHold).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
   it('presses the buttons around the ring and in the centre', () => {
     const h = renderWheel()
     fireEvent.click(screen.getByLabelText('player.mobile.menu'))

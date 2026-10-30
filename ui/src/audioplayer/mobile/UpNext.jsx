@@ -21,6 +21,21 @@ const useStyles = makeStyles(
       // The scroll bar in the screen's colour: aqua or blue on the colour screens
       scrollbarWidth: 'thin',
       scrollbarColor: `${LCD.accent} transparent`,
+      // On the black and white screens: the iPod's own scroll bar, an ink outline and thumb
+      '[data-mono] &': {
+        scrollbarWidth: 'auto',
+        scrollbarColor: 'auto',
+        '&::-webkit-scrollbar': { width: row(0.4) },
+        '&::-webkit-scrollbar-track': {
+          background: 'rgba(72, 70, 71, 0.1)',
+          border: `1px solid ${LCD.text}`,
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: LCD.text,
+          backgroundClip: 'padding-box',
+          border: '2px solid transparent',
+        },
+      },
       // Vertical scrolling stays native; swipes and drags are handled below
       touchAction: 'pan-y',
       margin: 0,
@@ -31,6 +46,7 @@ const useStyles = makeStyles(
       position: 'relative',
       overflow: 'hidden',
       borderBottom: `1px solid ${LCD.track}`,
+      '[data-mono] &': { borderBottom: 'none' },
       userSelect: 'none',
       WebkitUserSelect: 'none',
       WebkitTouchCallout: 'none',
@@ -55,10 +71,13 @@ const useStyles = makeStyles(
       padding: `${row(0.12)} ${row(0.36)}`,
       minHeight: row(1),
       boxSizing: 'border-box',
-      background: LCD.background,
+      // The screen shows through, its backlight unbroken from row to row
+      background: 'transparent',
       color: LCD.text,
       transition: 'transform 120ms ease-out',
     },
+    // A song moved by a finger: over the red "remove", or lifted out of the list
+    lifted: { background: LCD.background },
     highlighted: {
       background: LCD.highlight,
       color: LCD.highlightText,
@@ -74,6 +93,7 @@ const useStyles = makeStyles(
     title: {
       fontSize: row(0.55),
       lineHeight: row(0.72),
+      '[data-mono] &': { fontSize: row(0.66), lineHeight: row(0.84) },
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
@@ -254,6 +274,7 @@ export const UpNext = ({
               className={[
                 classes.content,
                 'songTitle',
+                (swiped < 0 || drag?.from === index) && classes.lifted,
                 index === highlight && classes.highlighted,
                 drag?.from === index && classes.dragging,
               ]

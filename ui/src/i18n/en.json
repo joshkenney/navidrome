@@ -646,8 +646,19 @@
           "transparent": "Transparent",
           "special": "Special editions"
         },
-        "ipodHaptics": "Click wheel clicks",
+        "ipodHaptics": "Click wheel vibration",
         "ipodHapticsHelp": "The click wheel clicks through your phone's vibration. Android phones, and iPhones with iOS 18 or later.",
+        "ipodClicks": "Click wheel sounds",
+        "ipodClicksHelp": "The click wheel clicks out loud, like the iPod's little speaker. iPhones stay quiet on silent.",
+        "ipodBacklight": "Backlight timer",
+        "ipodBacklightHelp": "How long the black and white screens stay lit after you touch the iPod. Hold MENU to turn the backlight on or off.",
+        "ipodBacklightTimes": {
+          "off": "Off",
+          "2": "2 seconds",
+          "5": "5 seconds",
+          "10": "10 seconds",
+          "always": "Always on"
+        },
         "replaygain": "ReplayGain Mode",
         "preAmp": "ReplayGain PreAmp (dB)",
         "gain": {

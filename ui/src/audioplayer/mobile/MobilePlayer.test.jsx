@@ -168,7 +168,9 @@ describe('<MobilePlayer />', () => {
     openPlayer()
     const dialog = screen.getByRole('dialog')
     expect(dialog).toHaveTextContent('player.mobile.nowPlaying')
-    expect(dialog).toHaveTextContent(`player.mobile.position:{"n":2,"total":2}`)
+    expect(dialog).toHaveTextContent(
+      `player.mobile.position:{"n":"2","total":"2"}`,
+    )
     expect(dialog).toHaveTextContent("Bob's iPod")
     const cover = screen.getByAltText('Blue Album')
     expect(cover).toHaveAttribute('src', 'cover-2.jpg')
@@ -489,6 +491,84 @@ describe('<MobilePlayer />', () => {
     // A touch lights it again
     fireEvent.pointerDown(dialog, { clientX: 10, clientY: 10, pointerId: 1 })
     expect(dialog).toHaveAttribute('data-backlight', 'on')
+    vi.useRealTimers()
+  })
+
+  it("shows the early iPods' Now Playing: where the song is at the top, a battery in four bars", () => {
+    renderPlayer({ settings: { ipodSkin: '1g' } })
+    openPlayer()
+    expect(screen.getByTestId('now-playing-position')).toHaveTextContent(
+      `player.mobile.position:{"n":"2","total":"2"}`,
+    )
+    expect(screen.getByTestId('now-playing-text')).toHaveTextContent(
+      'Blue Album',
+    )
+    // The phone keeps its battery to itself here: full
+    expect(screen.getAllByTestId('battery-bar')).toHaveLength(4)
+  })
+
+  it("leaves the album off the mini's small screen", () => {
+    renderPlayer({ settings: { ipodSkin: 'mini2-blue' } })
+    openPlayer()
+    const text = screen.getByTestId('now-playing-text')
+    expect(text).toHaveTextContent('Song 2')
+    expect(text).toHaveTextContent('Weezer')
+    expect(text).not.toHaveTextContent('Blue Album')
+  })
+
+  it('times the backlight as chosen in Personal settings', () => {
+    vi.useFakeTimers()
+    const { unmount } = renderPlayer({
+      settings: { ipodSkin: '3g', ipodBacklight: 2 },
+    })
+    openPlayer()
+    const dialog = () => screen.getByRole('dialog')
+    expect(dialog()).toHaveAttribute('data-backlight', 'on')
+    act(() => vi.advanceTimersByTime(2000))
+    expect(dialog()).toHaveAttribute('data-backlight', 'off')
+    unmount()
+
+    const always = renderPlayer({
+      settings: { ipodSkin: '3g', ipodBacklight: 'always' },
+    })
+    openPlayer()
+    act(() => vi.advanceTimersByTime(60000))
+    expect(dialog()).toHaveAttribute('data-backlight', 'on')
+    always.unmount()
+
+    // Off: never lit by a touch
+    renderPlayer({ settings: { ipodSkin: '3g', ipodBacklight: 0 } })
+    openPlayer()
+    expect(dialog()).toHaveAttribute('data-backlight', 'off')
+    fireEvent.pointerDown(dialog(), { clientX: 10, clientY: 10, pointerId: 1 })
+    expect(dialog()).toHaveAttribute('data-backlight', 'off')
+    vi.useRealTimers()
+  })
+
+  it('turns the backlight off and on by holding MENU, without going up a menu', () => {
+    vi.useFakeTimers()
+    renderPlayer({ settings: { ipodSkin: '1g' } })
+    openPlayer()
+    const dialog = screen.getByRole('dialog')
+    const menu = screen.getByLabelText('player.mobile.menu')
+    const hold = () => {
+      fireEvent.pointerDown(menu, { clientX: 10, clientY: 10, pointerId: 1 })
+      act(() => vi.advanceTimersByTime(700))
+      fireEvent.pointerUp(menu, { pointerId: 1 })
+      fireEvent.click(menu)
+    }
+    expect(dialog).toHaveAttribute('data-backlight', 'on')
+    hold()
+    expect(dialog).toHaveAttribute('data-backlight', 'off')
+    // Still Now Playing: the hold wasn't a press of MENU
+    expect(dialog).toHaveTextContent('player.mobile.nowPlaying')
+    // Held again: on, and it stays on
+    hold()
+    expect(dialog).toHaveAttribute('data-backlight', 'on')
+    act(() => vi.advanceTimersByTime(60000))
+    expect(dialog).toHaveAttribute('data-backlight', 'on')
+    hold()
+    expect(dialog).toHaveAttribute('data-backlight', 'off')
     vi.useRealTimers()
   })
 

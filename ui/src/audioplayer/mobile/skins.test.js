@@ -95,16 +95,28 @@ describe('skins', () => {
       const hex = css.match(/#[0-9a-f]{6}/gi)[i]
       return [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16))
     }
-    // 1st and 2nd generation: an uneven, blown-out white glow, no tint, its pixel grid and
-    // smeared text
+    // 1st and 2nd generation, after Apple's 25th-anniversary iPod: a pale, cool white, its bulbs
+    // glowing at the edges, in a warm dark grey ink
     const fugly = skinFor('1g').lcd
     expect(fugly).toBe(skinFor('2g').lcd)
-    expect(fugly.background).toMatch(/radial-gradient/)
-    expect(rgb(fugly.background, 0)).toEqual([255, 255, 255])
     const [fr, fg, fb] = rgb(fugly.background, 2)
-    expect(Math.max(fr, fg, fb) - Math.min(fr, fg, fb)).toBeLessThan(8)
-    expect(fugly.grid).toBeTruthy()
-    expect(fugly.ghost).toBeTruthy()
+    expect(fb).toBeGreaterThan(fr)
+    expect(Math.min(fr, fg, fb)).toBeGreaterThan(190)
+    expect(fugly.bulbs).toBeGreaterThan(0)
+    // Every black and white screen: Apple's ink, the same warm grey unlit, the bulbs off then
+    mono.forEach((id) => {
+      const lcd = skinFor(id).lcd
+      expect(lcd.text, id).toBe('#484647')
+      expect(lcd.highlight, id).toBe('#484647')
+      expect(lcd.bulbs, id).toBeGreaterThan(0)
+      expect(lcd.unlit.background, id).toMatch(/#a5a59b.*#d6d5d0/)
+      expect(screenOf(lcd, false).bulbs, id).toBe(0)
+    })
+    expect(skinFor('mini-pink').lcd.noAlbum).toBe(true)
+    expect(skinFor('4g').lcd.noAlbum).toBeFalsy()
+    // Its body: Apple's proportions, a chrome rim
+    expect(MODELS.scroll.r).toBeCloseTo(5.7, 1)
+    expect(skinFor('1g').rim).toBe('chrome')
     // 3rd generation: a muted blue; 4th: a stronger blue
     const [mr, , mb] = rgb(skinFor('3g').lcd.background)
     const [ir, , ib] = rgb(skinFor('4g').lcd.background)

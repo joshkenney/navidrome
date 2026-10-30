@@ -32,6 +32,15 @@ const playPausePath = (cx, cy, s) => {
   ].join(' ')
 }
 
+// An arc round (cx, cy), "r" from it, from one angle to another (degrees, clockwise from the top)
+const arcPath = (cx, cy, r, from, to) => {
+  const at = (deg) => {
+    const a = (deg * Math.PI) / 180
+    return `${cx + r * Math.sin(a)} ${cy - r * Math.cos(a)}`
+  }
+  return `M${at(from)} A${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${at(to)}`
+}
+
 const Labels = ({ cx, cy, r, color, size, lower, filter }) => (
   <g fill={color} filter={filter}>
     <text
@@ -39,7 +48,7 @@ const Labels = ({ cx, cy, r, color, size, lower, filter }) => (
       y={cy - r}
       fontSize={size * (lower ? 1.15 : 1)}
       fontFamily='"Helvetica Neue", Helvetica, Arial, sans-serif'
-      fontWeight={lower ? 400 : 700}
+      fontWeight={700}
       letterSpacing={lower ? 0 : size * 0.06}
       textAnchor="middle"
       dominantBaseline="central"
@@ -59,7 +68,9 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
   const u = (name) => `${id.current}-${name}`
   const m = modelOf(skin)
   const f = skin.face
-  const rim = skin.rim ? 0.55 : 0
+  // The 1st and 2nd generation, drawn after Apple's 25th-anniversary iPod: a polished chrome rim
+  const chrome = skin.rim === 'chrome'
+  const rim = chrome ? 0.75 : skin.rim ? 0.55 : 0
   const face = { x: rim, y: rim, w: m.w - 2 * rim, h: m.h - 2 * rim }
   const dark = f.kind === 'plastic' && parseInt(f.top.slice(1, 3), 16) < 0x80
   const satin = f.kind === 'aluminium' && f.finish === 'satin'
@@ -88,11 +99,81 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
           <stop offset="0.75" stopColor="#8c8f95" />
           <stop offset="1" stopColor="#d9dbde" />
         </linearGradient>
-        {f.kind === 'plastic' && (
+        {f.kind === 'plastic' && !f.diagonal && (
           <linearGradient id={u('face')} x1="0" y1="0" x2="0.35" y2="1">
             <stop offset="0" stopColor={f.top} />
             <stop offset="1" stopColor={f.bottom} />
           </linearGradient>
+        )}
+        {f.kind === 'plastic' && f.diagonal && (
+          // Greying from the top right to the bottom left
+          <linearGradient id={u('face')} x1="0" y1="1" x2="1" y2="0">
+            <stop offset="0" stopColor={f.bottom} />
+            <stop offset="1" stopColor={f.top} />
+          </linearGradient>
+        )}
+        {chrome && (
+          // Polished chrome: bands of light and dark all round, mirroring the room
+          <linearGradient id={u('chrome')} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#f7f7f8" />
+            <stop offset="0.18" stopColor="#b7b8bb" />
+            <stop offset="0.34" stopColor="#ececed" />
+            <stop offset="0.5" stopColor="#8e8f93" />
+            <stop offset="0.66" stopColor="#d8d9db" />
+            <stop offset="0.84" stopColor="#9a9b9f" />
+            <stop offset="1" stopColor="#e2e3e5" />
+          </linearGradient>
+        )}
+        {chrome && (
+          // And the sharp streaks of light across it
+          <linearGradient
+            id={u('chromeStreaks')}
+            x1="0"
+            y1="0"
+            x2="1"
+            y2="0"
+            gradientTransform="rotate(-23 0.5 0.5)"
+          >
+            <stop offset="0.2" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0.22" stopColor="#ffffff" stopOpacity="0.85" />
+            <stop offset="0.25" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0.44" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0.46" stopColor="#ffffff" stopOpacity="0.7" />
+            <stop offset="0.5" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0.73" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0.76" stopColor="#ffffff" stopOpacity="0.8" />
+            <stop offset="0.79" stopColor="#ffffff" stopOpacity="0" />
+          </linearGradient>
+        )}
+        {chrome && (
+          // The plastic's edge, rounding over: lit at the top left, shaded at the bottom right
+          <linearGradient id={u('plasticEdge')} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.95" />
+            <stop offset="0.55" stopColor="#ffffff" stopOpacity="0.6" />
+            <stop offset="1" stopColor="#8a8a8a" stopOpacity="0.55" />
+          </linearGradient>
+        )}
+        {skin.wheel.textured && (
+          // The scroll wheel's fine grain
+          <filter id={u('wheelGrain')} x="0" y="0" width="100%" height="100%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="5"
+              numOctaves="1"
+              seed="11"
+            />
+            <feColorMatrix
+              type="matrix"
+              values="0 0 0 0 0.45  0 0 0 0 0.45  0 0 0 0 0.45  0 0 0 0.55 -0.24"
+            />
+            <feComposite in2="SourceGraphic" operator="in" />
+          </filter>
+        )}
+        {skin.ring?.raised && (
+          // Soft light and shadow
+          <filter id={u('soft')} x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="0.9" />
+          </filter>
         )}
         {satin && (
           // Anodized aluminium, nearly flat: a touch lighter at the top, darker at the bottom
@@ -176,37 +257,56 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
             values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 -0.12"
           />
         </filter>
-        {/* The front's shine */}
+        {/* The front's shine: a glossy band, or on the anniversary's plastic a soft sheen */}
         <linearGradient id={u('gloss')} x1="0" y1="0" x2="0.9" y2="0.7">
           <stop
             offset="0"
             stopColor="#ffffff"
-            stopOpacity={dark ? 0.32 : 0.7}
+            stopOpacity={chrome ? 0.45 : dark ? 0.32 : 0.7}
           />
           <stop
-            offset="0.38"
+            offset={chrome ? 0.45 : 0.38}
             stopColor="#ffffff"
-            stopOpacity={dark ? 0.08 : 0.15}
+            stopOpacity={chrome ? 0.06 : dark ? 0.08 : 0.15}
           />
-          <stop offset="0.39" stopColor="#ffffff" stopOpacity="0" />
+          <stop
+            offset={chrome ? 0.55 : 0.39}
+            stopColor="#ffffff"
+            stopOpacity="0"
+          />
           <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
-        <radialGradient id={u('wheel')} cx="0.5" cy="0.45" r="0.55">
-          <stop offset="0.3" stopColor={skin.wheel.surface[0]} />
-          <stop offset="1" stopColor={skin.wheel.surface[1]} />
-        </radialGradient>
-        {/* The centre button, slightly domed */}
-        <radialGradient
-          id={u('center')}
-          cx="0.5"
-          cy="0.5"
-          fx="0.5"
-          fy="0.28"
-          r="0.6"
-        >
-          <stop offset="0" stopColor={skin.wheel.center[0]} />
-          <stop offset="1" stopColor={skin.wheel.center[1]} />
-        </radialGradient>
+        {skin.wheel.border ? (
+          // Lit from far off at the top right
+          <radialGradient id={u('wheel')} cx="1.3" cy="-1" r="2.2">
+            <stop offset="0.45" stopColor={skin.wheel.surface[0]} />
+            <stop offset="1" stopColor={skin.wheel.surface[1]} />
+          </radialGradient>
+        ) : (
+          <radialGradient id={u('wheel')} cx="0.5" cy="0.45" r="0.55">
+            <stop offset="0.3" stopColor={skin.wheel.surface[0]} />
+            <stop offset="1" stopColor={skin.wheel.surface[1]} />
+          </radialGradient>
+        )}
+        {/* The centre button, slightly domed (the anniversary's: shaded from the bottom left) */}
+        {skin.wheel.border ? (
+          <radialGradient id={u('center')} cx="-0.09" cy="2.09" r="2.3">
+            <stop offset="0" stopColor={skin.wheel.center[1]} />
+            <stop offset="0.75" stopColor={skin.wheel.center[0]} />
+          </radialGradient>
+        ) : (
+          <radialGradient
+            id={u('center')}
+            cx="0.5"
+            cy="0.5"
+            fx="0.5"
+            fy="0.28"
+            r="0.6"
+          >
+            <stop offset="0" stopColor={skin.wheel.center[0]} />
+            <stop offset="1" stopColor={skin.wheel.center[1]} />
+          </radialGradient>
+        )}
         {skin.ring && (
           <radialGradient id={u('ring')} cx="0.5" cy="0.4" r="0.6">
             <stop offset="0.6" stopColor={skin.ring.surface[0]} />
@@ -265,7 +365,20 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
 
       {/* The body */}
       {skin.rim && (
-        <rect width={m.w} height={m.h} rx={m.r} fill={`url(#${u('steel')})`} />
+        <rect
+          width={m.w}
+          height={m.h}
+          rx={m.r}
+          fill={`url(#${u(chrome ? 'chrome' : 'steel')})`}
+        />
+      )}
+      {chrome && (
+        <rect
+          width={m.w}
+          height={m.h}
+          rx={m.r}
+          fill={`url(#${u('chromeStreaks')})`}
+        />
       )}
       <g clipPath={`url(#${u('faceClip')})`}>
         {f.kind === 'clear' ? (
@@ -441,14 +554,29 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
         stroke={
           satin
             ? `url(#${u('chamfer')})`
-            : skin.tube
-              ? 'rgba(255,255,255,0.2)'
-              : dark
-                ? 'rgba(255,255,255,0.18)'
-                : 'rgba(255,255,255,0.75)'
+            : chrome
+              ? `url(#${u('plasticEdge')})`
+              : skin.tube
+                ? 'rgba(255,255,255,0.2)'
+                : dark
+                  ? 'rgba(255,255,255,0.18)'
+                  : 'rgba(255,255,255,0.75)'
         }
-        strokeWidth={satin ? 0.6 : 0.3}
+        strokeWidth={satin ? 0.6 : chrome ? 0.5 : 0.3}
       />
+      {chrome && (
+        // Where the plastic meets the chrome: a hairline of shadow and one of white
+        <rect
+          x={face.x}
+          y={face.y}
+          width={face.w}
+          height={face.h}
+          rx={m.r - rim}
+          fill="none"
+          stroke="rgba(110,110,110,0.55)"
+          strokeWidth="0.12"
+        />
+      )}
 
       {/* The screen's glass */}
       <rect
@@ -461,32 +589,93 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
         stroke="rgba(0,0,0,0.35)"
         strokeWidth="0.2"
       />
+      {chrome && (
+        // The frame's inner edge, catching the light
+        <rect
+          x={m.window.x + 0.35}
+          y={m.window.y + 0.35}
+          width={m.window.w - 0.7}
+          height={m.window.h - 0.7}
+          rx={Math.max(0, m.window.r - 0.35)}
+          fill="none"
+          stroke="rgba(255,255,255,0.14)"
+          strokeWidth="0.25"
+        />
+      )}
 
       {/* The 1st and 2nd generation's ring of buttons around the wheel */}
       {m.controls === 'ring' && (
         <>
+          {skin.ring.raised && (
+            // Raised off the front: its shadow, down and to the left
+            <circle
+              cx={m.ring.cx - 0.4}
+              cy={m.ring.cy + 0.6}
+              r={m.ring.d / 2 + 0.2}
+              fill="rgba(0,0,0,0.16)"
+              filter={`url(#${u('soft')})`}
+            />
+          )}
           <circle
             cx={m.ring.cx}
             cy={m.ring.cy}
             r={m.ring.d / 2}
             fill={`url(#${u('ring')})`}
-            stroke="rgba(0,0,0,0.16)"
+            stroke={
+              skin.ring.raised ? 'rgba(135,135,135,0.4)' : 'rgba(0,0,0,0.16)'
+            }
             strokeWidth="0.3"
           />
+          {skin.ring.raised && (
+            // The light caught on its rounded top, at the upper right and lower left
+            <g
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth={(m.ring.d / 2 - r) * 0.45}
+              strokeLinecap="round"
+              opacity="0.9"
+              filter={`url(#${u('soft')})`}
+            >
+              <path
+                d={arcPath(
+                  m.ring.cx,
+                  m.ring.cy,
+                  (m.ring.d / 2 + r) / 2,
+                  45,
+                  90,
+                )}
+              />
+              <path
+                d={arcPath(
+                  m.ring.cx,
+                  m.ring.cy,
+                  (m.ring.d / 2 + r) / 2,
+                  225,
+                  268,
+                )}
+              />
+            </g>
+          )}
           {[45, 135, 225, 315].map((deg) => {
             const a = (deg * Math.PI) / 180
             const r0 = r + 0.6
             const r1 = m.ring.d / 2
-            return (
+            const line = (offset, stroke, width) => (
               <line
-                key={deg}
-                x1={m.ring.cx + Math.cos(a) * r0}
-                y1={m.ring.cy + Math.sin(a) * r0}
-                x2={m.ring.cx + Math.cos(a) * r1}
-                y2={m.ring.cy + Math.sin(a) * r1}
-                stroke="rgba(0,0,0,0.22)"
-                strokeWidth="0.35"
+                x1={m.ring.cx + Math.cos(a) * r0 + offset}
+                y1={m.ring.cy + Math.sin(a) * r0 + offset}
+                x2={m.ring.cx + Math.cos(a) * r1 + offset}
+                y2={m.ring.cy + Math.sin(a) * r1 + offset}
+                stroke={stroke}
+                strokeWidth={width}
               />
+            )
+            return (
+              <g key={deg}>
+                {line(0, 'rgba(0,0,0,0.22)', 0.35)}
+                {/* Each groove's lit edge */}
+                {skin.ring.raised && line(0.25, 'rgba(255,255,255,0.9)', 0.2)}
+              </g>
             )
           })}
           <Labels
@@ -541,14 +730,49 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
         ))}
 
       {/* The wheel */}
+      {skin.wheel.border && (
+        // Set into the ring: its shadow, up and to the right
+        <circle
+          cx={wheel.cx + 0.4}
+          cy={wheel.cy - 0.5}
+          r={r}
+          fill="rgba(122,122,122,0.6)"
+          filter={skin.ring?.raised ? `url(#${u('soft')})` : undefined}
+        />
+      )}
       <circle
         cx={wheel.cx}
         cy={wheel.cy}
         r={r}
         fill={`url(#${u('wheel')})`}
-        stroke={m.controls === 'ring' ? 'rgba(0,0,0,0.32)' : 'rgba(0,0,0,0.12)'}
-        strokeWidth={m.controls === 'ring' ? 0.45 : 0.25}
+        stroke={
+          skin.wheel.border ||
+          (m.controls === 'ring' ? 'rgba(0,0,0,0.32)' : 'rgba(0,0,0,0.12)')
+        }
+        strokeWidth={
+          skin.wheel.border ? 0.35 : m.controls === 'ring' ? 0.45 : 0.25
+        }
       />
+      {skin.wheel.textured && (
+        <circle
+          cx={wheel.cx}
+          cy={wheel.cy}
+          r={r - 0.2}
+          fill="#ffffff"
+          filter={`url(#${u('wheelGrain')})`}
+        />
+      )}
+      {skin.wheel.border && (
+        // A light line just inside its border
+        <circle
+          cx={wheel.cx}
+          cy={wheel.cy}
+          r={r - 0.35}
+          fill="none"
+          stroke="rgba(249,249,249,0.6)"
+          strokeWidth="0.3"
+        />
+      )}
       {/* Its rim, a little shadowed at the top, lit at the bottom: it is set into the front */}
       <circle
         cx={wheel.cx}
@@ -574,8 +798,8 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
         cy={wheel.cy}
         r={m.center / 2}
         fill={`url(#${u('center')})`}
-        stroke="rgba(0,0,0,0.16)"
-        strokeWidth="0.25"
+        stroke={skin.wheel.border ? '#9f9f9f' : 'rgba(0,0,0,0.16)'}
+        strokeWidth={skin.wheel.border ? 0.35 : 0.25}
       />
     </svg>
   )

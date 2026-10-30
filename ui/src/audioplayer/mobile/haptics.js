@@ -8,6 +8,8 @@
 // during a touch. So on iPhones a hidden switch is flipped instead. Older iPhones can't vibrate
 // from a web page at all.
 
+import { click } from './clicks'
+
 const PULSES = { tick: 10, press: 15, hold: 25 }
 // The fastest the phone is asked to click: spinning the wheel fast makes many ticks
 const MIN_GAP_MS = 30
@@ -42,8 +44,10 @@ const flipSwitch = () => {
   iosSwitch.click()
 }
 
-// "kind": tick (a wheel click), press (a button) or hold (a long press)
+// "kind": tick (a wheel click), press (a button) or hold (a long press). Each is heard too, when
+// the click sounds are on (see clicks.js)
 export const buzz = (kind = 'press') => {
+  click(kind)
   if (!enabled) return
   const now = Date.now()
   if (kind === 'tick' && now - last < MIN_GAP_MS) return

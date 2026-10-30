@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { buzz } from './haptics'
@@ -7,6 +7,8 @@ import { circleBox, modelOf } from './skins'
 
 // How far a finger moves on the ring before it is turning the wheel, not pressing a button
 const DRAG_SLOP = 8
+// Holding MENU this long toggles the backlight, like the iPod's
+export const MENU_HOLD_MS = 600
 
 const useStyles = makeStyles(
   {
@@ -53,10 +55,11 @@ const useStyles = makeStyles(
 // the iPod chosen ("skin"): on the wheel, on a ring around it (1st and 2nd generation) or in a row
 // above it (3rd generation). Turning the wheel clicks once every "step" degrees: onTurn gets the
 // clicks (positive clockwise), between onTurnStart and onTurnEnd. A turn can start on a button's
-// label, which then isn't pressed
+// label, which then isn't pressed. Holding MENU calls onMenuHold instead of onMenu
 export const ClickWheel = ({
   skin,
   onMenu,
+  onMenuHold,
   onPrev,
   onNext,
   onPlay,
@@ -76,15 +79,34 @@ export const ClickWheel = ({
   const turn = useRef(null)
   // Set when a turn ends, so the click that ends it doesn't press the button it ended on
   const turned = useRef(false)
+  // Holding MENU: its timer, and whether it went off (then the click that ends the hold is no press)
+  const hold = useRef({ timer: null, done: false })
+  useEffect(() => () => clearTimeout(hold.current.timer), [])
 
   const press = (action) => () => {
     if (turned.current) {
       turned.current = false
       return
     }
+    if (hold.current.done) {
+      hold.current.done = false
+      return
+    }
     buzz()
     action?.()
   }
+
+  const startHold = () => {
+    clearTimeout(hold.current.timer)
+    hold.current.done = false
+    if (!onMenuHold) return
+    hold.current.timer = setTimeout(() => {
+      hold.current.done = true
+      buzz('hold')
+      onMenuHold()
+    }, MENU_HOLD_MS)
+  }
+  const endHold = () => clearTimeout(hold.current.timer)
 
   const onPointerDown = (e) => {
     turned.current = false
@@ -114,6 +136,7 @@ export const ClickWheel = ({
     if (!tr.turning) {
       if (Math.hypot(e.clientX - tr.x, e.clientY - tr.y) < DRAG_SLOP) return
       tr.turning = true
+      endHold() // A turn that starts on MENU isn't holding it
       // Only now, so a plain tap still clicks the button under the finger
       wheel.current?.setPointerCapture?.(e.pointerId)
       onTurnStart?.()
@@ -145,6 +168,13 @@ export const ClickWheel = ({
       aria-label={label}
       data-no-swipe
       onClick={press(onClick)}
+      {...(key === 'menu' && {
+        onPointerDown: startHold,
+        onPointerUp: endHold,
+        onPointerLeave: endHold,
+        onPointerCancel: endHold,
+        onContextMenu: (e) => e.preventDefault(),
+      })}
     />
   )
   const buttons = {

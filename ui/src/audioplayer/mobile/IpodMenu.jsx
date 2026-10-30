@@ -13,6 +13,21 @@ const useStyles = makeStyles(
       // The scroll bar in the screen's colour: aqua or blue on the colour screens
       scrollbarWidth: 'thin',
       scrollbarColor: `${LCD.accent} transparent`,
+      // On the black and white screens: the iPod's own scroll bar, an ink outline and thumb
+      '[data-mono] &': {
+        scrollbarWidth: 'auto',
+        scrollbarColor: 'auto',
+        '&::-webkit-scrollbar': { width: row(0.4) },
+        '&::-webkit-scrollbar-track': {
+          background: 'rgba(72, 70, 71, 0.1)',
+          border: `1px solid ${LCD.text}`,
+        },
+        '&::-webkit-scrollbar-thumb': {
+          background: LCD.text,
+          backgroundClip: 'padding-box',
+          border: '2px solid transparent',
+        },
+      },
       margin: 0,
       padding: 0,
       listStyle: 'none',
@@ -29,6 +44,8 @@ const useStyles = makeStyles(
       WebkitTapHighlightColor: 'transparent',
       borderBottom: (p) => `1px solid ${p.lcd.track}`,
       color: (p) => p.lcd.text,
+      // The early iPods' menus: no lines between the items, bigger text
+      '[data-mono] &': { borderBottom: 'none' },
     },
     highlighted: {
       background: (p) => p.lcd.highlight,
@@ -41,6 +58,7 @@ const useStyles = makeStyles(
     label: {
       fontSize: row(0.55),
       lineHeight: row(0.72),
+      '[data-mono] &': { fontSize: row(0.66), lineHeight: row(0.84) },
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
@@ -54,7 +72,15 @@ const useStyles = makeStyles(
       whiteSpace: 'nowrap',
     },
     side: { fontSize: row(0.42), color: (p) => p.lcd.muted },
-    more: { fontSize: row(0.66), lineHeight: 1, color: (p) => p.lcd.muted },
+    // The chevron on the items leading to another menu
+    more: {
+      display: 'block',
+      flex: '0 0 auto',
+      height: row(0.4),
+      width: 'auto',
+      color: (p) => p.lcd.muted,
+      '[data-mono] &': { color: LCD.text },
+    },
     note: {
       padding: row(0.4),
       fontSize: row(0.48),
@@ -136,9 +162,15 @@ export const IpodMenu = ({
           </div>
           {item.side && <span className={classes.side}>{item.side}</span>}
           {item.more && (
-            <span className={classes.more} aria-hidden>
-              ›
-            </span>
+            <svg className={classes.more} viewBox="0 0 6 10" aria-hidden>
+              <path
+                d="M1.2 1 L5 5 L1.2 9"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="square"
+              />
+            </svg>
           )}
         </li>
       ))}

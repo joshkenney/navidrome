@@ -3,13 +3,22 @@ import { useTranslate } from 'react-admin'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   ButtonBase,
+  FormControl,
   FormControlLabel,
   FormHelperText,
+  InputLabel,
+  MenuItem,
+  Select,
   Switch,
   Typography,
 } from '@material-ui/core'
 import { makeStyles, useTheme } from '@material-ui/core/styles'
-import { setIpodHaptics, setIpodSkin } from '../actions'
+import {
+  setIpodBacklight,
+  setIpodClicks,
+  setIpodHaptics,
+  setIpodSkin,
+} from '../actions'
 import {
   AUTO_SKIN,
   SKINS,
@@ -64,7 +73,11 @@ export const IpodPreview = ({ skin }) => {
   )
 }
 
-// Personal settings: the iPod the player looks like on phones, and its click wheel's clicks
+// The backlight timer's choices: seconds, 0 for off
+export const BACKLIGHT_TIMES = [0, 2, 5, 10, 'always']
+
+// Personal settings: the iPod the player looks like on phones, its click wheel's clicks (felt and
+// heard), and its backlight's timer
 export const SelectIpod = () => {
   const classes = useStyles()
   const theme = useTheme()
@@ -73,6 +86,8 @@ export const SelectIpod = () => {
   const t = (key) => translate(`menu.personal.options.${key}`)
   const current = useSelector((state) => state.settings?.ipodSkin) || AUTO_SKIN
   const haptics = useSelector((state) => state.settings?.ipodHaptics) !== false
+  const clicks = useSelector((state) => state.settings?.ipodClicks) !== false
+  const backlight = useSelector((state) => state.settings?.ipodBacklight) ?? 10
 
   const card = (id, name, skin) => (
     <ButtonBase
@@ -118,6 +133,34 @@ export const SelectIpod = () => {
         label={t('ipodHaptics')}
       />
       <FormHelperText>{t('ipodHapticsHelp')}</FormHelperText>
+      <FormControlLabel
+        className={classes.group}
+        control={
+          <Switch
+            color="primary"
+            checked={clicks}
+            onChange={(e) => dispatch(setIpodClicks(e.target.checked))}
+          />
+        }
+        label={t('ipodClicks')}
+      />
+      <FormHelperText>{t('ipodClicksHelp')}</FormHelperText>
+      <FormControl className={classes.group} style={{ minWidth: 200 }}>
+        <InputLabel id="ipod-backlight">{t('ipodBacklight')}</InputLabel>
+        <Select
+          labelId="ipod-backlight"
+          value={backlight}
+          onChange={(e) => dispatch(setIpodBacklight(e.target.value))}
+          data-testid="ipod-backlight"
+        >
+          {BACKLIGHT_TIMES.map((time) => (
+            <MenuItem key={time} value={time}>
+              {t(`ipodBacklightTimes.${time || 'off'}`)}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <FormHelperText>{t('ipodBacklightHelp')}</FormHelperText>
     </div>
   )
 }
