@@ -686,7 +686,15 @@
       "upNext": "Up Next",
       "remove": "Remove",
       "removed": "Removed \"%{name}\"",
-      "undo": "Undo"
+      "undo": "Undo",
+      "actions": "What to do with this song",
+      "love": "Love",
+      "unlove": "Unlove",
+      "goToAlbum": "Go to album",
+      "goToIpod": "Go to this iPod (%{name})",
+      "startRadio": "Start iPod Radio from this song",
+      "saveQueue": "Save the queue as a playlist",
+      "clearQueue": "Clear the queue"
     }
   },
   "about": {

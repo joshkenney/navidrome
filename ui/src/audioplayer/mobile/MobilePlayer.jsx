@@ -9,6 +9,7 @@ import { ClickWheel } from './ClickWheel'
 import { useAudioState } from './useAudioState'
 import { edition } from './ipodLook'
 import { addTracks } from '../../actions'
+import { PlayerActions } from './PlayerActions'
 
 // How far down a swipe on the screen goes to close the player
 const SWIPE_CLOSE = 60
@@ -68,6 +69,8 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
   // The song last removed from Up Next, which Undo puts back
   const [removed, setRemoved] = useState(null)
   const undoRef = useRef(null)
+  // The song whose actions are shown (from a long press), if any
+  const [actionsItem, setActionsItem] = useState(null)
   // Where the wheel is scrubbing to, shown on the screen until the finger lifts and it seeks there
   const [scrubTime, setScrubTime] = useState(null)
   const scrubRef = useRef(null)
@@ -173,6 +176,12 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
       setOpen(false)
     }
   }, [])
+  // Closes the player for a page about to open: going back in history would race the new page,
+  // so the player's history entry is just forgotten
+  const leavePlayer = useCallback(() => {
+    if (window.history.state?.ndPlayer) window.history.replaceState(null, '')
+    setOpen(false)
+  }, [])
 
   useEffect(() => {
     if (!open) return undefined
@@ -208,6 +217,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
           controls={controls}
           look={look}
           onOpen={openPlayer}
+          onActions={setActionsItem}
         />
       )}
       <Slide direction="up" in={open} mountOnEnter unmountOnExit>
@@ -228,11 +238,13 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
               controls={controls}
               scrubTime={scrubTime}
               view={view}
+              onActions={setActionsItem}
               upNext={{
                 highlight,
                 onPlay: playFromList,
                 onMove: moveInList,
                 onRemove: removeFromList,
+                onLongPress: (index) => setActionsItem(audio.queue[index]),
               }}
             />
           </div>
@@ -252,6 +264,11 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
           </div>
         </div>
       </Slide>
+      <PlayerActions
+        item={actionsItem}
+        onClose={() => setActionsItem(null)}
+        onLeave={leavePlayer}
+      />
       <Snackbar
         open={!!removed}
         autoHideDuration={UNDO_MS}

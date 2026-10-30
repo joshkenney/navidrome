@@ -4,6 +4,7 @@ import { makeStyles } from '@material-ui/core/styles'
 import { IpodLabel } from '../../ipods/IpodLabel'
 import { LCD, formatTime } from './ipodLook'
 import { UpNext } from './UpNext'
+import { usePress } from './usePress'
 
 const useStyles = makeStyles(
   {
@@ -147,12 +148,20 @@ export const IpodScreen = ({
   scrubTime = null,
   view = 'nowPlaying',
   upNext = {},
+  onActions,
 }) => {
   const classes = useStyles()
   const translate = useTranslate()
   const t = (key, opts) => translate(`player.mobile.${key}`, opts)
   const { song, item, queue, index, playing, currentTime, duration, isRadio } =
     audio
+
+  // The cover: swipe it to skip, hold it for more
+  const cover = usePress({
+    onSwipeLeft: controls.next,
+    onSwipeRight: controls.prev,
+    onLongPress: onActions && (() => onActions(item)),
+  })
 
   const scrubbing = scrubTime !== null
   const shown = scrubbing ? scrubTime : currentTime
@@ -169,6 +178,7 @@ export const IpodScreen = ({
             src={item.cover}
             alt={song.album || title}
             draggable={false}
+            {...cover.handlers}
           />
         )}
         <div className={`${classes.info} songTitle`}>

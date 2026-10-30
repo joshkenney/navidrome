@@ -14,6 +14,11 @@ vi.mock('react-admin', () => ({
   useTranslate: () => (key, opts) =>
     opts ? `${key}:${JSON.stringify(opts)}` : key,
 }))
+// The actions menu has its own test: here, only which song it was opened for
+vi.mock('./PlayerActions', () => ({
+  PlayerActions: ({ item }) =>
+    item ? <div data-testid="actions">{item.name}</div> : null,
+}))
 vi.mock('../../ipods/useIpodName', () => ({
   useIpodName: (id, name) => name,
 }))
@@ -310,6 +315,44 @@ describe('<MobilePlayer />', () => {
     expect(controls.next).toHaveBeenCalled()
     // Not removed until the player has moved on (here it never does)
     expect(controls.remove).not.toHaveBeenCalled()
+  })
+
+  it('skips songs when the cover is swiped', () => {
+    const { controls } = renderPlayer()
+    openPlayer()
+    const cover = screen.getByAltText('Blue Album')
+    fireEvent.pointerDown(cover, { clientX: 200, clientY: 100, pointerId: 1 })
+    fireEvent.pointerUp(cover, { clientX: 100, clientY: 105, pointerId: 1 })
+    expect(controls.next).toHaveBeenCalledTimes(1)
+    fireEvent.pointerDown(cover, { clientX: 100, clientY: 100, pointerId: 1 })
+    fireEvent.pointerUp(cover, { clientX: 220, clientY: 96, pointerId: 1 })
+    expect(controls.prev).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows what to do with a song held: its cover, the strip, or a song of Up Next', () => {
+    vi.useFakeTimers()
+    renderPlayer({ queue: [song(1), song(2), song(3)] })
+    // The strip: holding it doesn't open the player
+    const strip = screen.getByRole('region')
+    fireEvent.pointerDown(strip, { clientX: 50, clientY: 800, pointerId: 1 })
+    act(() => vi.advanceTimersByTime(600))
+    fireEvent.pointerUp(strip, { clientX: 50, clientY: 800, pointerId: 1 })
+    fireEvent.click(screen.getByRole('button', { name: 'player.mobile.open' }))
+    expect(screen.getByTestId('actions')).toHaveTextContent('Song 2')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    vi.useRealTimers()
+  })
+
+  it('shows the actions of the cover held', () => {
+    vi.useFakeTimers()
+    renderPlayer()
+    openPlayer()
+    const cover = screen.getByAltText('Blue Album')
+    fireEvent.pointerDown(cover, { clientX: 100, clientY: 100, pointerId: 1 })
+    act(() => vi.advanceTimersByTime(600))
+    fireEvent.pointerUp(cover, { clientX: 100, clientY: 100, pointerId: 1 })
+    expect(screen.getByTestId('actions')).toHaveTextContent('Song 2')
+    vi.useRealTimers()
   })
 
   it('hides the progress for radio streams', () => {

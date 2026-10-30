@@ -5,6 +5,7 @@ import { IconButton } from '@material-ui/core'
 import PlayArrowIcon from '@material-ui/icons/PlayArrow'
 import PauseIcon from '@material-ui/icons/Pause'
 import { LCD, edition } from './ipodLook'
+import { usePress } from './usePress'
 
 // Height of the strip, without the phone's safe area (the iPhone home bar)
 export const STRIP_HEIGHT = 56
@@ -83,11 +84,13 @@ const useStyles = makeStyles(
 
 // The collapsed phone player: a strip of iPod screen at the bottom showing the song playing. A tap
 // or a swipe up opens the whole iPod
-export const ScreenStrip = ({ audio, controls, look, onOpen }) => {
+export const ScreenStrip = ({ audio, controls, look, onOpen, onActions }) => {
   const classes = useStyles({ look })
   const translate = useTranslate()
   const start = useRef(null)
   const { song, item, playing, currentTime, duration, isRadio } = audio
+  // Holding the strip shows what can be done with the song, instead of opening the player
+  const hold = usePress({ onLongPress: onActions && (() => onActions(item)) })
 
   // A swipe up opens the player; a tap is a click (below), so mice and keyboards work too. A
   // click that ends a swipe is ignored, as the swipe already opened it
@@ -95,11 +98,13 @@ export const ScreenStrip = ({ audio, controls, look, onOpen }) => {
   const onPointerDown = (e) => {
     start.current = { x: e.clientX, y: e.clientY }
     swiped.current = false
+    hold.handlers.onPointerDown(e)
   }
   const onPointerUp = (e) => {
+    hold.handlers.onPointerUp(e)
     const from = start.current
     start.current = null
-    if (!from) return
+    if (!from || hold.wasHandled()) return
     const dy = e.clientY - from.y
     if (dy < -SWIPE_OPEN && Math.abs(e.clientX - from.x) < Math.abs(dy)) {
       swiped.current = true
@@ -107,6 +112,7 @@ export const ScreenStrip = ({ audio, controls, look, onOpen }) => {
     }
   }
   const onClick = () => {
+    if (hold.wasHandled()) return
     if (swiped.current) {
       swiped.current = false
       return
@@ -130,7 +136,12 @@ export const ScreenStrip = ({ audio, controls, look, onOpen }) => {
       aria-label={translate('player.mobile.nowPlaying')}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
-      onPointerCancel={() => (start.current = null)}
+      onPointerMove={hold.handlers.onPointerMove}
+      onPointerCancel={(e) => {
+        start.current = null
+        hold.handlers.onPointerCancel(e)
+      }}
+      onContextMenu={hold.handlers.onContextMenu}
       onClick={onClick}
     >
       <div
