@@ -68,6 +68,9 @@ describe('skins', () => {
         'mini-pink',
         'mini-blue',
         'mini-green',
+        'mini2-pink',
+        'mini2-blue',
+        'mini2-green',
         'transparent',
         '4g-u2',
         '4g-hp',
@@ -87,23 +90,57 @@ describe('skins', () => {
     ;['photo', '4g-hp', '5g-black', 'classic-silver'].forEach((id) =>
       expect(skinFor(id).lcd.mono, id).toBeFalsy(),
     )
-    // 1st and 2nd generation: an uneven mint glow, its pixel grid and smeared text
+    const rgb = (css, i = 1) => {
+      const hex = css.match(/#[0-9a-f]{6}/gi)[i]
+      return [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16))
+    }
+    // 1st and 2nd generation: an uneven, blown-out white glow, no tint, its pixel grid and
+    // smeared text
     const fugly = skinFor('1g').lcd
     expect(fugly).toBe(skinFor('2g').lcd)
     expect(fugly.background).toMatch(/radial-gradient/)
+    expect(rgb(fugly.background, 0)).toEqual([255, 255, 255])
+    const [fr, fg, fb] = rgb(fugly.background, 2)
+    expect(Math.max(fr, fg, fb) - Math.min(fr, fg, fb)).toBeLessThan(8)
     expect(fugly.grid).toBeTruthy()
     expect(fugly.ghost).toBeTruthy()
-    // 3rd generation: warm amber; 4th: bluish
-    const warm = skinFor('3g').lcd.background
-    const icy = skinFor('4g').lcd.background
-    const rgb = (css) => {
-      const hex = css.match(/#[0-9a-f]{6}/gi)[1]
-      return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+    // 3rd generation: a muted blue; 4th: a stronger blue
+    const [mr, , mb] = rgb(skinFor('3g').lcd.background)
+    const [ir, , ib] = rgb(skinFor('4g').lcd.background)
+    expect(mb).toBeGreaterThan(mr)
+    expect(ib - ir).toBeGreaterThan(mb - mr)
+  })
+
+  it('gives the iPod Photo its small, grainy covers, and only it', () => {
+    expect(skinFor('photo').lcd.lowRes).toBe(true)
+    expect(skinFor('4g-hp').lcd.lowRes).toBe(true)
+    ;['5g-white', 'classic-black', 'transparent'].forEach((id) =>
+      expect(skinFor(id).lcd.lowRes, id).toBeFalsy(),
+    )
+  })
+
+  it("gives the 2nd generation minis brighter colours, the wheel's labels in them, and no gold", () => {
+    const minis2 = SKINS.filter((s) => s.id.startsWith('mini2-'))
+    expect(minis2.map((s) => s.id)).toEqual([
+      'mini2-pink',
+      'mini2-blue',
+      'mini2-green',
+    ])
+    minis2.forEach((s) => {
+      expect(s.group).toBe('mini')
+      expect(s.wheel.label).not.toBe(skinFor('mini-pink').wheel.label)
+    })
+    const saturation = (hex) => {
+      const [r, g, b] = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16))
+      return Math.max(r, g, b) - Math.min(r, g, b)
     }
-    const [wr, , wb] = rgb(warm)
-    const [ir, , ib] = rgb(icy)
-    expect(wr).toBeGreaterThan(wb + 60)
-    expect(ib).toBeGreaterThan(ir + 20)
+    ;['pink', 'blue', 'green'].forEach((c) =>
+      expect(saturation(skinFor(`mini2-${c}`).face.base)).toBeGreaterThan(
+        saturation(skinFor(`mini-${c}`).face.base),
+      ),
+    )
+    // Squarer corners than the other iPods
+    expect(MODELS.mini.r).toBeLessThan(MODELS.click5.r / 2)
   })
 
   it('turns the black and white screens grey when their backlight goes out, and only them', () => {

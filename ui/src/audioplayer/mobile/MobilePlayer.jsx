@@ -382,11 +382,12 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
               transition: dragging ? 'none' : 'transform 220ms ease-out',
             }}
           >
-            <IpodBody skin={look} className={classes.body} />
+            <IpodBody skin={look} lit={lit} className={classes.body} />
             <div className={classes.lcd} style={percentBox(model, model.lcd)}>
               <IpodScreen
                 audio={audio}
                 art={!look.lcd.mono}
+                lowRes={!!look.lcd.lowRes}
                 controls={controls}
                 scrubTime={scrubTime}
                 view={view}

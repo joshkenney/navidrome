@@ -65,11 +65,12 @@ export const MODELS = {
     wheel: { cx: 30.9, cy: 75.2, d: 38.7 },
     center: 13.6,
   },
-  // iPod mini (2004-2005): 91 x 51 mm, 1.67" 138x110 screen, an aluminium tube
+  // iPod mini (2004-2005): 91 x 51 mm, 1.67" 138x110 screen, an aluminium tube. Seen from the
+  // front its corners are nearly square: the tube's roundness is on its sides
   mini: {
     w: 50.8,
     h: 91.4,
-    r: 6.2,
+    r: 3.2,
     window: { x: 7.4, y: 5.3, w: 36, h: 29.7, r: 1 },
     lcd: { x: 8.4, y: 6.4, w: 34, h: 27.2 },
     controls: 'click',
@@ -88,6 +89,13 @@ const COLOR_LCD = {
   highlight: 'linear-gradient(180deg, #5b9be0 0%, #2d6cbf 100%)',
   highlightText: '#ffffff',
   coverFilter: 'none',
+}
+// The iPod Photo's screen (2004): colour, but small (220x176) and coarse. Its covers were tiny,
+// blocky and grainy (see IpodScreen)
+const PHOTO_LCD = {
+  ...COLOR_LCD,
+  coverFilter: 'contrast(1.06) saturate(1.12)',
+  lowRes: true,
 }
 // The black and white screens (1st to 4th generation, and the mini) showed no covers, only text,
 // and lit up with a backlight that went out after a few seconds (see MobilePlayer), leaving the
@@ -108,38 +116,42 @@ const UNLIT = {
 // The pixel grid of the early screens, which showed between the dots
 const PIXEL_GRID =
   'repeating-linear-gradient(0deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px)'
+// The 1st and 2nd generation's coarser dots
+const COARSE_GRID =
+  'repeating-linear-gradient(0deg, rgba(40,46,52,0.09) 0 1px, transparent 1px 4px), repeating-linear-gradient(90deg, rgba(40,46,52,0.09) 0 1px, transparent 1px 4px)'
 
-// 1st and 2nd generation: a cheap, uneven backlight, a sickly mint glow with a hot spot near the
-// top left and dim corners, washed-out text that smears a little, and the pixel grid showing
+// 1st and 2nd generation: a cheap, uneven white backlight turned up too far. It glows, blown out
+// near the top left and dimmer in the corners, the light bleeding round the text, which smears a
+// little, and the coarse pixel grid shows
 const FUGLY = {
   mono: true,
   background:
-    'radial-gradient(ellipse 75% 62% at 32% 28%, #d8f5e8 0%, #aed9c7 42%, #86b3a0 78%, #6c937f 100%)',
-  text: '#25392f',
-  muted: '#3f5a4d',
-  bar: '#25392f',
-  track: 'rgba(37, 57, 47, 0.2)',
-  highlight: '#2c4237',
-  highlightText: '#bfe5d4',
-  glow: 'inset 0 0 14px rgba(40, 70, 55, 0.55), inset 0 0 3px rgba(0, 0, 0, 0.4)',
-  grid: PIXEL_GRID,
+    'radial-gradient(ellipse 80% 70% at 36% 30%, #ffffff 0%, #fdfefe 34%, #eef1f3 66%, #d6dcdf 100%)',
+  text: '#2a2f34',
+  muted: '#545b62',
+  bar: '#2a2f34',
+  track: 'rgba(42, 47, 52, 0.2)',
+  highlight: '#2a2f34',
+  highlightText: '#ffffff',
+  glow: 'inset 0 0 16px rgba(255, 255, 255, 0.85), inset 0 0 3px rgba(0, 0, 0, 0.4)',
+  grid: COARSE_GRID,
   ghost:
-    '0.6px 0.4px 0 rgba(37, 57, 47, 0.35), -0.4px 0 1px rgba(37, 57, 47, 0.25)',
+    '0 0 1.5px rgba(255, 255, 255, 0.95), 0.6px 0.4px 0 rgba(42, 47, 52, 0.3), -0.4px 0 1px rgba(42, 47, 52, 0.22)',
   unlit: UNLIT,
 }
 
-// 3rd generation: a warm amber glow, like its red-lit buttons
-const WARM = {
+// 3rd generation: a muted, greyish blue, not as blue as the 4th generation's
+const MUTED_BLUE = {
   mono: true,
   background:
-    'radial-gradient(ellipse 85% 75% at 50% 38%, #ffe2a8 0%, #fbc36d 50%, #e89a3f 85%, #c97a28 100%)',
-  text: '#3a1d04',
-  muted: '#6e3f12',
-  bar: '#3a1d04',
-  track: 'rgba(58, 29, 4, 0.2)',
-  highlight: '#3a1d04',
-  highlightText: '#ffd998',
-  glow: 'inset 0 0 12px rgba(160, 80, 10, 0.45), inset 0 0 2px rgba(0, 0, 0, 0.35)',
+    'radial-gradient(ellipse 85% 75% at 50% 38%, #eef2f5 0%, #d6dfe7 50%, #bccad6 88%, #abbbca 100%)',
+  text: '#1c2733',
+  muted: '#425060',
+  bar: '#1c2733',
+  track: 'rgba(28, 39, 51, 0.18)',
+  highlight: '#1c2733',
+  highlightText: '#e1e8ee',
+  glow: 'inset 0 0 10px rgba(60, 82, 108, 0.3), inset 0 0 2px rgba(0, 0, 0, 0.3)',
   grid: PIXEL_GRID,
   unlit: UNLIT,
 }
@@ -176,11 +188,12 @@ const MINI_LIGHT = {
 // Materials. "face" is the front: glossy plastic, brushed aluminium or clear acrylic. The polished
 // steel back shows as a rim around the plastic fronts
 const plastic = (top, bottom) => ({ kind: 'plastic', top, bottom })
-const aluminium = (light, base, dark) => ({
+const aluminium = (light, base, dark, finish) => ({
   kind: 'aluminium',
   light,
   base,
   dark,
+  finish,
 })
 
 const WHITE_WHEEL = {
@@ -199,8 +212,11 @@ const U2_WHEEL = {
   center: ['#2a2a2d', '#141416'],
 }
 
-// An iPod mini in one of its anodized colours: an off-white wheel, labels in the body's colour
-const mini = (id, name, light, base, dark, label) => ({
+// An iPod mini in one of its anodized colours, with an off-white wheel. The first ones (2004) had
+// soft colours and grey labels on the wheel; the second (2005) brighter colours, labels in the
+// body's colour, and no gold
+const MINI_LABEL = '#a3a6ab'
+const mini = (id, name, light, base, dark, label = MINI_LABEL) => ({
   id,
   name,
   group: 'mini',
@@ -253,12 +269,17 @@ export const SKINS = [
     name: '3rd generation (2003)',
     group: 'classic',
     model: 'row',
-    lcd: WARM,
+    lcd: MUTED_BLUE,
     face: plastic('#fdfdfd', '#e6e7e9'),
     rim: true,
     windowFrame: '#0d0d0e',
-    // Its buttons were lit red
-    row: { surface: ['#ffffff', '#eaebed'], label: '#e8331e', glow: true },
+    // Its buttons lit up red with the backlight, and were plain grey without it
+    row: {
+      surface: ['#ffffff', '#eaebed'],
+      label: '#e8331e',
+      unlitLabel: '#a7a9ae',
+      glow: true,
+    },
     wheel: {
       surface: ['#f7f7f8', '#ebebed'],
       label: '#9a9ca1',
@@ -281,7 +302,7 @@ export const SKINS = [
     name: 'iPod Photo (2004)',
     group: 'classic',
     model: 'click4',
-    lcd: COLOR_LCD,
+    lcd: PHOTO_LCD,
     face: plastic('#fdfdfd', '#e6e7e9'),
     rim: true,
     windowFrame: '#0d0d0e',
@@ -330,55 +351,45 @@ export const SKINS = [
     group: 'classic',
     model: 'classic',
     lcd: COLOR_LCD,
-    // The 2008-2009 "black" was a space grey front with a black wheel
-    face: aluminium('#6a6c71', '#4a4c51', '#2f3034'),
+    // The 2008-2009 "black" was a space grey front, smooth anodized aluminium with a soft sheen
+    // and a polished edge, and a black wheel
+    face: aluminium('#777a80', '#56595f', '#36383c', 'satin'),
     rim: true,
     windowFrame: '#050506',
     wheel: {
-      surface: ['#232325', '#151517'],
-      label: '#8a8b90',
-      center: ['#2c2c2f', '#18181a'],
+      surface: ['#26272a', '#141416'],
+      label: '#94969b',
+      center: ['#3a3b3f', '#1b1c1e'],
     },
   },
+  mini('mini-silver', 'mini, silver (2004)', '#f1f2f4', '#c9ccd1', '#9fa3aa'),
+  mini('mini-gold', 'mini, gold (2004)', '#f3e6c0', '#d6bd82', '#b0935a'),
+  mini('mini-pink', 'mini, pink (2004)', '#f8dce8', '#e8b4cb', '#c48ea6'),
+  mini('mini-blue', 'mini, blue (2004)', '#dcebf3', '#a9cbdf', '#7da2b9'),
+  mini('mini-green', 'mini, green (2004)', '#e2f1d6', '#b6d9a1', '#88ad73'),
   mini(
-    'mini-silver',
-    'mini, silver (2004)',
-    '#f1f2f4',
-    '#c9ccd1',
-    '#9fa3aa',
-    '#a3a6ab',
+    'mini2-pink',
+    'mini 2nd generation, pink (2005)',
+    '#ffc8df',
+    '#f47fb4',
+    '#c94d88',
+    '#ee6aa6',
   ),
   mini(
-    'mini-gold',
-    'mini, gold (2004)',
-    '#f3e6c0',
-    '#d6bd82',
-    '#b0935a',
-    '#c1a468',
+    'mini2-blue',
+    'mini 2nd generation, blue (2005)',
+    '#b8e6fa',
+    '#2fade3',
+    '#137cad',
+    '#209fd8',
   ),
   mini(
-    'mini-pink',
-    'mini, pink (2004)',
-    '#f8d6e6',
-    '#e6a4c3',
-    '#c47b9f',
-    '#d98fb2',
-  ),
-  mini(
-    'mini-blue',
-    'mini, blue (2005)',
-    '#bfe4f2',
-    '#4bb3d6',
-    '#24809f',
-    '#3aa3c7',
-  ),
-  mini(
-    'mini-green',
-    'mini, green (2004)',
-    '#def3cf',
-    '#a5d48a',
-    '#76a95c',
-    '#8fc274',
+    'mini2-green',
+    'mini 2nd generation, green (2005)',
+    '#d6f7bb',
+    '#82d64e',
+    '#4c9d27',
+    '#6cc63b',
   ),
   {
     id: 'transparent',
@@ -413,7 +424,7 @@ export const SKINS = [
     group: 'special',
     // A white iPod Photo, the Hogwarts crest engraved on its back
     model: 'click4',
-    lcd: COLOR_LCD,
+    lcd: PHOTO_LCD,
     face: plastic('#fdfdfd', '#e6e7e9'),
     rim: true,
     windowFrame: '#0d0d0e',

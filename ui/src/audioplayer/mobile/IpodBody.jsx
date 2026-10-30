@@ -52,7 +52,8 @@ const Labels = ({ cx, cy, r, color, size, lower, filter }) => (
   </g>
 )
 
-export const IpodBody = ({ skin, className, style }) => {
+// "lit": whether the backlight is on, which lit the 3rd generation's buttons too
+export const IpodBody = ({ skin, lit = true, className, style }) => {
   const id = useRef(null)
   if (id.current === null) id.current = `ipod${++ids}`
   const u = (name) => `${id.current}-${name}`
@@ -61,6 +62,8 @@ export const IpodBody = ({ skin, className, style }) => {
   const rim = skin.rim ? 0.55 : 0
   const face = { x: rim, y: rim, w: m.w - 2 * rim, h: m.h - 2 * rim }
   const dark = f.kind === 'plastic' && parseInt(f.top.slice(1, 3), 16) < 0x80
+  const satin = f.kind === 'aluminium' && f.finish === 'satin'
+  const rowLit = !skin.row?.unlitLabel || lit
   const wheel = m.wheel
   const r = wheel.d / 2
 
@@ -89,7 +92,51 @@ export const IpodBody = ({ skin, className, style }) => {
             <stop offset="1" stopColor={f.bottom} />
           </linearGradient>
         )}
-        {f.kind === 'aluminium' && !skin.tube && (
+        {satin && (
+          // Smooth anodized aluminium: a broad, soft sheen across it, no streaks
+          <linearGradient id={u('face')} x1="0" y1="0" x2="0.75" y2="1">
+            <stop offset="0" stopColor={f.light} />
+            <stop offset="0.3" stopColor={f.base} />
+            <stop offset="0.42" stopColor={f.base} />
+            <stop offset="0.62" stopColor={f.light} stopOpacity="0.4" />
+            <stop offset="0.84" stopColor={f.base} />
+            <stop offset="1" stopColor={f.dark} />
+          </linearGradient>
+        )}
+        {satin && (
+          // Lit from above: a little brighter at the top, darker at the bottom
+          <linearGradient id={u('sheen')} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.14" />
+            <stop offset="0.3" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0.8" stopColor="#000000" stopOpacity="0" />
+            <stop offset="1" stopColor="#000000" stopOpacity="0.2" />
+          </linearGradient>
+        )}
+        {satin && (
+          // Its polished, bevelled edge: bright where the light catches it, dark opposite
+          <linearGradient id={u('chamfer')} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.75" />
+            <stop offset="0.45" stopColor="#ffffff" stopOpacity="0.25" />
+            <stop offset="0.55" stopColor="#000000" stopOpacity="0.15" />
+            <stop offset="1" stopColor="#000000" stopOpacity="0.45" />
+          </linearGradient>
+        )}
+        {satin && (
+          // The anodizing's fine, even grain
+          <filter id={u('grain')} x="0" y="0" width="100%" height="100%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="1.6"
+              numOctaves="2"
+              seed="3"
+            />
+            <feColorMatrix
+              type="matrix"
+              values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 -0.2"
+            />
+          </filter>
+        )}
+        {f.kind === 'aluminium' && !skin.tube && !satin && (
           <linearGradient id={u('face')} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor={f.light} />
             <stop offset="0.45" stopColor={f.base} />
@@ -312,7 +359,7 @@ export const IpodBody = ({ skin, className, style }) => {
             fill={`url(#${u('face')})`}
           />
         )}
-        {f.kind === 'aluminium' && (
+        {f.kind === 'aluminium' && !satin && (
           <rect
             x={face.x}
             y={face.y}
@@ -321,6 +368,25 @@ export const IpodBody = ({ skin, className, style }) => {
             filter={`url(#${u('brushed')})`}
             opacity={skin.tube ? 0.16 : 0.5}
           />
+        )}
+        {satin && (
+          <>
+            <rect
+              x={face.x}
+              y={face.y}
+              width={face.w}
+              height={face.h}
+              filter={`url(#${u('grain')})`}
+              opacity="0.09"
+            />
+            <rect
+              x={face.x}
+              y={face.y}
+              width={face.w}
+              height={face.h}
+              fill={`url(#${u('sheen')})`}
+            />
+          </>
         )}
         {(f.kind === 'plastic' || f.kind === 'clear') && (
           <rect
@@ -340,8 +406,14 @@ export const IpodBody = ({ skin, className, style }) => {
         height={face.h - 0.3}
         rx={m.r - rim - 0.15}
         fill="none"
-        stroke={dark ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.75)'}
-        strokeWidth="0.3"
+        stroke={
+          satin
+            ? `url(#${u('chamfer')})`
+            : dark
+              ? 'rgba(255,255,255,0.18)'
+              : 'rgba(255,255,255,0.75)'
+        }
+        strokeWidth={satin ? 0.45 : 0.3}
       />
 
       {/* The screen's glass */}
@@ -407,8 +479,12 @@ export const IpodBody = ({ skin, className, style }) => {
               strokeWidth="0.3"
             />
             <g
-              fill={skin.row.label}
-              filter={skin.row.glow ? `url(#${u('glow')})` : undefined}
+              fill={rowLit ? skin.row.label : skin.row.unlitLabel}
+              filter={
+                rowLit && skin.row.glow ? `url(#${u('glow')})` : undefined
+              }
+              data-lit={rowLit ? 'true' : 'false'}
+              style={{ transition: 'fill 400ms ease-out' }}
             >
               {i === 0 && <path d={skipPath(x, m.row.cy, 2.2, false)} />}
               {i === 1 && (

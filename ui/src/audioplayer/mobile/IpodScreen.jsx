@@ -9,6 +9,22 @@ import { usePress } from './usePress'
 import { Marquee } from './Marquee'
 import { useBattery } from './useBattery'
 
+// Film grain, for the iPod Photo's covers
+const GRAIN =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")"
+
+// How big (pixels) the iPod Photo's covers are fetched, then blown up blocky: its screen was small
+const LOW_RES = 72
+
+// The cover's address, asking the server for a small one
+export const lowResCover = (src) => {
+  if (!src) return src
+  if (/[?&]size=\d+/.test(src)) {
+    return src.replace(/([?&]size=)\d+/, (_, key) => `${key}${LOW_RES}`)
+  }
+  return `${src}${src.includes('?') ? '&' : '?'}size=${LOW_RES}`
+}
+
 const useStyles = makeStyles(
   {
     root: {
@@ -133,6 +149,31 @@ const useStyles = makeStyles(
       touchAction: 'none',
       filter: LCD.coverFilter,
     },
+    // The iPod Photo's cover: small and blown up, its pixels showing, and grainy
+    lowRes: {
+      position: 'relative',
+      height: '100%',
+      maxWidth: '48%',
+      aspectRatio: '1 / 1',
+      flex: '0 0 auto',
+      borderRadius: 2,
+      overflow: 'hidden',
+      '& > img': {
+        width: '100%',
+        maxWidth: 'none',
+        imageRendering: 'pixelated',
+      },
+      '&::after': {
+        content: '""',
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        backgroundImage: GRAIN,
+        backgroundSize: '48px 48px',
+        mixBlendMode: 'overlay',
+        opacity: 0.6,
+      },
+    },
     info: {
       flex: 1,
       minWidth: 0,
@@ -221,6 +262,8 @@ export const IpodScreen = ({
   onActions,
   // Whether the screen shows covers: the black and white ones didn't
   art = true,
+  // The iPod Photo's coarse screen: small, grainy covers
+  lowRes = false,
 }) => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -254,15 +297,26 @@ export const IpodScreen = ({
     <div className={classes.nowPlaying}>
       {art ? (
         <div className={classes.body}>
-          {item.cover && (
-            <img
-              className={classes.cover}
-              src={item.cover}
-              alt={song.album || title}
-              draggable={false}
-              {...cover.handlers}
-            />
-          )}
+          {item.cover &&
+            (lowRes ? (
+              <span className={classes.lowRes} data-testid="low-res-cover">
+                <img
+                  className={classes.cover}
+                  src={lowResCover(item.cover)}
+                  alt={song.album || title}
+                  draggable={false}
+                  {...cover.handlers}
+                />
+              </span>
+            ) : (
+              <img
+                className={classes.cover}
+                src={item.cover}
+                alt={song.album || title}
+                draggable={false}
+                {...cover.handlers}
+              />
+            ))}
           <div className={`${classes.info} songTitle`}>
             <Marquee className={classes.title}>{title}</Marquee>
             {artist && <Marquee className={classes.line}>{artist}</Marquee>}
