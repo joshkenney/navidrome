@@ -70,7 +70,7 @@ export const MODELS = {
   mini: {
     w: 50.8,
     h: 91.4,
-    r: 3.2,
+    r: 1.4,
     window: { x: 7.4, y: 5.3, w: 36, h: 29.7, r: 1 },
     lcd: { x: 8.4, y: 6.4, w: 34, h: 27.2 },
     controls: 'click',
@@ -80,14 +80,22 @@ export const MODELS = {
 }
 
 // The screens
+
+// The colour screens' green battery
+const GREEN_BATTERY =
+  'linear-gradient(180deg, #b8f58c 0%, #63d13a 55%, #3fa923 100%)'
+
+// The 5th generation's colour screen (2005): a glossy aqua progress bar and scrubbing diamond
 const COLOR_LCD = {
   background: 'linear-gradient(180deg, #e9eff3 0%, #d3dde4 100%)',
   text: '#1c2630',
   muted: '#4c5964',
-  bar: '#1c2630',
+  bar: 'linear-gradient(180deg, #b9f4ff 0%, #5fd8ee 45%, #1fb3d4 55%, #2cc3df 100%)',
+  accent: '#27bcdb',
   track: 'rgba(28, 38, 48, 0.18)',
   highlight: 'linear-gradient(180deg, #5b9be0 0%, #2d6cbf 100%)',
   highlightText: '#ffffff',
+  battery: GREEN_BATTERY,
   coverFilter: 'none',
 }
 // The iPod Photo's screen (2004): colour, but small (220x176) and coarse. Its covers were tiny,
@@ -95,7 +103,16 @@ const COLOR_LCD = {
 const PHOTO_LCD = {
   ...COLOR_LCD,
   coverFilter: 'contrast(1.06) saturate(1.12)',
-  lowRes: true,
+  cover: 'lowRes',
+}
+// The 6th and 7th generation classic's screen (2007): a deeper blue bar with a tighter shine, and
+// the cover leaning back in perspective over its reflection
+const CLASSIC_LCD = {
+  ...COLOR_LCD,
+  bar: 'linear-gradient(180deg, #7fa6f0 0%, #2f63d6 40%, #1442b5 52%, #1d4fc4 100%)',
+  accent: '#1a4bc0',
+  highlight: 'linear-gradient(180deg, #4f86e8 0%, #1f55c9 100%)',
+  cover: 'tilt',
 }
 // The black and white screens (1st to 4th generation, and the mini) showed no covers, only text,
 // and lit up with a backlight that went out after a few seconds (see MobilePlayer), leaving the
@@ -335,31 +352,47 @@ export const SKINS = [
     name: '6th/7th generation classic, silver (2007)',
     group: 'classic',
     model: 'classic',
-    lcd: COLOR_LCD,
-    face: aluminium('#f3f4f6', '#d3d6da', '#aeb2b8'),
+    lcd: CLASSIC_LCD,
+    face: aluminium('#eceef0', '#d8dbde', '#bdc1c6', 'satin'),
     rim: true,
     windowFrame: '#0b0b0c',
+    // A white wheel, grey labels, and a centre button of the front's aluminium
     wheel: {
-      surface: ['#fbfbfb', '#efefef'],
-      label: '#a1a3a8',
-      center: ['#e9eaec', '#c3c6cb'],
+      surface: ['#fafafa', '#ececed'],
+      label: '#a5a8ad',
+      center: ['#e2e4e7', '#c8cbcf'],
+    },
+  },
+  {
+    id: 'classic6-black',
+    name: '6th generation classic, black (2007)',
+    group: 'classic',
+    model: 'classic',
+    lcd: CLASSIC_LCD,
+    // A deep black front
+    face: aluminium('#323336', '#242528', '#17181a', 'satin'),
+    rim: true,
+    windowFrame: '#050506',
+    wheel: {
+      surface: ['#18181a', '#0c0c0d'],
+      label: '#b9babe',
+      center: ['#2e2f32', '#1f2022'],
     },
   },
   {
     id: 'classic-black',
-    name: '6th/7th generation classic, black (2009)',
+    name: '7th generation classic, black (2009)',
     group: 'classic',
     model: 'classic',
-    lcd: COLOR_LCD,
-    // The 2008-2009 "black" was a space grey front, smooth anodized aluminium with a soft sheen
-    // and a polished edge, and a black wheel
-    face: aluminium('#777a80', '#56595f', '#36383c', 'satin'),
+    lcd: CLASSIC_LCD,
+    // The 2008-2009 "black": space grey, lighter than the 6th generation's
+    face: aluminium('#62656a', '#505358', '#3d3f43', 'satin'),
     rim: true,
     windowFrame: '#050506',
     wheel: {
-      surface: ['#26272a', '#141416'],
-      label: '#94969b',
-      center: ['#3a3b3f', '#1b1c1e'],
+      surface: ['#1d1d1f', '#121214'],
+      label: '#c4c5c8',
+      center: ['#5a5d62', '#46494d'],
     },
   },
   mini('mini-silver', 'mini, silver (2004)', '#f1f2f4', '#c9ccd1', '#9fa3aa'),
@@ -446,8 +479,8 @@ export const SKINS = [
     name: 'Red, in the style of (PRODUCT)RED',
     group: 'special',
     model: 'classic',
-    lcd: COLOR_LCD,
-    face: aluminium('#f04a58', '#cc1b2d', '#8f0f1d'),
+    lcd: CLASSIC_LCD,
+    face: aluminium('#d93444', '#c42132', '#a3172a', 'satin'),
     rim: true,
     windowFrame: '#0b0b0c',
     wheel: {
@@ -499,6 +532,8 @@ export const lcdVars = (lcd) => ({
   '--lcd-track': lcd.track,
   '--lcd-highlight': lcd.highlight,
   '--lcd-highlight-text': lcd.highlightText,
+  '--lcd-accent': lcd.accent || lcd.bar,
+  '--lcd-battery': lcd.battery || lcd.text,
   '--lcd-cover-filter': lcd.coverFilter || 'none',
   '--lcd-glow': lcd.glow || 'none',
   '--lcd-grid': lcd.grid || 'none',

@@ -18,6 +18,9 @@ const useStyles = makeStyles(
       height: '100%',
       overflowY: 'auto',
       overscrollBehavior: 'contain',
+      // The scroll bar in the screen's colour: aqua or blue on the colour screens
+      scrollbarWidth: 'thin',
+      scrollbarColor: `${LCD.accent} transparent`,
       // Vertical scrolling stays native; swipes and drags are handled below
       touchAction: 'pan-y',
       margin: 0,

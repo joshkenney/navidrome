@@ -82,7 +82,7 @@ const useStyles = makeStyles(
       left: 1,
       top: 1,
       bottom: 1,
-      background: LCD.text,
+      background: LCD.battery,
       transition: 'width 600ms ease-out',
     },
     bolt: {
@@ -174,6 +174,26 @@ const useStyles = makeStyles(
         opacity: 0.6,
       },
     },
+    // The 6th and 7th generation's cover: leaning back in perspective, a trapezoid, over its
+    // reflection
+    tilt: {
+      height: '100%',
+      maxWidth: '48%',
+      aspectRatio: '1 / 1',
+      flex: '0 0 auto',
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'flex-start',
+      '& > img': {
+        height: '80%',
+        maxWidth: 'none',
+        borderRadius: 0,
+        transform: `perspective(${row(7)}) rotateY(24deg)`,
+        transformOrigin: 'left center',
+        WebkitBoxReflect:
+          'below 1px linear-gradient(transparent 62%, rgba(255, 255, 255, 0.32))',
+      },
+    },
     info: {
       flex: 1,
       minWidth: 0,
@@ -227,8 +247,9 @@ const useStyles = makeStyles(
       width: row(0.46),
       height: row(0.46),
       transform: 'translate(-50%, -50%) rotate(45deg)',
-      background: LCD.background,
-      border: `2px solid ${LCD.bar}`,
+      background: LCD.accent,
+      border: `1.5px solid ${LCD.background}`,
+      boxShadow: `0 0 0 1px ${LCD.accent}`,
       boxSizing: 'border-box',
     },
     // The slider over the bar, for touch and screen readers
@@ -262,8 +283,9 @@ export const IpodScreen = ({
   onActions,
   // Whether the screen shows covers: the black and white ones didn't
   art = true,
-  // The iPod Photo's coarse screen: small, grainy covers
-  lowRes = false,
+  // How the screen shows the cover: "lowRes" (the iPod Photo's small, grainy covers), "tilt"
+  // (the classic's, in perspective), or plain
+  coverLook,
 }) => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -298,11 +320,18 @@ export const IpodScreen = ({
       {art ? (
         <div className={classes.body}>
           {item.cover &&
-            (lowRes ? (
-              <span className={classes.lowRes} data-testid="low-res-cover">
+            (coverLook === 'lowRes' || coverLook === 'tilt' ? (
+              <span
+                className={classes[coverLook]}
+                data-testid={`cover-${coverLook}`}
+              >
                 <img
                   className={classes.cover}
-                  src={lowResCover(item.cover)}
+                  src={
+                    coverLook === 'lowRes'
+                      ? lowResCover(item.cover)
+                      : item.cover
+                  }
                   alt={song.album || title}
                   draggable={false}
                   {...cover.handlers}

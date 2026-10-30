@@ -63,6 +63,8 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
   const face = { x: rim, y: rim, w: m.w - 2 * rim, h: m.h - 2 * rim }
   const dark = f.kind === 'plastic' && parseInt(f.top.slice(1, 3), 16) < 0x80
   const satin = f.kind === 'aluminium' && f.finish === 'satin'
+  // Bead-blasted aluminium: the classic's front and the mini's tube, with no brushed streaks
+  const blasted = satin || (f.kind === 'aluminium' && skin.tube)
   const rowLit = !skin.row?.unlitLabel || lit
   const wheel = m.wheel
   const r = wheel.d / 2
@@ -93,46 +95,50 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
           </linearGradient>
         )}
         {satin && (
-          // Smooth anodized aluminium: a broad, soft sheen across it, no streaks
-          <linearGradient id={u('face')} x1="0" y1="0" x2="0.75" y2="1">
+          // Anodized aluminium, nearly flat: a touch lighter at the top, darker at the bottom
+          <linearGradient id={u('face')} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor={f.light} />
-            <stop offset="0.3" stopColor={f.base} />
-            <stop offset="0.42" stopColor={f.base} />
-            <stop offset="0.62" stopColor={f.light} stopOpacity="0.4" />
-            <stop offset="0.84" stopColor={f.base} />
+            <stop offset="0.28" stopColor={f.base} />
+            <stop offset="0.78" stopColor={f.base} />
             <stop offset="1" stopColor={f.dark} />
           </linearGradient>
         )}
         {satin && (
-          // Lit from above: a little brighter at the top, darker at the bottom
-          <linearGradient id={u('sheen')} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#ffffff" stopOpacity="0.14" />
-            <stop offset="0.3" stopColor="#ffffff" stopOpacity="0" />
-            <stop offset="0.8" stopColor="#000000" stopOpacity="0" />
-            <stop offset="1" stopColor="#000000" stopOpacity="0.2" />
-          </linearGradient>
+          // A soft light from above the top left, spread across the matte metal
+          <radialGradient
+            id={u('sheen')}
+            cx="0.28"
+            cy="0.08"
+            r="0.95"
+            gradientTransform="translate(0.28 0.08) scale(1 0.6) translate(-0.28 -0.08)"
+          >
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.16" />
+            <stop offset="0.55" stopColor="#ffffff" stopOpacity="0.04" />
+            <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+          </radialGradient>
         )}
         {satin && (
-          // Its polished, bevelled edge: bright where the light catches it, dark opposite
-          <linearGradient id={u('chamfer')} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#ffffff" stopOpacity="0.75" />
-            <stop offset="0.45" stopColor="#ffffff" stopOpacity="0.25" />
-            <stop offset="0.55" stopColor="#000000" stopOpacity="0.15" />
-            <stop offset="1" stopColor="#000000" stopOpacity="0.45" />
+          // Its bevelled edge, cut through the anodizing: catching the light at the top, in shadow
+          // at the bottom
+          <linearGradient id={u('chamfer')} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.6" />
+            <stop offset="0.12" stopColor="#ffffff" stopOpacity="0.3" />
+            <stop offset="0.6" stopColor="#ffffff" stopOpacity="0.14" />
+            <stop offset="1" stopColor="#000000" stopOpacity="0.35" />
           </linearGradient>
         )}
-        {satin && (
-          // The anodizing's fine, even grain
+        {blasted && (
+          // The bead-blasted anodizing's fine, even grain, light and dark specks
           <filter id={u('grain')} x="0" y="0" width="100%" height="100%">
             <feTurbulence
               type="fractalNoise"
-              baseFrequency="1.6"
+              baseFrequency="3"
               numOctaves="2"
               seed="3"
             />
             <feColorMatrix
               type="matrix"
-              values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.6 -0.2"
+              values="0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0.33 0.33 0.33 0 0  0 0 0 0 1"
             />
           </filter>
         )}
@@ -145,16 +151,16 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
           </linearGradient>
         )}
         {f.kind === 'aluminium' && skin.tube && (
-          // The mini's rounded aluminium tube: dark edges, highlights down each side
+          // The mini's aluminium tube, seen from the front: flat across, curving away only at the
+          // sides, a little lighter where the left side turns to the light, darker at the right
           <linearGradient id={u('face')} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor={f.dark} />
-            <stop offset="0.06" stopColor={f.base} />
-            <stop offset="0.22" stopColor={f.light} stopOpacity="0.85" />
-            <stop offset="0.42" stopColor={f.base} />
-            <stop offset="0.7" stopColor={f.base} />
-            <stop offset="0.86" stopColor={f.light} stopOpacity="0.7" />
-            <stop offset="0.95" stopColor={f.base} />
-            <stop offset="1" stopColor={f.dark} />
+            <stop offset="0" stopColor={f.dark} stopOpacity="0.8" />
+            <stop offset="0.02" stopColor={f.base} />
+            <stop offset="0.05" stopColor={f.light} stopOpacity="0.4" />
+            <stop offset="0.11" stopColor={f.base} />
+            <stop offset="0.9" stopColor={f.base} />
+            <stop offset="0.975" stopColor={f.dark} stopOpacity="0.45" />
+            <stop offset="1" stopColor={f.dark} stopOpacity="0.85" />
           </linearGradient>
         )}
         {/* Brushed metal: fine horizontal streaks */}
@@ -351,42 +357,55 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
             />
           </>
         ) : (
-          <rect
-            x={face.x}
-            y={face.y}
-            width={face.w}
-            height={face.h}
-            fill={`url(#${u('face')})`}
-          />
+          <>
+            {f.kind === 'aluminium' && (
+              // The metal's own colour, under its shading
+              <rect
+                x={face.x}
+                y={face.y}
+                width={face.w}
+                height={face.h}
+                fill={f.base}
+              />
+            )}
+            <rect
+              x={face.x}
+              y={face.y}
+              width={face.w}
+              height={face.h}
+              fill={`url(#${u('face')})`}
+            />
+          </>
         )}
-        {f.kind === 'aluminium' && !satin && (
+        {f.kind === 'aluminium' && !blasted && (
           <rect
             x={face.x}
             y={face.y}
             width={face.w}
             height={face.h}
             filter={`url(#${u('brushed')})`}
-            opacity={skin.tube ? 0.16 : 0.5}
+            opacity="0.5"
+          />
+        )}
+        {blasted && (
+          <rect
+            x={face.x}
+            y={face.y}
+            width={face.w}
+            height={face.h}
+            filter={`url(#${u('grain')})`}
+            style={{ mixBlendMode: 'overlay' }}
+            opacity={satin ? 0.38 : 0.3}
           />
         )}
         {satin && (
-          <>
-            <rect
-              x={face.x}
-              y={face.y}
-              width={face.w}
-              height={face.h}
-              filter={`url(#${u('grain')})`}
-              opacity="0.09"
-            />
-            <rect
-              x={face.x}
-              y={face.y}
-              width={face.w}
-              height={face.h}
-              fill={`url(#${u('sheen')})`}
-            />
-          </>
+          <rect
+            x={face.x}
+            y={face.y}
+            width={face.w}
+            height={face.h}
+            fill={`url(#${u('sheen')})`}
+          />
         )}
         {(f.kind === 'plastic' || f.kind === 'clear') && (
           <rect
@@ -399,21 +418,36 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
         )}
       </g>
       {/* The front's edge catching the light */}
+      {satin && (
+        // Where the front meets the steel back: a hairline of shadow
+        <rect
+          x={face.x}
+          y={face.y}
+          width={face.w}
+          height={face.h}
+          rx={m.r - rim}
+          fill="none"
+          stroke="rgba(0,0,0,0.5)"
+          strokeWidth="0.18"
+        />
+      )}
       <rect
-        x={face.x + 0.15}
-        y={face.y + 0.15}
-        width={face.w - 0.3}
-        height={face.h - 0.3}
-        rx={m.r - rim - 0.15}
+        x={face.x + (satin ? 0.4 : 0.15)}
+        y={face.y + (satin ? 0.4 : 0.15)}
+        width={face.w - (satin ? 0.8 : 0.3)}
+        height={face.h - (satin ? 0.8 : 0.3)}
+        rx={m.r - rim - (satin ? 0.4 : 0.15)}
         fill="none"
         stroke={
           satin
             ? `url(#${u('chamfer')})`
-            : dark
-              ? 'rgba(255,255,255,0.18)'
-              : 'rgba(255,255,255,0.75)'
+            : skin.tube
+              ? 'rgba(255,255,255,0.2)'
+              : dark
+                ? 'rgba(255,255,255,0.18)'
+                : 'rgba(255,255,255,0.75)'
         }
-        strokeWidth={satin ? 0.45 : 0.3}
+        strokeWidth={satin ? 0.6 : 0.3}
       />
 
       {/* The screen's glass */}

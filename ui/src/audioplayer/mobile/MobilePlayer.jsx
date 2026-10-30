@@ -387,7 +387,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
               <IpodScreen
                 audio={audio}
                 art={!look.lcd.mono}
-                lowRes={!!look.lcd.lowRes}
+                coverLook={look.lcd.cover}
                 controls={controls}
                 scrubTime={scrubTime}
                 view={view}

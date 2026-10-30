@@ -63,6 +63,7 @@ describe('skins', () => {
         '5g-black',
         'classic-silver',
         'classic-black',
+        'classic6-black',
         'mini-silver',
         'mini-gold',
         'mini-pink',
@@ -111,11 +112,48 @@ describe('skins', () => {
     expect(ib - ir).toBeGreaterThan(mb - mr)
   })
 
-  it('gives the iPod Photo its small, grainy covers, and only it', () => {
-    expect(skinFor('photo').lcd.lowRes).toBe(true)
-    expect(skinFor('4g-hp').lcd.lowRes).toBe(true)
-    ;['5g-white', 'classic-black', 'transparent'].forEach((id) =>
-      expect(skinFor(id).lcd.lowRes, id).toBeFalsy(),
+  it('gives the iPod Photo small, grainy covers and the classic covers in perspective', () => {
+    ;['photo', '4g-hp'].forEach((id) =>
+      expect(skinFor(id).lcd.cover, id).toBe('lowRes'),
+    )
+    ;['classic-silver', 'classic-black', 'classic6-black', 'red'].forEach(
+      (id) => expect(skinFor(id).lcd.cover, id).toBe('tilt'),
+    )
+    ;['5g-white', '5g-black', 'transparent'].forEach((id) =>
+      expect(skinFor(id).lcd.cover, id).toBeUndefined(),
+    )
+  })
+
+  it('gives the colour screens an aqua bar, a deeper blue on the classic, and a green battery', () => {
+    const hue = (hex) => {
+      const [r, g, b] = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16))
+      return { r, g, b }
+    }
+    // Aqua: green and blue both high, red low
+    ;['photo', '5g-white', '5g-black'].forEach((id) => {
+      const { r, g, b } = hue(skinFor(id).lcd.accent)
+      expect(g, id).toBeGreaterThan(r + 100)
+      expect(b, id).toBeGreaterThan(r + 100)
+    })
+    // Deep blue: blue well above green
+    ;['classic-silver', 'classic-black', 'classic6-black'].forEach((id) => {
+      const { g, b } = hue(skinFor(id).lcd.accent)
+      expect(b, id).toBeGreaterThan(g + 80)
+    })
+    ;['photo', '5g-white', 'classic-black'].forEach((id) =>
+      expect(lcdVars(skinFor(id).lcd)['--lcd-battery'], id).toMatch(/#63d13a/),
+    )
+    // The black and white screens keep a battery in their text's colour
+    expect(lcdVars(skinFor('4g').lcd)['--lcd-battery']).toBe(
+      skinFor('4g').lcd.text,
+    )
+  })
+
+  it('makes the 6th generation classic a deeper black than the 7th', () => {
+    const light = (hex) =>
+      [1, 3, 5].reduce((sum, k) => sum + parseInt(hex.slice(k, k + 2), 16), 0)
+    expect(light(skinFor('classic6-black').face.base)).toBeLessThan(
+      light(skinFor('classic-black').face.base) - 60,
     )
   })
 

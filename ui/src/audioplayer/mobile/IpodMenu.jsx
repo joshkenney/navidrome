@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
-import { row } from './ipodLook'
+import { LCD, row } from './ipodLook'
 import { Marquee } from './Marquee'
 
 const useStyles = makeStyles(
@@ -10,6 +10,9 @@ const useStyles = makeStyles(
       height: '100%',
       overflowY: 'auto',
       overscrollBehavior: 'contain',
+      // The scroll bar in the screen's colour: aqua or blue on the colour screens
+      scrollbarWidth: 'thin',
+      scrollbarColor: `${LCD.accent} transparent`,
       margin: 0,
       padding: 0,
       listStyle: 'none',

@@ -6,6 +6,9 @@ export const LCD = {
   text: 'var(--lcd-text, #1c2630)',
   muted: 'var(--lcd-muted, #4c5964)',
   bar: 'var(--lcd-bar, #1c2630)',
+  // The scrubbing diamond's colour, and the battery's charge
+  accent: 'var(--lcd-accent, #1c2630)',
+  battery: 'var(--lcd-battery, #1c2630)',
   track: 'var(--lcd-track, rgba(28, 38, 48, 0.18))',
   highlight:
     'var(--lcd-highlight, linear-gradient(180deg, #4f8fd8 0%, #2d6cbf 100%))',
