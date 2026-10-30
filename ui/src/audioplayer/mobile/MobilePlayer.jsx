@@ -7,7 +7,7 @@ import { ScreenStrip } from './ScreenStrip'
 import { IpodScreen } from './IpodScreen'
 import { ClickWheel } from './ClickWheel'
 import { useAudioState } from './useAudioState'
-import { lcdVars, modelOf, percentBox, skinFor } from './skins'
+import { lcdVars, modelOf, percentBox, screenOf, skinFor } from './skins'
 import { IpodBody } from './IpodBody'
 import { setHaptics } from './haptics'
 import { addTracks, playTracks } from '../../actions'
@@ -26,6 +26,8 @@ const SCRUB_STEP = 6
 const LIST_STEP = 24
 // How long the "removed" notice (and its Undo) stays
 const UNDO_MS = 5000
+// The black and white iPods' backlight goes out this long after the last touch, like theirs
+export const BACKLIGHT_MS = 10000
 
 const useStyles = makeStyles(
   (theme) => ({
@@ -77,6 +79,14 @@ const useStyles = makeStyles(
       // About 7.5 menu rows fill a screen, like the iPod's
       '--row': 'clamp(18px, 13.3cqh, 36px)',
     },
+    // The backlight's unevenness and the early screens' pixel grid, over what is shown
+    backlight: {
+      position: 'absolute',
+      inset: 0,
+      pointerEvents: 'none',
+      backgroundImage: 'var(--lcd-grid, none)',
+      boxShadow: 'var(--lcd-glow, none)',
+    },
     // The glass's reflection over the screen
     glare: {
       position: 'absolute',
@@ -106,6 +116,19 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
   const audio = useAudioState(audioInstance)
   const dispatch = useDispatch()
   const [open, setOpen] = useState(false)
+  // The backlight: on while the iPod is touched, out BACKLIGHT_MS after (black and white screens)
+  const [lit, setLit] = useState(true)
+  const backlightTimer = useRef(null)
+  const wake = useCallback(() => {
+    setLit(true)
+    clearTimeout(backlightTimer.current)
+    backlightTimer.current = setTimeout(() => setLit(false), BACKLIGHT_MS)
+  }, [])
+  useEffect(() => {
+    if (open) wake()
+    return () => clearTimeout(backlightTimer.current)
+  }, [open, wake])
+
   // Dragging the iPod down: how far (px), and whether a finger is on it
   const drag = useRef(null)
   const [dragY, setDragY] = useState(0)
@@ -274,6 +297,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
   // Dragging the iPod down closes it, from anywhere but the wheel and the lists (which scroll): it
   // follows the finger, and goes back up if let go too soon
   const onDragStart = (e) => {
+    wake()
     if (e.target.closest?.('[data-no-swipe]')) return
     drag.current = { x: e.clientX, y: e.clientY, t: Date.now(), active: false }
   }
@@ -332,7 +356,8 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
           aria-modal="true"
           aria-label={translate('player.mobile.ipod')}
           data-skin={look.id}
-          style={lcdVars(look.lcd)}
+          data-backlight={lit ? 'on' : 'off'}
+          style={lcdVars(screenOf(look.lcd, lit))}
           onPointerDown={onDragStart}
           onPointerMove={onDragMove}
           onPointerUp={onDragEnd}
@@ -361,6 +386,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
             <div className={classes.lcd} style={percentBox(model, model.lcd)}>
               <IpodScreen
                 audio={audio}
+                art={!look.lcd.mono}
                 controls={controls}
                 scrubTime={scrubTime}
                 view={view}
@@ -374,6 +400,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
                   onLongPress: (index) => setActionsItem(audio.queue[index]),
                 }}
               />
+              <div className={classes.backlight} />
               <div className={classes.glare} />
             </div>
             <ClickWheel

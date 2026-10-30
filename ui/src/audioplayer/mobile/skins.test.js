@@ -6,6 +6,7 @@ import {
   SKIN_GROUPS,
   lcdVars,
   modelOf,
+  screenOf,
   skinFor,
 } from './skins'
 
@@ -76,15 +77,41 @@ describe('skins', () => {
     )
   })
 
-  it('gives the first iPods a black and white screen, with covers in grey', () => {
-    ;['1g', '2g', '3g', '4g', 'mini-pink'].forEach((id) =>
-      expect(lcdVars(skinFor(id).lcd)['--lcd-cover-filter']).toMatch(
-        /grayscale/,
-      ),
+  it('gives the first iPods black and white screens: text only, and each generation its backlight', () => {
+    const mono = ['1g', '2g', '3g', '4g', '4g-u2', 'mini-pink']
+    mono.forEach((id) => {
+      const lcd = skinFor(id).lcd
+      expect(lcd.mono, id).toBe(true)
+      expect(lcd.unlit, `${id} without its backlight`).toBeTruthy()
+    })
+    ;['photo', '4g-hp', '5g-black', 'classic-silver'].forEach((id) =>
+      expect(skinFor(id).lcd.mono, id).toBeFalsy(),
     )
-    ;['photo', '5g-black', 'classic-silver'].forEach((id) =>
-      expect(lcdVars(skinFor(id).lcd)['--lcd-cover-filter']).toBe('none'),
-    )
+    // 1st and 2nd generation: an uneven mint glow, its pixel grid and smeared text
+    const fugly = skinFor('1g').lcd
+    expect(fugly).toBe(skinFor('2g').lcd)
+    expect(fugly.background).toMatch(/radial-gradient/)
+    expect(fugly.grid).toBeTruthy()
+    expect(fugly.ghost).toBeTruthy()
+    // 3rd generation: warm amber; 4th: bluish
+    const warm = skinFor('3g').lcd.background
+    const icy = skinFor('4g').lcd.background
+    const rgb = (css) => {
+      const hex = css.match(/#[0-9a-f]{6}/gi)[1]
+      return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+    }
+    const [wr, , wb] = rgb(warm)
+    const [ir, , ib] = rgb(icy)
+    expect(wr).toBeGreaterThan(wb + 60)
+    expect(ib).toBeGreaterThan(ir + 20)
+  })
+
+  it('turns the black and white screens grey when their backlight goes out, and only them', () => {
+    const lcd = skinFor('3g').lcd
+    expect(screenOf(lcd, true)).toBe(lcd)
+    expect(screenOf(lcd, false).background).toBe(lcd.unlit.background)
+    const color = skinFor('5g-white').lcd
+    expect(screenOf(color, false)).toBe(color)
   })
 
   it('matches the theme when none is chosen: black on dark themes, white on light ones', () => {

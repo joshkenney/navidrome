@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react'
 import { useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { row } from './ipodLook'
+import { Marquee } from './Marquee'
 
 const useStyles = makeStyles(
   {
@@ -121,8 +122,14 @@ export const IpodMenu = ({
           onKeyDown={(e) => e.key === 'Enter' && onSelect(i)}
         >
           <div className={classes.text}>
-            <div className={classes.label}>{item.label}</div>
-            {item.sub && <div className={classes.sub}>{item.sub}</div>}
+            <Marquee className={classes.label} active={i === highlight}>
+              {item.label}
+            </Marquee>
+            {item.sub && (
+              <Marquee className={classes.sub} active={i === highlight}>
+                {item.sub}
+              </Marquee>
+            )}
           </div>
           {item.side && <span className={classes.side}>{item.side}</span>}
           {item.more && (

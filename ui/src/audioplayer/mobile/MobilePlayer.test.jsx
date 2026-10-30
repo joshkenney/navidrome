@@ -79,10 +79,14 @@ const fakeAudio = () => {
   return el
 }
 
-const renderPlayer = ({ queue = [song(1), song(2)], current = 'u2' } = {}) => {
+const renderPlayer = ({
+  queue = [song(1), song(2)],
+  current = 'u2',
+  settings = {},
+} = {}) => {
   // Adding tracks appends them, like the real reducer
   const reducer = (
-    state = { player: { queue, current: { uuid: current } } },
+    state = { player: { queue, current: { uuid: current } }, settings },
     action,
   ) =>
     action.type === 'PLAYER_ADD_TRACKS'
@@ -467,6 +471,37 @@ describe('<MobilePlayer />', () => {
     act(() => vi.advanceTimersByTime(600))
     fireEvent.pointerUp(cover, { clientX: 100, clientY: 100, pointerId: 1 })
     expect(screen.getByTestId('actions')).toHaveTextContent('Song 2')
+    vi.useRealTimers()
+  })
+
+  it('shows only text on the black and white iPods, under a backlight that goes out after 10 seconds', () => {
+    vi.useFakeTimers()
+    renderPlayer({ settings: { ipodSkin: '1g' } })
+    openPlayer()
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toHaveAttribute('data-skin', '1g')
+    // No cover: the song in lines of text
+    expect(screen.queryByAltText('Blue Album')).toBeNull()
+    expect(screen.getByTestId('now-playing-text')).toHaveTextContent('Song 2')
+    expect(dialog).toHaveAttribute('data-backlight', 'on')
+    act(() => vi.advanceTimersByTime(10000))
+    expect(dialog).toHaveAttribute('data-backlight', 'off')
+    // A touch lights it again
+    fireEvent.pointerDown(dialog, { clientX: 10, clientY: 10, pointerId: 1 })
+    expect(dialog).toHaveAttribute('data-backlight', 'on')
+    vi.useRealTimers()
+  })
+
+  it('keeps covers and the light on the colour screens', () => {
+    vi.useFakeTimers()
+    renderPlayer({ settings: { ipodSkin: '5g-black' } })
+    openPlayer()
+    expect(screen.getByAltText('Blue Album')).toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(10000))
+    // The colour screen's palette doesn't change with the backlight
+    expect(
+      screen.getByRole('dialog').style.getPropertyValue('--lcd-bg'),
+    ).toMatch(/#e9eff3/)
     vi.useRealTimers()
   })
 

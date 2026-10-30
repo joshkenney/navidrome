@@ -3,6 +3,7 @@ import { useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { LCD, formatTime, row } from './ipodLook'
 import { buzz } from './haptics'
+import { Marquee } from './Marquee'
 
 // How long a finger rests on a song before it can be dragged to another place in the queue
 export const HOLD_MS = 250
@@ -261,10 +262,15 @@ export const UpNext = ({
                 {isCurrent ? '▶' : ''}
               </span>
               <div className={classes.text}>
-                <div className={classes.title}>{song.title || item.name}</div>
-                <div className={classes.artist}>
+                <Marquee className={classes.title} active={index === highlight}>
+                  {song.title || item.name}
+                </Marquee>
+                <Marquee
+                  className={classes.artist}
+                  active={index === highlight}
+                >
                   {song.artist || item.singer}
-                </div>
+                </Marquee>
               </div>
               {item.duration > 0 && (
                 <span className={classes.time}>

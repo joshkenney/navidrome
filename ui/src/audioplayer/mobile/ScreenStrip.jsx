@@ -7,6 +7,7 @@ import PauseIcon from '@material-ui/icons/Pause'
 import { LCD } from './ipodLook'
 import { faceCss, isDark, lcdVars } from './skins'
 import { usePress } from './usePress'
+import { Marquee } from './Marquee'
 
 // Height of the strip, without the phone's safe area (the iPhone home bar)
 export const STRIP_HEIGHT = 56
@@ -154,13 +155,13 @@ export const ScreenStrip = ({ audio, controls, look, onOpen, onActions }) => {
         aria-label={translate('player.mobile.open')}
         onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen()}
       >
-        {item.cover && (
+        {item.cover && !look.lcd.mono && (
           <img className={classes.cover} src={item.cover} alt="" />
         )}
-        <div className={`${classes.text} songTitle`}>
+        <Marquee className={`${classes.text} songTitle`}>
           {title}
           {artist && <span className={classes.artist}> — {artist}</span>}
-        </div>
+        </Marquee>
         <div className={classes.progress} style={{ width: `${progress}%` }} />
       </div>
       <IconButton

@@ -6,6 +6,7 @@ import { LCD, formatTime, row } from './ipodLook'
 import { UpNext } from './UpNext'
 import { IpodMenu } from './IpodMenu'
 import { usePress } from './usePress'
+import { Marquee } from './Marquee'
 
 const useStyles = makeStyles(
   {
@@ -17,6 +18,8 @@ const useStyles = makeStyles(
       display: 'flex',
       flexDirection: 'column',
       userSelect: 'none',
+      // The 1st and 2nd generation's text smears a little
+      textShadow: 'var(--lcd-ghost, none)',
     },
     header: {
       flex: '0 0 auto',
@@ -78,6 +81,35 @@ const useStyles = makeStyles(
       padding: row(0.35),
       alignItems: 'center',
     },
+    // The black and white iPods' Now Playing: no cover, the song in lines of centred text
+    textOnly: {
+      flex: '1 1 auto',
+      minHeight: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: row(0.08),
+      padding: `0 ${row(0.4)}`,
+      textAlign: 'center',
+      overflow: 'hidden',
+    },
+    textTitle: {
+      fontSize: row(0.62),
+      lineHeight: row(0.78),
+      maxWidth: '100%',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+    textLine: {
+      fontSize: row(0.52),
+      lineHeight: row(0.7),
+      maxWidth: '100%',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
     // A still, square cover: never the spinning record
     cover: {
       height: '100%',
@@ -103,11 +135,6 @@ const useStyles = makeStyles(
     title: {
       fontSize: row(0.6),
       lineHeight: row(0.74),
-      wordBreak: 'break-word',
-      overflow: 'hidden',
-      display: '-webkit-box',
-      WebkitLineClamp: 2,
-      WebkitBoxOrient: 'vertical',
     },
     line: {
       fontSize: row(0.46),
@@ -182,6 +209,8 @@ export const IpodScreen = ({
   upNext = {},
   menu,
   onActions,
+  // Whether the screen shows covers: the black and white ones didn't
+  art = true,
 }) => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -204,29 +233,45 @@ export const IpodScreen = ({
 
   const nowPlaying = (
     <div className={classes.nowPlaying}>
-      <div className={classes.body}>
-        {item.cover && (
-          <img
-            className={classes.cover}
-            src={item.cover}
-            alt={song.album || title}
-            draggable={false}
-            {...cover.handlers}
-          />
-        )}
-        <div className={`${classes.info} songTitle`}>
-          <div className={classes.title}>{title}</div>
-          {artist && <div className={classes.line}>{artist}</div>}
-          {song.album && <div className={classes.line}>{song.album}</div>}
-          {!isRadio && song.libraryId && (
-            <IpodLabel
-              className={classes.ipod}
-              libraryId={song.libraryId}
-              libraryName={song.libraryName}
+      {art ? (
+        <div className={classes.body}>
+          {item.cover && (
+            <img
+              className={classes.cover}
+              src={item.cover}
+              alt={song.album || title}
+              draggable={false}
+              {...cover.handlers}
             />
           )}
+          <div className={`${classes.info} songTitle`}>
+            <Marquee className={classes.title}>{title}</Marquee>
+            {artist && <Marquee className={classes.line}>{artist}</Marquee>}
+            {song.album && (
+              <Marquee className={classes.line}>{song.album}</Marquee>
+            )}
+            {!isRadio && song.libraryId && (
+              <IpodLabel
+                className={classes.ipod}
+                libraryId={song.libraryId}
+                libraryName={song.libraryName}
+              />
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div
+          className={`${classes.textOnly} songTitle`}
+          data-testid="now-playing-text"
+          {...cover.handlers}
+        >
+          <Marquee className={classes.textTitle}>{title}</Marquee>
+          {artist && <Marquee className={classes.textLine}>{artist}</Marquee>}
+          {song.album && (
+            <Marquee className={classes.textLine}>{song.album}</Marquee>
+          )}
+        </div>
+      )}
       <div className={`${classes.footer} songTitle`}>
         {queue.length > 1 && (
           <div className={classes.position}>
@@ -272,11 +317,11 @@ export const IpodScreen = ({
         <span className={classes.headerSide} aria-hidden>
           {playing ? '▶' : '❚❚'}
         </span>
-        <span className={classes.headerTitle}>
+        <Marquee className={classes.headerTitle}>
           {menu?.isMenu
             ? menu.title
             : t(view === 'upNext' ? 'upNext' : 'nowPlaying')}
-        </span>
+        </Marquee>
         <span className={classes.headerSide} aria-hidden>
           <span className={classes.battery} />
         </span>

@@ -89,27 +89,88 @@ const COLOR_LCD = {
   highlightText: '#ffffff',
   coverFilter: 'none',
 }
-// 1st and 2nd generation: a grey-green screen with a white backlight
-const MONO_GREEN = {
-  background: 'linear-gradient(180deg, #c9cebd 0%, #b3b9a3 100%)',
-  text: '#22261d',
-  muted: '#4c5244',
-  bar: '#22261d',
-  track: 'rgba(34, 38, 29, 0.2)',
-  highlight: '#2a2f24',
-  highlightText: '#c9cebd',
-  coverFilter: 'grayscale(1) contrast(1.15) sepia(0.2)',
+// The black and white screens (1st to 4th generation, and the mini) showed no covers, only text,
+// and lit up with a backlight that went out after a few seconds (see MobilePlayer), leaving the
+// bare reflective screen: "unlit". The backlights differed a lot from one generation to the next
+
+// The bare screen, its backlight off: grey-olive, readable by the light falling on it
+const UNLIT = {
+  background: 'linear-gradient(180deg, #b4b7a4 0%, #9fa38f 100%)',
+  text: '#25281e',
+  muted: '#4a4e40',
+  bar: '#25281e',
+  track: 'rgba(37, 40, 30, 0.22)',
+  highlight: '#2b2e23',
+  highlightText: '#aeb19e',
+  glow: 'inset 0 0 6px rgba(0, 0, 0, 0.35)',
 }
-// 3rd and 4th generation and the mini: a grey screen with a bluish backlight
-const MONO_BLUE = {
-  background: 'linear-gradient(180deg, #d2dbe0 0%, #b9c6cd 100%)',
+
+// The pixel grid of the early screens, which showed between the dots
+const PIXEL_GRID =
+  'repeating-linear-gradient(0deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px)'
+
+// 1st and 2nd generation: a cheap, uneven backlight, a sickly mint glow with a hot spot near the
+// top left and dim corners, washed-out text that smears a little, and the pixel grid showing
+const FUGLY = {
+  mono: true,
+  background:
+    'radial-gradient(ellipse 75% 62% at 32% 28%, #d8f5e8 0%, #aed9c7 42%, #86b3a0 78%, #6c937f 100%)',
+  text: '#25392f',
+  muted: '#3f5a4d',
+  bar: '#25392f',
+  track: 'rgba(37, 57, 47, 0.2)',
+  highlight: '#2c4237',
+  highlightText: '#bfe5d4',
+  glow: 'inset 0 0 14px rgba(40, 70, 55, 0.55), inset 0 0 3px rgba(0, 0, 0, 0.4)',
+  grid: PIXEL_GRID,
+  ghost:
+    '0.6px 0.4px 0 rgba(37, 57, 47, 0.35), -0.4px 0 1px rgba(37, 57, 47, 0.25)',
+  unlit: UNLIT,
+}
+
+// 3rd generation: a warm amber glow, like its red-lit buttons
+const WARM = {
+  mono: true,
+  background:
+    'radial-gradient(ellipse 85% 75% at 50% 38%, #ffe2a8 0%, #fbc36d 50%, #e89a3f 85%, #c97a28 100%)',
+  text: '#3a1d04',
+  muted: '#6e3f12',
+  bar: '#3a1d04',
+  track: 'rgba(58, 29, 4, 0.2)',
+  highlight: '#3a1d04',
+  highlightText: '#ffd998',
+  glow: 'inset 0 0 12px rgba(160, 80, 10, 0.45), inset 0 0 2px rgba(0, 0, 0, 0.35)',
+  grid: PIXEL_GRID,
+  unlit: UNLIT,
+}
+
+// 4th generation: a cooler, bluer white
+const ICY = {
+  mono: true,
+  background:
+    'radial-gradient(ellipse 90% 80% at 50% 35%, #eef6ff 0%, #c9e1f8 50%, #9fc4ea 88%, #86b0dc 100%)',
+  text: '#0e2340',
+  muted: '#2f4a6e',
+  bar: '#0e2340',
+  track: 'rgba(14, 35, 64, 0.18)',
+  highlight: '#0e2340',
+  highlightText: '#dcecfc',
+  glow: 'inset 0 0 10px rgba(40, 90, 160, 0.35), inset 0 0 2px rgba(0, 0, 0, 0.3)',
+  unlit: UNLIT,
+}
+
+// The mini: a plain white backlight
+const MINI_LIGHT = {
+  mono: true,
+  background: 'linear-gradient(180deg, #e2e9ec 0%, #c7d2d8 100%)',
   text: '#1c2830',
   muted: '#46545e',
   bar: '#1c2830',
   track: 'rgba(28, 40, 48, 0.2)',
   highlight: '#1c2830',
-  highlightText: '#d2dbe0',
-  coverFilter: 'grayscale(1) contrast(1.15)',
+  highlightText: '#dde5e9',
+  glow: 'inset 0 0 8px rgba(0, 0, 0, 0.2)',
+  unlit: UNLIT,
 }
 
 // Materials. "face" is the front: glossy plastic, brushed aluminium or clear acrylic. The polished
@@ -144,7 +205,7 @@ const mini = (id, name, light, base, dark, label) => ({
   name,
   group: 'mini',
   model: 'mini',
-  lcd: MONO_BLUE,
+  lcd: MINI_LIGHT,
   face: aluminium(light, base, dark),
   tube: true,
   wheel: {
@@ -160,7 +221,7 @@ export const SKINS = [
     name: '1st generation (2001)',
     group: 'classic',
     model: 'scroll',
-    lcd: MONO_GREEN,
+    lcd: FUGLY,
     face: plastic('#fdfdfd', '#e8e9eb'),
     rim: true,
     windowFrame: '#2a2c27',
@@ -176,7 +237,7 @@ export const SKINS = [
     name: '2nd generation (2002)',
     group: 'classic',
     model: 'scroll',
-    lcd: MONO_GREEN,
+    lcd: FUGLY,
     face: plastic('#fdfdfd', '#e8e9eb'),
     rim: true,
     windowFrame: '#2a2c27',
@@ -192,7 +253,7 @@ export const SKINS = [
     name: '3rd generation (2003)',
     group: 'classic',
     model: 'row',
-    lcd: MONO_BLUE,
+    lcd: WARM,
     face: plastic('#fdfdfd', '#e6e7e9'),
     rim: true,
     windowFrame: '#0d0d0e',
@@ -209,7 +270,7 @@ export const SKINS = [
     name: '4th generation (2004)',
     group: 'classic',
     model: 'click4',
-    lcd: MONO_BLUE,
+    lcd: ICY,
     face: plastic('#fdfdfd', '#e6e7e9'),
     rim: true,
     windowFrame: '#0d0d0e',
@@ -340,7 +401,7 @@ export const SKINS = [
     name: '4th generation U2 Special Edition (2004)',
     group: 'special',
     model: 'click4',
-    lcd: MONO_BLUE,
+    lcd: ICY,
     face: plastic('#2a2a2d', '#0e0e10'),
     rim: true,
     windowFrame: '#050506',
@@ -427,8 +488,17 @@ export const lcdVars = (lcd) => ({
   '--lcd-track': lcd.track,
   '--lcd-highlight': lcd.highlight,
   '--lcd-highlight-text': lcd.highlightText,
-  '--lcd-cover-filter': lcd.coverFilter,
+  '--lcd-cover-filter': lcd.coverFilter || 'none',
+  '--lcd-glow': lcd.glow || 'none',
+  '--lcd-grid': lcd.grid || 'none',
+  '--lcd-ghost': lcd.ghost || 'none',
 })
+
+// The screen's colours with its backlight on or off (only the black and white screens go dark)
+export const screenOf = (lcd, lit = true) =>
+  lit || !lcd.unlit
+    ? lcd
+    : { ...lcd, ...lcd.unlit, grid: lcd.grid, ghost: 'none' }
 
 // Where something is on the front, as percentages of it (for the parts drawn over it in HTML)
 export const percentBox = (model, { x, y, w, h }) => ({
