@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useSelector } from 'react-redux'
-import { Divider, makeStyles } from '@material-ui/core'
+import { Divider, makeStyles, useMediaQuery } from '@material-ui/core'
 import clsx from 'clsx'
 import { useTranslate, MenuItemLink, getResources } from 'react-admin'
 import ViewListIcon from '@material-ui/icons/ViewList'
@@ -9,6 +9,7 @@ import SubMenu from './SubMenu'
 import { humanize, pluralize } from 'inflection'
 import albumLists from '../album/albumLists'
 import PlaylistsSubMenu from './PlaylistsSubMenu'
+import { playerPadding } from './playerPadding'
 import LibrarySelector from '../common/LibrarySelector'
 import config from '../config'
 import { FaRadio } from 'react-icons/fa6'
@@ -24,7 +25,8 @@ const useStyles = makeStyles((theme) => ({
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.leavingScreen,
     }),
-    paddingBottom: (props) => (props.addPadding ? '80px' : '20px'),
+    paddingBottom: (props) =>
+      props.addPadding ? playerPadding(true, props.isMobile) : '20px',
   },
   open: {
     width: 240,
@@ -54,7 +56,8 @@ const Menu = ({ dense = false }) => {
   const open = useSelector((state) => state.admin.ui.sidebarOpen)
   const translate = useTranslate()
   const queue = useSelector((state) => state.player?.queue)
-  const classes = useStyles({ addPadding: queue.length > 0 })
+  const isMobile = !useMediaQuery('(min-width:810px)')
+  const classes = useStyles({ addPadding: queue.length > 0, isMobile })
   const resources = useSelector(getResources)
 
   // TODO State is not persisted in mobile when you close the sidebar menu. Move to redux?

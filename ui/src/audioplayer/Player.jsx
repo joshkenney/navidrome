@@ -36,6 +36,8 @@ import { detectBrowserProfile, decisionService } from '../transcode'
 import { IpodRadioExtender } from '../ipods/IpodRadioExtender'
 import { noteRadioProgress } from '../ipods/radio'
 import { addToReplay, reachedReplay } from './replay'
+import { MobilePlayer } from './mobile/MobilePlayer'
+import { makeControls } from './mobile/playerControls'
 
 const Player = () => {
   const theme = useCurrentTheme()
@@ -51,6 +53,10 @@ const Player = () => {
   const [preloaded, setPreload] = useState(false)
   const [audioInstance, setAudioInstance] = useState(null)
   const isDesktop = useMediaQuery('(min-width:810px)')
+  // Phones get their own player (an iPod, see mobile/MobilePlayer), driving this one, which then
+  // stays out of sight
+  const isMobile = !isDesktop
+  const playerRef = useRef(null)
   const isMobilePlayer =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
       navigator.userAgent,
@@ -117,6 +123,7 @@ const Player = () => {
   const classes = useStyle({
     isRadio,
     visible,
+    isMobile,
     enableCoverAnimation: config.enableCoverAnimation,
   })
   const showNotifications = useSelector(
@@ -176,7 +183,9 @@ const Player = () => {
       theme: playerTheme,
       bounds: 'body',
       playMode: playerState.mode,
-      mode: 'full',
+      // On phones the player stays collapsed (and hidden): MobilePlayer shows instead
+      mode: isMobile ? 'mini' : 'full',
+      drag: !isMobile,
       loadAudioErrorPlayNext: false,
       autoPlayInitLoadPlayList: true,
       clearPriorAudioLists: false,
@@ -205,7 +214,7 @@ const Player = () => {
       locale: locale(translate),
       sortableOptions: { delay: 200, delayOnTouchOnly: true },
     }),
-    [gainInfo, isDesktop, playerTheme, translate, playerState.mode],
+    [gainInfo, isDesktop, isMobile, playerTheme, translate, playerState.mode],
   )
 
   const options = useMemo(() => {
@@ -388,6 +397,11 @@ const Player = () => {
     document.title = 'Navidrome'
   }
 
+  const controls = useMemo(
+    () => makeControls(audioInstance, playerRef),
+    [audioInstance],
+  )
+
   const handlers = useMemo(
     () => keyHandlers(audioInstance, playerState),
     [audioInstance, playerState],
@@ -402,6 +416,7 @@ const Player = () => {
   return (
     <ThemeProvider theme={createMuiTheme(theme)}>
       <ReactJkMusicPlayer
+        ref={playerRef}
         {...options}
         className={classes.player}
         onAudioListsChange={onAudioListsChange}
@@ -417,6 +432,9 @@ const Player = () => {
         onBeforeDestroy={onBeforeDestroy}
         getAudioInstance={setAudioInstance}
       />
+      {isMobile && visible && (
+        <MobilePlayer audioInstance={audioInstance} controls={controls} />
+      )}
       <GlobalHotKeys handlers={handlers} keyMap={keyMap} allowChanges />
       <IpodRadioExtender />
     </ThemeProvider>

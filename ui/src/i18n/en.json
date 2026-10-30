@@ -674,6 +674,15 @@
       "orderLoop": "Repeat",
       "singleLoop": "Repeat One",
       "shufflePlay": "Shuffle"
+    },
+    "mobile": {
+      "nowPlaying": "Now Playing",
+      "open": "Open the player",
+      "menu": "Menu: close the player",
+      "playPause": "Play or pause",
+      "select": "Select",
+      "seek": "Position in the song",
+      "position": "%{n} of %{total}"
     }
   },
   "about": {

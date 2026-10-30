@@ -99,6 +99,12 @@ const useStyle = makeStyles(
       '& .react-jinke-music-player-mobile-progress': {
         display: (props) => (props.isRadio ? 'none' : 'flex'),
       },
+      // On phones the iPod (mobile/MobilePlayer) replaces the player's own collapsed button, its
+      // full-screen panel and its queue
+      '& .react-jinke-music-player, & .react-jinke-music-player-mobile, & .audio-lists-panel':
+        {
+          display: (props) => props.isMobile && 'none !important',
+        },
     },
   }),
   { name: 'NDAudioPlayer' },
