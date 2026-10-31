@@ -608,6 +608,32 @@ describe('<MobilePlayer />', () => {
     expect(screen.getAllByTestId('battery-bar')).toHaveLength(4)
   })
 
+  it('gives the 4th generation, and its U2 edition, a battery of one bar as long as the charge', async () => {
+    const getBattery = vi.fn(() =>
+      Promise.resolve({
+        level: 0.5,
+        charging: false,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }),
+    )
+    navigator.getBattery = getBattery
+    try {
+      for (const ipodSkin of ['4g', '4g-u2']) {
+        const { unmount } = renderPlayer({ settings: { ipodSkin } })
+        openPlayer()
+        const level = await screen.findByTestId('battery-level')
+        await vi.waitFor(() =>
+          expect(Number(level.getAttribute('width'))).toBeCloseTo(8.4),
+        )
+        expect(screen.queryByTestId('battery-bar')).toBeNull()
+        unmount()
+      }
+    } finally {
+      delete navigator.getBattery
+    }
+  })
+
   it("shows the classic's Now Playing: a big cover, the song, its rating, and the times either side of the bar", () => {
     const rated = song(2)
     rated.song.rating = 4

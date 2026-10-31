@@ -26,25 +26,36 @@ export const lowResCover = (src) => {
   return `${src}${src.includes('?') ? '&' : '?'}size=${LOW_RES}`
 }
 
-// The black and white screens' battery: an outline and four bars of charge, a bolt while it charges
-const SegmentedBattery = ({ level, charging, className }) => {
+// The black and white screens' battery: an outline and four bars of charge, a bolt while it charges.
+// "linear": the 4th generation's, one bar as long as the charge, in a finer, rounded outline
+const SegmentedBattery = ({ level, charging, linear = false, className }) => {
   const bars = Math.min(4, Math.max(0, Math.ceil(level * 4)))
   return (
     <svg className={className} viewBox="0 0 24 11" aria-hidden>
       <rect
-        x="0.75"
-        y="0.75"
-        width="20.5"
-        height="9.5"
+        x={linear ? 0.6 : 0.75}
+        y={linear ? 0.6 : 0.75}
+        width={linear ? 20.8 : 20.5}
+        height={linear ? 9.8 : 9.5}
+        rx={linear ? 1.2 : 0}
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.5"
+        strokeWidth={linear ? 1.2 : 1.5}
       />
       <rect x="21.25" y="3" width="2" height="5" fill="currentColor" />
       {charging ? (
         <path
           d="M12.5 1.6 L7.8 6 H10.9 L9.4 9.4 L15 4.7 H11.9 Z"
           fill="currentColor"
+        />
+      ) : linear ? (
+        <rect
+          x="2.6"
+          y="2.6"
+          width={Math.max(0.8, 16.8 * Math.min(1, level))}
+          height="5.8"
+          fill="currentColor"
+          data-testid="battery-level"
         />
       ) : (
         [0, 1, 2, 3]
@@ -610,6 +621,8 @@ export const IpodScreen = ({
   volumeLocked = false,
   // The iPod's own software, where it differs: "classic" (the 6th and 7th generation)
   software,
+  // A battery of one bar as long as the charge (the 4th generation), not four bars
+  linearBattery = false,
 }) => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -894,6 +907,7 @@ export const IpodScreen = ({
             >
               <SegmentedBattery
                 className={classes.monoBattery}
+                linear={linearBattery}
                 level={battery ? battery.level : 1}
                 charging={!!battery?.charging}
               />

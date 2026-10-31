@@ -208,6 +208,8 @@ const ICY = {
   // Crisp to its edges in Apple's photo, a fine light line inside the frame
   glow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.4), inset 0 0 6px rgba(30, 45, 100, 0.3)',
   bulbs: 0.1,
+  // Its battery: one bar, as long as the charge (see IpodScreen)
+  batteryFill: 'linear',
 }
 
 // The mini: a cool, pale blue. Its small screen showed the song and the artist playing, not the

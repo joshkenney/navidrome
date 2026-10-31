@@ -558,6 +558,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
                 album={!look.lcd.noAlbum}
                 coverLook={look.lcd.cover}
                 software={look.lcd.software}
+                linearBattery={look.lcd.batteryFill === 'linear'}
                 controls={controls}
                 scrubTime={scrubTime}
                 mode={mode}
