@@ -21,17 +21,19 @@ export const MODELS = {
     wheel: { cx: 30.9, cy: 70, d: 40.2 },
     center: 14.5,
   },
-  // 3rd generation (2003): 104.1 x 61.8 mm, four buttons above a touch wheel
+  // 3rd generation (2003): 104.1 x 61.8 mm, four buttons above a touch wheel, all sunk into the
+  // front. Measured from Apple's photo of it: a thin frame round the screen, big buttons close
+  // together
   row: {
     w: 61.8,
     h: 104.1,
-    r: 7.5,
-    window: { x: 8, y: 5.2, w: 45.8, h: 38, r: 1.6 },
-    lcd: { x: 11.1, y: 8.3, w: 39.6, h: 31.7 },
+    r: 6,
+    window: { x: 9.7, y: 6.3, w: 42.4, h: 34.8, r: 1.1 },
+    lcd: { x: 10.6, y: 7.1, w: 40.6, h: 33.1 },
     controls: 'row',
-    row: { cy: 49.6, d: 10.6, xs: [12.6, 24.8, 37, 49.2] },
-    wheel: { cx: 30.9, cy: 76.8, d: 42 },
-    center: 15.2,
+    row: { cy: 50.3, d: 11.6, xs: [10.7, 24.17, 37.63, 51.1] },
+    wheel: { cx: 30.9, cy: 77.9, d: 39.6 },
+    center: 14,
   },
   // 4th generation and iPod Photo (2004): the first click wheel
   click4: {
@@ -138,10 +140,6 @@ const UNLIT = {
   bulbs: 0,
 }
 
-// The pixel grid of the 3rd generation's screen, which showed between the dots
-const PIXEL_GRID =
-  'repeating-linear-gradient(0deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,0.07) 0 1px, transparent 1px 3px)'
-
 // The parts every black and white screen shares
 const MONO = {
   mono: true,
@@ -172,16 +170,16 @@ const navy = (text, highlight) => ({
   track: 'rgba(30, 36, 72, 0.14)',
 })
 
-// 3rd generation: a muted, greyish blue, not as blue as the 4th generation's
+// 3rd generation: a muted, greyish blue, not as blue as the 4th generation's. Even across, as in
+// Apple's photo, with a fine light edge inside the frame
 const MUTED_BLUE = {
   ...MONO,
-  ...navy('#1d2140', '#282b4b'),
+  ...navy('#1c1f45', '#1c2042'),
   background:
-    'radial-gradient(ellipse 85% 75% at 50% 38%, #c6d2e2 0%, #b2c1d6 55%, #a2b3ca 100%)',
+    'radial-gradient(ellipse 90% 80% at 50% 40%, #b2c3da 0%, #abbcd3 60%, #a3b4cc 100%)',
   highlightText: '#dfe6f0',
-  glow: `${GLASS}, inset 0 0 10px rgba(60, 82, 108, 0.3)`,
-  grid: PIXEL_GRID,
-  bulbs: 0.1,
+  glow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.4), inset 0 0 6px rgba(30, 40, 70, 0.3)',
+  bulbs: 0.05,
 }
 
 // 4th generation: a cool periwinkle
@@ -327,20 +325,22 @@ export const SKINS = [
     group: 'classic',
     model: 'row',
     lcd: MUTED_BLUE,
-    face: plastic('#fdfdfd', '#e6e7e9'),
-    rim: true,
-    windowFrame: '#0d0d0e',
+    // A thick, rounded plastic front, a light grey, as in Apple's photo
+    face: { ...plastic('#eceeec', '#d7dad8'), rounded: true },
+    windowFrame: '#06090b',
     // Its buttons lit up red with the backlight, and were plain grey without it
     row: {
-      surface: ['#ffffff', '#eaebed'],
+      surface: ['#e9ebe9', '#dee0de'],
       label: '#e8331e',
       unlitLabel: '#a7a9ae',
       glow: true,
     },
+    // The wheel and its buttons, sunk into the front, the same plastic
     wheel: {
-      surface: ['#f7f7f8', '#ebebed'],
+      surface: ['#e6e8e6', '#dcdedc'],
       label: '#9a9ca1',
-      center: ['#ffffff', '#ebecee'],
+      center: ['#e8eae8', '#dcdedc'],
+      sunken: true,
     },
   },
   {

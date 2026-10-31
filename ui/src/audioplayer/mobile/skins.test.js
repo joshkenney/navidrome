@@ -44,6 +44,15 @@ describe('skins', () => {
       expect(m.lcd.x + m.lcd.w).toBeLessThanOrEqual(m.window.x + m.window.w)
       expect(m.lcd.y + m.lcd.h).toBeLessThanOrEqual(screenBottom)
       expect(m.window.x + m.window.w).toBeLessThan(m.w)
+      // The 3rd generation's buttons side by side, not over each other, and on the front
+      if (m.row) {
+        m.row.xs.slice(1).forEach((x, i) => {
+          expect(x - m.row.xs[i]).toBeGreaterThan(m.row.d)
+        })
+        expect(m.row.xs[0] - m.row.d / 2).toBeGreaterThan(0)
+        expect(m.row.xs[3] + m.row.d / 2).toBeLessThan(m.w)
+        expect(m.row.cy + m.row.d / 2).toBeLessThan(m.wheel.cy - m.wheel.d / 2)
+      }
       const outer = m.ring || m.wheel
       expect(outer.cy + outer.d / 2, name).toBeLessThan(m.h)
       expect(outer.d, name).toBeLessThan(m.w)

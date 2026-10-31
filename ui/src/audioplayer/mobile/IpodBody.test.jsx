@@ -25,6 +25,18 @@ describe('<IpodBody />', () => {
     })
   })
 
+  it("sinks the 3rd generation's buttons, wheel and centre button into its front", () => {
+    const { container } = render(<IpodBody skin={skinFor('3g')} />)
+    const wells = container.querySelectorAll(
+      'clipPath[id*="row"], clipPath[id*="Well"]',
+    )
+    expect(wells).toHaveLength(6)
+    // Its thick plastic rounds away at the edges, with no steel rim or glossy band
+    expect(container.querySelector('rect[fill*="edgeRight"]')).not.toBeNull()
+    expect(container.querySelector('rect[fill*="gloss"]')).toBeNull()
+    expect(container.querySelector('rect[fill*="steel"]')).toBeNull()
+  })
+
   it('draws the space grey classic in smooth anodized aluminium, not brushed', () => {
     const { container } = render(<IpodBody skin={skinFor('classic-black')} />)
     const filters = Array.from(container.querySelectorAll('rect[filter]')).map(
