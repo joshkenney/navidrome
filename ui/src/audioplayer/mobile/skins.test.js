@@ -216,7 +216,7 @@ describe('skins', () => {
     SKINS.forEach((s) => expect(firmwareOf(s), s.id).toMatch(/^\d+(\.\d+)+$/))
   })
 
-  it('lets the iPods that rated songs rate them: the 3rd and 4th generation, the minis, the classics', () => {
+  it('lets the iPods that rated songs rate them: the 3rd and 4th generation, the iPod Photo, the minis, the classics', () => {
     const rating = SKINS.filter((s) => s.lcd.rates).map((s) => s.id)
     ;[
       '3g',
@@ -226,7 +226,7 @@ describe('skins', () => {
       'mini2-blue',
       'classic-black',
     ].forEach((id) => expect(rating, id).toContain(id))
-    ;['1g', 'photo', '5g-white', '5g-u2', 'transparent'].forEach((id) =>
+    ;['1g', '5g-white', '5g-u2', 'transparent'].forEach((id) =>
       expect(rating, id).not.toContain(id),
     )
   })

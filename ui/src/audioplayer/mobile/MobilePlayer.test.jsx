@@ -528,8 +528,8 @@ describe('<MobilePlayer />', () => {
     expect(screen.getByTestId('rating')).toHaveTextContent('★★★')
   })
 
-  it.each(['3g', '4g', '4g-u2', 'mini-silver'])(
-    'rates the song on the %s too, its stars drawn in the screen ink: any stars love it',
+  it.each(['3g', '4g', '4g-u2', 'mini-silver', 'photo'])(
+    'rates the song on the %s too, its stars drawn: any stars love it',
     (ipodSkin) => {
       subsonic.setRating.mockClear()
       subsonic.star.mockClear()
@@ -554,6 +554,8 @@ describe('<MobilePlayer />', () => {
       expect(meter).toHaveAttribute('aria-valuenow', '3')
       // Pictures of stars, the screen's font having none
       expect(meter.querySelectorAll('svg')).toHaveLength(3)
+      // Over the bar and the times, hidden, so the song doesn't move
+      expect(meter.previousSibling).toHaveAttribute('aria-hidden', 'true')
       tapCenter()
       expect(screen.queryByTestId('rating-edit')).toBeNull()
       expect(subsonic.setRating).toHaveBeenCalledWith('s2', 3)

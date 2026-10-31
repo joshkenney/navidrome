@@ -171,6 +171,7 @@ const PHOTO_LCD = {
   coverFilter: 'contrast(1.06) saturate(1.12)',
   cover: 'lowRes',
   software: 'fifth',
+  rates: true,
 }
 // The 6th and 7th generation classic's screen (2007), as in Apple's photos: white, black text in
 // bold Helvetica, a light, glossy blue progress bar, and its own software ("classic", see

@@ -78,13 +78,27 @@ const SegmentedBattery = ({ level, charging, linear = false, className }) => {
   )
 }
 
-// A star of the rating on the black and white screens, their font having none: five points, in
-// the screen's ink
-const Star = ({ className }) => (
+// A star of the rating, drawn, the early screens' fonts having none: in the screen's ink, or on the
+// iPod Photo glossy blue
+const STAR =
+  'M5 .4 6.35 3.6 9.8 3.9 7.2 6.15 8 9.55 5 7.75 2 9.55 2.8 6.15.2 3.9 3.65 3.6Z'
+const Star = ({ className, blue }) => (
   <svg className={className} viewBox="0 0 10 10" aria-hidden>
+    {blue && (
+      <defs>
+        <linearGradient id="nd-ipod-star" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#8cc4f5" />
+          <stop offset="0.45" stopColor="#3f8ad8" />
+          <stop offset="1" stopColor="#1a60b2" />
+        </linearGradient>
+      </defs>
+    )}
     <path
-      fill="currentColor"
-      d="M5 .4 6.35 3.6 9.8 3.9 7.2 6.15 8 9.55 5 7.75 2 9.55 2.8 6.15.2 3.9 3.65 3.6Z"
+      d={STAR}
+      fill={blue ? 'url(#nd-ipod-star)' : 'currentColor'}
+      stroke={blue ? '#164f93' : 'none'}
+      strokeWidth="0.5"
+      strokeLinejoin="round"
     />
   </svg>
 )
@@ -528,7 +542,12 @@ const useStyles = makeStyles(
       gap: row(0.22),
       '& $dot': { color: 'var(--lcd-text)' },
     },
-    monoStar: { display: 'block', width: row(0.5), height: row(0.5) },
+    drawnStar: { display: 'block', width: row(0.5), height: row(0.5) },
+    // The rating takes the place of the bar and the times, over them, hidden, so the song stays
+    // where it was and the stars are centred in their place
+    progressSlot: { position: 'relative' },
+    hiddenProgress: { visibility: 'hidden' },
+    rateOver: { position: 'absolute', inset: 0, height: 'auto' },
     // The time played and left on either side of the bar, white and glossy round its blue
     classicProgress: {
       display: 'flex',
@@ -751,6 +770,7 @@ export const IpodScreen = ({
     })
 
   const rating = Math.round(ratingShown ?? song.rating ?? 0)
+  const ratingEdit = mode === 'rate'
   // A song with no cover of its own (the server's placeholder): no picture, the song centred.
   // Until that is known, the picture's place is kept, empty. The classics showed their
   // placeholder, as the server's
@@ -908,30 +928,7 @@ export const IpodScreen = ({
         {art && !classic && !fifth && position && (
           <div className={classes.position}>{position}</div>
         )}
-        {mode === 'rate' ? (
-          // Rating: five dots, as many stars as the wheel gives it
-          <div
-            className={`${classes.rateStars} ${mono ? classes.monoRate : ''}`}
-            role="meter"
-            aria-label={t('rating', { smart_count: rating })}
-            aria-valuemin={0}
-            aria-valuemax={5}
-            aria-valuenow={rating}
-            data-testid="rating-edit"
-          >
-            {[0, 1, 2, 3, 4].map((i) => (
-              <span key={i} className={i < rating ? classes.star : classes.dot}>
-                {i >= rating ? (
-                  '•'
-                ) : mono ? (
-                  <Star className={classes.monoStar} />
-                ) : (
-                  '★'
-                )}
-              </span>
-            ))}
-          </div>
-        ) : mode === 'volume' ? (
+        {mode === 'volume' ? (
           <>
             <div className={classes.volume} data-testid="volume">
               <Speaker className={classes.speaker} />
@@ -956,41 +953,73 @@ export const IpodScreen = ({
           </>
         ) : (
           !isRadio && (
-            <div className={classic ? classes.classicProgress : undefined}>
-              {classic && <span>{formatTime(shown)}</span>}
-              <div className={classes.bar}>
-                {/* Scrubbing, the early iPods showed just the diamond on an empty bar */}
-                {!(mono && scrubbing) && (
-                  <div
-                    className={classes.fill}
-                    style={{ width: `${progress}%` }}
+            <div className={classes.progressSlot}>
+              <div
+                className={`${classic ? classes.classicProgress : ''} ${ratingEdit ? classes.hiddenProgress : ''}`}
+                aria-hidden={ratingEdit || undefined}
+              >
+                {classic && <span>{formatTime(shown)}</span>}
+                <div className={classes.bar}>
+                  {/* Scrubbing, the early iPods showed just the diamond on an empty bar */}
+                  {!(mono && scrubbing) && (
+                    <div
+                      className={classes.fill}
+                      style={{ width: `${progress}%` }}
+                    />
+                  )}
+                  {scrubbing && (
+                    <div
+                      className={classes.diamond}
+                      style={{ left: `${progress}%` }}
+                      data-testid="scrub-diamond"
+                    />
+                  )}
+                  <input
+                    className={classes.range}
+                    type="range"
+                    min={0}
+                    max={Math.max(1, Math.floor(duration))}
+                    step={1}
+                    value={Math.floor(shown)}
+                    aria-label={t('seek')}
+                    data-no-swipe
+                    onChange={(e) => controls.seek(Number(e.target.value))}
                   />
-                )}
-                {scrubbing && (
-                  <div
-                    className={classes.diamond}
-                    style={{ left: `${progress}%` }}
-                    data-testid="scrub-diamond"
-                  />
-                )}
-                <input
-                  className={classes.range}
-                  type="range"
-                  min={0}
-                  max={Math.max(1, Math.floor(duration))}
-                  step={1}
-                  value={Math.floor(shown)}
-                  aria-label={t('seek')}
-                  data-no-swipe
-                  onChange={(e) => controls.seek(Number(e.target.value))}
-                />
-              </div>
-              {classic ? (
-                <span>{formatTime(duration - shown, true)}</span>
-              ) : (
-                <div className={classes.times}>
-                  <span>{formatTime(shown)}</span>
+                </div>
+                {classic ? (
                   <span>{formatTime(duration - shown, true)}</span>
+                ) : (
+                  <div className={classes.times}>
+                    <span>{formatTime(shown)}</span>
+                    <span>{formatTime(duration - shown, true)}</span>
+                  </div>
+                )}
+              </div>
+              {ratingEdit && (
+                // Rating: five dots, as many stars as the wheel gives it
+                <div
+                  className={`${classes.rateStars} ${classes.rateOver} ${mono ? classes.monoRate : ''}`}
+                  role="meter"
+                  aria-label={t('rating', { smart_count: rating })}
+                  aria-valuemin={0}
+                  aria-valuemax={5}
+                  aria-valuenow={rating}
+                  data-testid="rating-edit"
+                >
+                  {[0, 1, 2, 3, 4].map((i) => (
+                    <span
+                      key={i}
+                      className={i < rating ? classes.star : classes.dot}
+                    >
+                      {i >= rating ? (
+                        '•'
+                      ) : mono || fifth ? (
+                        <Star className={classes.drawnStar} blue={fifth} />
+                      ) : (
+                        '★'
+                      )}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
