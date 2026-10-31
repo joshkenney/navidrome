@@ -157,6 +157,7 @@ const FIFTH_LCD = {
   bar: AQUA_GLOSS,
   accent: '#398ebb',
   software: 'fifth',
+  rates: true,
 }
 // The iPod Photo's screen (2004): colour, but small (220x176) and coarse. Its covers were tiny,
 // blocky and grainy (see IpodScreen). Its software, in Apple's photo, was the 5th generation's to

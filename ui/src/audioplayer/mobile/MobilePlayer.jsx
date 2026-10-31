@@ -46,8 +46,7 @@ const VOLUME_PER_CLICK = 1 / 40
 const VOLUME_SHOWN_MS = 2500
 const SECONDS_PER_CLICK = 1
 const SCRUB_IDLE_MS = 5000
-// The iPods that rate songs (the 3rd and 4th generation, the iPod Photo, the minis, the 6th and
-// 7th): a second
+// The iPods that rate songs (all but the 1st and 2nd generation): a second
 // press of the centre button rates the song, a star for this many wheel clicks
 // (24 degrees), until it is pressed again or the wheel is left alone
 const CLICKS_PER_STAR = 4

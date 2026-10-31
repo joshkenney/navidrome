@@ -79,7 +79,7 @@ const SegmentedBattery = ({ level, charging, linear = false, className }) => {
 }
 
 // A star of the rating, drawn, the early screens' fonts having none: in the screen's ink, or on the
-// iPod Photo glossy blue
+// iPod Photo and the 5th generation glossy blue
 const STAR =
   'M5 .4 6.35 3.6 9.8 3.9 7.2 6.15 8 9.55 5 7.75 2 9.55 2.8 6.15.2 3.9 3.65 3.6Z'
 const Star = ({ className, blue }) => (
@@ -529,20 +529,29 @@ const useStyles = makeStyles(
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      gap: row(0.3),
+      gap: row(0.26),
       height: row(0.9),
-      fontSize: row(0.62),
+      fontSize: row(0.86),
       color: '#000',
     },
-    star: { width: row(0.5), textAlign: 'center' },
-    dot: { width: row(0.5), textAlign: 'center', color: '#5a5a5a' },
+    star: { width: row(0.76), textAlign: 'center', lineHeight: 1 },
+    dot: {
+      width: row(0.76),
+      textAlign: 'center',
+      fontSize: row(0.62),
+      color: '#5a5a5a',
+    },
     // In ink on the black and white screens, the stars drawn
     monoRate: {
       color: 'var(--lcd-text)',
-      gap: row(0.22),
       '& $dot': { color: 'var(--lcd-text)' },
     },
-    drawnStar: { display: 'block', width: row(0.5), height: row(0.5) },
+    drawnStar: {
+      display: 'block',
+      width: row(0.74),
+      height: row(0.74),
+      margin: '0 auto',
+    },
     // The rating takes the place of the bar and the times, over them, hidden, so the song stays
     // where it was and the stars are centred in their place
     progressSlot: { position: 'relative' },

@@ -216,7 +216,7 @@ describe('skins', () => {
     SKINS.forEach((s) => expect(firmwareOf(s), s.id).toMatch(/^\d+(\.\d+)+$/))
   })
 
-  it('lets the iPods that rated songs rate them: the 3rd and 4th generation, the iPod Photo, the minis, the classics', () => {
+  it('lets the iPods that rated songs rate them: every one but the 1st and 2nd generation', () => {
     const rating = SKINS.filter((s) => s.lcd.rates).map((s) => s.id)
     ;[
       '3g',
@@ -226,9 +226,10 @@ describe('skins', () => {
       'mini2-blue',
       'classic-black',
     ].forEach((id) => expect(rating, id).toContain(id))
-    ;['1g', '5g-white', '5g-u2', 'transparent'].forEach((id) =>
-      expect(rating, id).not.toContain(id),
+    ;['5g-white', '5g-black', '5g-u2', 'transparent'].forEach((id) =>
+      expect(rating, id).toContain(id),
     )
+    expect(rating).not.toContain('1g')
   })
 
   it('makes the 6th generation classic a deeper black than the 7th', () => {
