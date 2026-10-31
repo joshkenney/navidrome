@@ -176,11 +176,10 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
           </filter>
         )}
         {satin && (
-          // Anodized aluminium, nearly flat: a touch lighter at the top, darker at the bottom
+          // Anodized aluminium, as in Apple's photos: darkening steadily from the top to the bottom
           <linearGradient id={u('face')} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor={f.light} />
-            <stop offset="0.28" stopColor={f.base} />
-            <stop offset="0.78" stopColor={f.base} />
+            <stop offset="0.5" stopColor={f.base} />
             <stop offset="1" stopColor={f.dark} />
           </linearGradient>
         )}

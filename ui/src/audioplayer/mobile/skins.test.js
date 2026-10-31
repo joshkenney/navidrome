@@ -103,11 +103,17 @@ describe('skins', () => {
     expect(fb).toBeGreaterThan(fr)
     expect(Math.min(fr, fg, fb)).toBeGreaterThan(190)
     expect(fugly.bulbs).toBeGreaterThan(0)
-    // Every black and white screen: Apple's ink, the same warm grey unlit, the bulbs off then
+    // The 1st and 2nd generation in Apple's warm dark grey ink; the later ones in navy, as in
+    // Apple's photos of them
+    expect(fugly.text).toBe('#484647')
+    expect(fugly.highlight).toBe('#484647')
+    ;['3g', '4g', 'mini-pink'].forEach((id) => {
+      const [r, , b] = rgb(skinFor(id).lcd.highlight, 0)
+      expect(b, id).toBeGreaterThan(r + 25)
+    })
+    // Every black and white screen: the same warm grey unlit, the bulbs off then
     mono.forEach((id) => {
       const lcd = skinFor(id).lcd
-      expect(lcd.text, id).toBe('#484647')
-      expect(lcd.highlight, id).toBe('#484647')
       expect(lcd.bulbs, id).toBeGreaterThan(0)
       expect(lcd.unlit.background, id).toMatch(/#a5a59b.*#d6d5d0/)
       expect(screenOf(lcd, false).bulbs, id).toBe(0)

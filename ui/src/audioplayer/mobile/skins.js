@@ -163,33 +163,45 @@ const FUGLY = {
   bulbs: 0.16,
 }
 
+// The later black and white screens, as in Apple's photos of them: a navy ink and highlight bar
+const navy = (text, highlight) => ({
+  text,
+  bar: text,
+  muted: text,
+  highlight,
+  track: 'rgba(30, 36, 72, 0.14)',
+})
+
 // 3rd generation: a muted, greyish blue, not as blue as the 4th generation's
 const MUTED_BLUE = {
   ...MONO,
+  ...navy('#1d2140', '#282b4b'),
   background:
-    'radial-gradient(ellipse 85% 75% at 50% 38%, #eef2f5 0%, #d6dfe7 50%, #bccad6 88%, #abbbca 100%)',
-  highlightText: '#e1e8ee',
+    'radial-gradient(ellipse 85% 75% at 50% 38%, #c6d2e2 0%, #b2c1d6 55%, #a2b3ca 100%)',
+  highlightText: '#dfe6f0',
   glow: `${GLASS}, inset 0 0 10px rgba(60, 82, 108, 0.3)`,
   grid: PIXEL_GRID,
   bulbs: 0.1,
 }
 
-// 4th generation: a cooler, bluer white
+// 4th generation: a cool periwinkle
 const ICY = {
   ...MONO,
+  ...navy('#1b2850', '#303c6a'),
   background:
-    'radial-gradient(ellipse 90% 80% at 50% 35%, #eef6ff 0%, #c9e1f8 50%, #9fc4ea 88%, #86b0dc 100%)',
-  highlightText: '#dcecfc',
-  glow: `${GLASS}, inset 0 0 10px rgba(40, 90, 160, 0.35)`,
+    'radial-gradient(ellipse 90% 80% at 50% 35%, #d2dcf8 0%, #bfcdf2 50%, #a8b7dc 100%)',
+  highlightText: '#e3e9fb',
+  glow: `${GLASS}, inset 0 0 10px rgba(40, 70, 150, 0.3)`,
   bulbs: 0.1,
 }
 
-// The mini: a plain white backlight. Its small screen showed the song and the artist playing, not
-// the album
+// The mini: a cool, pale blue. Its small screen showed the song and the artist playing, not the
+// album
 const MINI_LIGHT = {
   ...MONO,
-  background: 'linear-gradient(180deg, #e2e9ec 0%, #c7d2d8 100%)',
-  highlightText: '#dde5e9',
+  ...navy('#1e2348', '#383964'),
+  background: 'linear-gradient(180deg, #c6d0e2 0%, #b4c0d5 100%)',
+  highlightText: '#e6eaf3',
   glow: GLASS,
   bulbs: 0.08,
   noAlbum: true,
@@ -220,15 +232,37 @@ const aluminium = (light, base, dark, finish) => ({
   finish,
 })
 
+// The 4th and 5th generation's wheels, their colours from Apple's photos: a cool grey wheel with
+// white labels on the white iPods, a near black one with light labels on the black
 const WHITE_WHEEL = {
-  surface: ['#dadbde', '#cfd0d4'],
+  surface: ['#cfd3d6', '#bdc2c5'],
   label: '#ffffff',
-  center: ['#ffffff', '#ebecee'],
+  center: ['#f9fafa', '#eceef0'],
+}
+// The 4th generation's, lighter
+const CLICK4_WHEEL = {
+  surface: ['#e4e7e5', '#d4d7d6'],
+  label: '#ffffff',
+  center: ['#ffffff', '#eff0f1'],
 }
 const BLACK_WHEEL = {
-  surface: ['#2e2e31', '#232326'],
-  label: '#8e8e93',
-  center: ['#2a2a2d', '#151517'],
+  surface: ['#20262a', '#14191c'],
+  label: '#a3a7aa',
+  center: ['#0e1215', '#06090b'],
+}
+// The 5th generation's glossy plastic: greying towards the bottom left, the black with a faint
+// blue in it
+const GLOSS_WHITE = {
+  kind: 'plastic',
+  top: '#f6f7f8',
+  bottom: '#c7cbce',
+  diagonal: true,
+}
+const GLOSS_BLACK = {
+  kind: 'plastic',
+  top: '#171d21',
+  bottom: '#04090b',
+  diagonal: true,
 }
 const U2_WHEEL = {
   surface: ['#d4202f', '#b0101f'],
@@ -318,7 +352,7 @@ export const SKINS = [
     face: plastic('#fdfdfd', '#e6e7e9'),
     rim: true,
     windowFrame: '#0d0d0e',
-    wheel: WHITE_WHEEL,
+    wheel: CLICK4_WHEEL,
   },
   {
     id: 'photo',
@@ -329,7 +363,7 @@ export const SKINS = [
     face: plastic('#fdfdfd', '#e6e7e9'),
     rim: true,
     windowFrame: '#0d0d0e',
-    wheel: WHITE_WHEEL,
+    wheel: CLICK4_WHEEL,
   },
   {
     id: '5g-white',
@@ -337,7 +371,7 @@ export const SKINS = [
     group: 'classic',
     model: 'click5',
     lcd: COLOR_LCD,
-    face: plastic('#ffffff', '#e9eaec'),
+    face: GLOSS_WHITE,
     rim: true,
     windowFrame: '#0b0b0c',
     wheel: WHITE_WHEEL,
@@ -348,7 +382,7 @@ export const SKINS = [
     group: 'classic',
     model: 'click5',
     lcd: COLOR_LCD,
-    face: plastic('#2c2c2f', '#0f0f11'),
+    face: GLOSS_BLACK,
     rim: true,
     windowFrame: '#050506',
     wheel: BLACK_WHEEL,
@@ -359,14 +393,14 @@ export const SKINS = [
     group: 'classic',
     model: 'classic',
     lcd: CLASSIC_LCD,
-    face: aluminium('#eceef0', '#d8dbde', '#bdc1c6', 'satin'),
+    face: aluminium('#dadada', '#c4c4c4', '#999999', 'satin'),
     rim: true,
     windowFrame: '#0b0b0c',
     // A white wheel, grey labels, and a centre button of the front's aluminium
     wheel: {
-      surface: ['#fafafa', '#ececed'],
-      label: '#a5a8ad',
-      center: ['#e2e4e7', '#c8cbcf'],
+      surface: ['#fafcfd', '#eef2f5'],
+      label: '#9da8b3',
+      center: ['#dadada', '#c3c3c3'],
     },
   },
   {
@@ -376,13 +410,13 @@ export const SKINS = [
     model: 'classic',
     lcd: CLASSIC_LCD,
     // A deep black front
-    face: aluminium('#323336', '#242528', '#17181a', 'satin'),
+    face: aluminium('#3c3b3e', '#262528', '#0d0d0e', 'satin'),
     rim: true,
     windowFrame: '#050506',
     wheel: {
-      surface: ['#18181a', '#0c0c0d'],
-      label: '#b9babe',
-      center: ['#2e2f32', '#1f2022'],
+      surface: ['#161616', '#0b0b0b'],
+      label: '#c9c9cb',
+      center: ['#323133', '#232224'],
     },
   },
   {
@@ -392,13 +426,13 @@ export const SKINS = [
     model: 'classic',
     lcd: CLASSIC_LCD,
     // The 2008-2009 "black": space grey, lighter than the 6th generation's
-    face: aluminium('#62656a', '#505358', '#3d3f43', 'satin'),
+    face: aluminium('#5c5b5e', '#454446', '#1a191b', 'satin'),
     rim: true,
     windowFrame: '#050506',
     wheel: {
-      surface: ['#1d1d1f', '#121214'],
-      label: '#c4c5c8',
-      center: ['#5a5d62', '#46494d'],
+      surface: ['#232323', '#1a1a1b'],
+      label: '#dcdcde',
+      center: ['#514f52', '#3c3b3d'],
     },
   },
   mini('mini-silver', 'mini, silver (2004)', '#f1f2f4', '#c9ccd1', '#9fa3aa'),
@@ -467,7 +501,7 @@ export const SKINS = [
     face: plastic('#fdfdfd', '#e6e7e9'),
     rim: true,
     windowFrame: '#0d0d0e',
-    wheel: WHITE_WHEEL,
+    wheel: CLICK4_WHEEL,
   },
   {
     id: '5g-u2',
@@ -475,7 +509,7 @@ export const SKINS = [
     group: 'special',
     model: 'click5',
     lcd: COLOR_LCD,
-    face: plastic('#2c2c2f', '#0f0f11'),
+    face: GLOSS_BLACK,
     rim: true,
     windowFrame: '#050506',
     wheel: U2_WHEEL,
