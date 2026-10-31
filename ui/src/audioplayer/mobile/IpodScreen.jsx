@@ -78,8 +78,8 @@ const SegmentedBattery = ({ level, charging, linear = false, className }) => {
   )
 }
 
-// A star of the rating, drawn, the early screens' fonts having none: in the screen's ink, or on the
-// iPod Photo and the 5th generation glossy blue
+// A star of the rating, drawn: in the ink of the black and white screens, glossy blue on the colour
+// ones
 const STAR =
   'M5 .4 6.35 3.6 9.8 3.9 7.2 6.15 8 9.55 5 7.75 2 9.55 2.8 6.15.2 3.9 3.65 3.6Z'
 const Star = ({ className, blue }) => (
@@ -513,11 +513,12 @@ const useStyles = makeStyles(
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
     },
+    // The song's rating, in the blue of the stars rating it
     stars: {
       fontSize: row(0.5),
       lineHeight: row(0.66),
       letterSpacing: row(0.02),
-      color: '#000',
+      color: '#2470c4',
     },
     classicPosition: {
       fontSize: row(0.5),
@@ -1022,10 +1023,8 @@ export const IpodScreen = ({
                     >
                       {i >= rating ? (
                         '•'
-                      ) : mono || fifth ? (
-                        <Star className={classes.drawnStar} blue={fifth} />
                       ) : (
-                        '★'
+                        <Star className={classes.drawnStar} blue={!mono} />
                       )}
                     </span>
                   ))}

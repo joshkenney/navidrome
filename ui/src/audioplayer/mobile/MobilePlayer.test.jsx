@@ -528,7 +528,17 @@ describe('<MobilePlayer />', () => {
     expect(screen.getByTestId('rating')).toHaveTextContent('★★★')
   })
 
-  it.each(['3g', '4g', '4g-u2', 'mini-silver', 'photo', '5g-white', '5g-u2'])(
+  it.each([
+    '3g',
+    '4g',
+    '4g-u2',
+    'mini-silver',
+    'photo',
+    '5g-white',
+    '5g-u2',
+    'classic-black',
+    'classic6-black',
+  ])(
     'rates the song on the %s too, its stars drawn: any stars love it',
     (ipodSkin) => {
       subsonic.setRating.mockClear()
