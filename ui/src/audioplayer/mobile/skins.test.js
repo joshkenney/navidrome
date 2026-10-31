@@ -159,11 +159,11 @@ describe('skins', () => {
       const [r, g, b] = [1, 3, 5].map((k) => parseInt(hex.slice(k, k + 2), 16))
       return { r, g, b }
     }
-    // Aqua: green and blue both high, red low
+    // Aqua-blue, as Apple's photo of the 5th generation's bar: blue highest, green well above red
     ;['photo', '5g-white', '5g-black'].forEach((id) => {
       const { r, g, b } = hue(skinFor(id).lcd.accent)
-      expect(g, id).toBeGreaterThan(r + 100)
-      expect(b, id).toBeGreaterThan(r + 100)
+      expect(g, id).toBeGreaterThan(r + 70)
+      expect(b, id).toBeGreaterThan(g + 25)
     })
     // Deep blue: blue well above green
     ;['classic-silver', 'classic-black', 'classic6-black'].forEach((id) => {

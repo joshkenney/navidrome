@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { Provider } from 'react-redux'
 import { createStore } from 'redux'
 import { MobilePlayer } from './MobilePlayer'
+import subsonic from '../../subsonic'
 
 // jsdom has no PointerEvent: without it, simulated pointer events have no coordinates
 if (!window.PointerEvent) {
@@ -53,6 +54,16 @@ vi.mock('./ipodBrowse', () => {
     ),
   }
 })
+// Rating songs (the classics), and the covers beside their main menu
+vi.mock('../../subsonic', () => ({
+  default: {
+    setRating: vi.fn(() => Promise.resolve()),
+    star: vi.fn(() => Promise.resolve()),
+    unstar: vi.fn(() => Promise.resolve()),
+    getCoverArtUrl: (album) => `cover-${album.id}.jpg`,
+  },
+}))
+
 vi.mock('../../ipods/useIpodName', () => ({
   useIpodName: (id, name) => name,
 }))
@@ -402,6 +413,59 @@ describe('<MobilePlayer />', () => {
     act(() => vi.advanceTimersByTime(5000))
     expect(screen.queryByTestId('scrub-diamond')).toBeNull()
     expect(controls.seek).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
+  it('rates the song on the classics, the centre button pressed a second time: five stars love it, none unloves it', () => {
+    vi.useFakeTimers()
+    subsonic.setRating.mockClear()
+    subsonic.star.mockClear()
+    subsonic.unstar.mockClear()
+    renderPlayer({ settings: { ipodSkin: 'classic-black' } })
+    openPlayer()
+    const wheel = layOutWheel()
+    const centerButton = screen.getByLabelText('player.mobile.select')
+    const tapCenter = () => {
+      fireEvent.pointerDown(centerButton, at(100, 100, 2))
+      fireEvent.pointerUp(centerButton, at(100, 100, 2))
+      fireEvent.click(centerButton)
+    }
+    const stars = () =>
+      Number(screen.getByTestId('rating-edit').getAttribute('aria-valuenow'))
+    // Once: scrubbing; twice: rating, from none
+    tapCenter()
+    expect(screen.getByTestId('scrub-diamond')).toBeInTheDocument()
+    tapCenter()
+    expect(screen.queryByTestId('scrub-diamond')).toBeNull()
+    expect(stars()).toBe(0)
+    // A quarter turn clockwise (15 clicks): three stars; another: as many as there are, five
+    fireEvent.pointerDown(wheel, at(100, 10))
+    fireEvent.pointerMove(wheel, at(190, 100))
+    expect(stars()).toBe(3)
+    fireEvent.pointerMove(wheel, at(100, 190))
+    expect(stars()).toBe(5)
+    fireEvent.pointerUp(wheel, at(100, 190))
+    // A third time: kept, and loved
+    tapCenter()
+    expect(screen.queryByTestId('rating-edit')).toBeNull()
+    expect(subsonic.setRating).toHaveBeenCalledWith('s2', 5)
+    expect(subsonic.star).toHaveBeenCalledWith('s2')
+    expect(screen.getByTestId('rating')).toHaveTextContent('★★★★★')
+    // Down to none, then left alone: kept, and unloved
+    tapCenter()
+    tapCenter()
+    expect(stars()).toBe(5)
+    // Half a turn back, anticlockwise
+    fireEvent.pointerDown(wheel, at(100, 190))
+    fireEvent.pointerMove(wheel, at(190, 100))
+    fireEvent.pointerMove(wheel, at(100, 10))
+    fireEvent.pointerUp(wheel, at(100, 10))
+    expect(stars()).toBe(0)
+    act(() => vi.advanceTimersByTime(5000))
+    expect(screen.queryByTestId('rating-edit')).toBeNull()
+    expect(subsonic.setRating).toHaveBeenLastCalledWith('s2', 0)
+    expect(subsonic.unstar).toHaveBeenCalledWith('s2')
+    expect(screen.queryByTestId('rating')).toBeNull()
     vi.useRealTimers()
   })
 

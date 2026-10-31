@@ -104,11 +104,34 @@ const COLOR_LCD = {
 }
 // The 5th generation's screen (2005), as in Apple's photos: pale blue-white, its own software
 // ("fifth", see IpodScreen) with a striped blue progress bar
+// Its progress bar, sampled from Apple's photo, top to bottom: a dark navy edge, a light blue shine,
+// a deeper blue, turning aqua towards the bottom (IpodScreen stripes it)
+const AQUA_GLOSS = `linear-gradient(180deg, ${[
+  '#2c5c87 0%',
+  '#2c5c87 7%',
+  '#5687b6 10%',
+  '#7eacdf 15%',
+  '#88b8ec 20%',
+  '#76aee2 25%',
+  '#5e9fd0 30%',
+  '#4993c3 35%',
+  '#3b8cba 40%',
+  '#398ebb 47%',
+  '#3e91c0 53%',
+  '#4095c6 60%',
+  '#429ac9 65%',
+  '#459fd0 70%',
+  '#4da8d2 78%',
+  '#54abd2 85%',
+  '#58add2 92%',
+  '#5daccd 100%',
+].join(', ')})`
 const FIFTH_LCD = {
   ...COLOR_LCD,
   background: 'linear-gradient(180deg, #f1f5f8 0%, #e7eef3 55%, #dce5eb 100%)',
   text: '#111111',
-  bar: 'linear-gradient(180deg, #a9d1f4 0%, #64a6e4 45%, #3482d4 55%, #4d95de 100%)',
+  bar: AQUA_GLOSS,
+  accent: '#398ebb',
   software: 'fifth',
 }
 // The iPod Photo's screen (2004): colour, but small (220x176) and coarse. Its covers were tiny,
@@ -119,6 +142,8 @@ const PHOTO_LCD = {
   background: FIFTH_LCD.background,
   text: '#111111',
   highlight: 'linear-gradient(180deg, #3f8ad8 0%, #2470c4 50%, #1a60b2 100%)',
+  bar: AQUA_GLOSS,
+  accent: '#398ebb',
   coverFilter: 'contrast(1.06) saturate(1.12)',
   cover: 'lowRes',
   software: 'fifth',

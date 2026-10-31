@@ -13,6 +13,7 @@ import { blurredCover } from './blurredCover'
 import { setHaptics } from './haptics'
 import { setClicks } from './clicks'
 import { addTracks, playTracks } from '../../actions'
+import subsonic from '../../subsonic'
 import { useIpodNavigation } from './useIpodNavigation'
 import { PlayerActions } from './PlayerActions'
 
@@ -29,6 +30,10 @@ const VOLUME_PER_CLICK = 1 / 40
 const VOLUME_SHOWN_MS = 2500
 const SECONDS_PER_CLICK = 1
 const SCRUB_IDLE_MS = 5000
+// The 6th and 7th generation: a second press of the centre button rates the song, a star for
+// this many wheel clicks (24 degrees), until it is pressed again or the wheel is left alone
+const CLICKS_PER_STAR = 4
+const RATE_IDLE_MS = 5000
 // Degrees of a wheel click: fine for scrubbing, coarser for moving through the queue
 const SCRUB_STEP = 6
 const LIST_STEP = 24
@@ -235,6 +240,52 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     modeTimer.current = setTimeout(leaveMode, ms)
   }
   useEffect(() => () => clearTimeout(modeTimer.current), [])
+
+  // Rating the song playing (the classics): its rating, as rated here or as Navidrome has it, where
+  // a loved song with no rating has five stars. Five stars love it, none unloves it
+  const canRate = look.lcd.software === 'classic' && !audio.isRadio
+  const songId = audio.song.mediaFileId || audio.song.id
+  const [ratings, setRatings] = useState({})
+  const songRating =
+    ratings[songId] ??
+    (Math.round(audio.song.rating || 0) || (audio.song.starred ? 5 : 0))
+  const [draft, setDraft] = useState(null)
+  const rating = useRef(null)
+  const startRating = () => {
+    rating.current = { id: songId, from: songRating, to: songRating, turned: 0 }
+    setDraft(songRating)
+    showMode('rate', RATE_IDLE_MS)
+  }
+  const turnRating = (clicks) => {
+    const r = rating.current
+    if (!r) return
+    r.turned += clicks
+    const stars = Math.trunc(r.turned / CLICKS_PER_STAR)
+    if (stars) {
+      r.turned -= stars * CLICKS_PER_STAR
+      r.to = Math.max(0, Math.min(5, r.to + stars))
+      setDraft(r.to)
+    }
+    showMode('rate', RATE_IDLE_MS)
+  }
+  // Leaving the rating, however (the centre button, the wheel left alone, leaving Now Playing),
+  // keeps it
+  useEffect(() => {
+    if (mode === 'rate' || !rating.current) return
+    const { id, from, to } = rating.current
+    rating.current = null
+    setDraft(null)
+    if (!id || to === from) return
+    setRatings((r) => ({ ...r, [id]: to }))
+    const saved = [subsonic.setRating(id, to)]
+    if (to === 5) saved.push(subsonic.star(id))
+    if (to === 0) saved.push(subsonic.unstar(id))
+    Promise.all(saved).catch((e) => {
+      // eslint-disable-next-line no-console
+      console.log('Error rating the song: ', e)
+    })
+  }, [mode])
+
   // Whether the phone keeps the volume to itself (iPhones), found out the first time it's turned
   const volumeLocked = useRef(null)
 
@@ -314,6 +365,10 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
       setHighlight((h) => Math.max(0, Math.min(last, h + clicks)))
       return
     }
+    if (mode === 'rate') {
+      turnRating(clicks)
+      return
+    }
     if (mode !== 'scrub') {
       turnVolume(clicks)
       return
@@ -335,8 +390,9 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     showMode('scrub', SCRUB_IDLE_MS)
   }
 
-  // The centre button: on Now Playing it switches the wheel to scrubbing, and back; in Up Next it
-  // plays the highlighted song; in a menu, it picks the highlighted item
+  // The centre button: on Now Playing it switches the wheel to scrubbing, then (on the classics) to
+  // rating the song, and back; in Up Next it plays the highlighted song; in a menu, it picks the
+  // highlighted item
   // Up Next is reached from the main menu: a song picked there shows Now Playing
   const showNowPlaying = () => nav.push({ type: 'nowPlaying' })
   const onCenter = () => {
@@ -345,10 +401,14 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     } else if (view === 'upNext') {
       if (highlight !== audio.index) controls.playAt(highlight)
       showNowPlaying()
-    } else if (mode === 'scrub') {
+    } else if (mode === 'rate') {
       clearTimeout(modeTimer.current)
       setMode('progress')
-    } else if (scrubbable) {
+    } else if (mode === 'scrub' || !scrubbable) {
+      clearTimeout(modeTimer.current)
+      if (canRate && songId) startRating()
+      else setMode('progress')
+    } else {
       showMode('scrub', SCRUB_IDLE_MS)
     }
   }
@@ -562,6 +622,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
                 controls={controls}
                 scrubTime={scrubTime}
                 mode={mode}
+                rating={draft ?? songRating}
                 volumeLocked={!!volumeLocked.current}
                 view={view}
                 menu={nav}

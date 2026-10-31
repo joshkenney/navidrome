@@ -99,28 +99,38 @@ const HELVETICA = '"Helvetica Neue", Helvetica, Arial, sans-serif'
 const PODIUM = `"Source Sans 3", "Myriad Pro", ${HELVETICA}`
 
 // The classic's ▶ or ❚❚ in the header: blue, shining at the top
-const PlayState = ({ playing, className }) => (
-  <svg className={className} viewBox="0 0 10 10" aria-hidden>
-    <defs>
-      <linearGradient id="ndIpodPlayState" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stopColor="#8fd0ff" />
-        <stop offset="0.5" stopColor="#3a9be8" />
-        <stop offset="1" stopColor="#1f6fd0" />
-      </linearGradient>
-    </defs>
-    <path
-      d={
-        playing
-          ? 'M1 0.5 L9.5 5 L1 9.5 Z'
-          : 'M1.5 1 H4 V9 H1.5 Z M6 1 H8.5 V9 H6 Z'
-      }
-      fill="url(#ndIpodPlayState)"
-      stroke="#1a5fb4"
-      strokeWidth="0.5"
-      strokeLinejoin="round"
-    />
-  </svg>
-)
+const PlayState = ({ playing, className }) => {
+  const shape = playing
+    ? 'M1.2 0.9 L9.2 5 L1.2 9.1 Z'
+    : 'M1.6 1.2 H4 V8.8 H1.6 Z M6 1.2 H8.4 V8.8 H6 Z'
+  return (
+    <svg className={className} viewBox="0 0 10 10" aria-hidden>
+      <defs>
+        {/* As in Apple's photos: a mid blue, lighter in the middle, a navy edge, white round it */}
+        <linearGradient id="ndIpodPlayState" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#3f86c4" />
+          <stop offset="0.45" stopColor="#68aee3" />
+          <stop offset="1" stopColor="#3b80c0" />
+        </linearGradient>
+      </defs>
+      <path
+        d={shape}
+        fill="none"
+        stroke="#ffffff"
+        strokeOpacity="0.9"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d={shape}
+        fill="url(#ndIpodPlayState)"
+        stroke="#1d4c7d"
+        strokeWidth="0.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
 const useStyles = makeStyles(
   {
@@ -171,18 +181,31 @@ const useStyles = makeStyles(
         fontSize: row(0.5),
         padding: `${row(0.2)} ${row(0.4)} 0`,
       },
+      // Its bar, sampled from Apple's photo: a groove, light at the top, a grey band through it,
+      // near white below, a grey edge at the bottom
       '& $bar': {
-        height: row(0.44),
+        height: row(0.46),
         borderRadius: 0,
-        border: '1px solid #aeb7be',
+        borderLeft: '1px solid #b8c0c7',
+        borderRight: '1px solid #b8c0c7',
         background:
-          'linear-gradient(180deg, #ffffff 0%, #f2f4f6 50%, #e1e5e9 51%, #f7f8f9 100%)',
+          'linear-gradient(180deg, #cfd5da 0%, #ccd1d8 6%, #dfe5ec 10%, #f1f7fe 22%, #e9ecf4 28%, #dadde5 36%, #cdd2da 42%, #bbc3c9 48%, #c0cbce 54%, #cfd8d5 62%, #eef3ed 70%, #fbfef9 78%, #fcfeff 88%, #bbc1c8 94%, #a2aab3 100%)',
         boxShadow: 'none',
       },
-      // Its fill, striped
+      // Its fill, faintly striped, bright where it ends
       '& $fill': {
         borderRadius: 0,
-        background: `repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 4px), ${LCD.bar}`,
+        background: `repeating-linear-gradient(90deg, rgba(10, 40, 80, 0.09) 0 ${row(0.13)}, transparent ${row(0.13)} ${row(0.26)}), ${LCD.bar}`,
+        boxShadow: 'inset -1px 0 0 rgba(225, 253, 255, 0.95)',
+      },
+      // Scrubbing: a diamond of the bar's blue, outlined in its navy, white round it
+      '& $diamond': {
+        width: row(0.56),
+        height: row(0.56),
+        background:
+          'linear-gradient(135deg, #88b8ec 0%, #4993c3 40%, #398ebb 55%, #58add2 100%)',
+        border: '1px solid #2c5c87',
+        boxShadow: '0 0 0 1.5px rgba(255, 255, 255, 0.95)',
       },
       '& $times': { fontSize: row(0.58), marginTop: row(0.16) },
       '& $footer': { padding: `0 ${row(0.4)} ${row(0.3)}` },
@@ -474,6 +497,18 @@ const useStyles = makeStyles(
       lineHeight: row(0.66),
       color: '#000',
     },
+    // Rating the song: five dots across the bottom, stars as many as it has
+    rateStars: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: row(0.3),
+      height: row(0.9),
+      fontSize: row(0.62),
+      color: '#000',
+    },
+    star: { width: row(0.5), textAlign: 'center' },
+    dot: { width: row(0.5), textAlign: 'center', color: '#5a5a5a' },
     // The time played and left on either side of the bar, white and glossy round its blue
     classicProgress: {
       display: 'flex',
@@ -631,6 +666,8 @@ export const IpodScreen = ({
   software,
   // A battery of one bar as long as the charge (the 4th generation), not four bars
   linearBattery = false,
+  // The song's rating, in stars (0 to 5), as the classics show it, and set it ("rate" mode)
+  rating: ratingShown,
 }) => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -679,7 +716,7 @@ export const IpodScreen = ({
       total: queue.length.toLocaleString(),
     })
 
-  const rating = Math.round(song.rating || 0)
+  const rating = Math.round(ratingShown ?? song.rating ?? 0)
   const nowPlaying = (
     <div className={classes.nowPlaying}>
       {classic ? (
@@ -811,7 +848,24 @@ export const IpodScreen = ({
         {art && !classic && !fifth && position && (
           <div className={classes.position}>{position}</div>
         )}
-        {mode === 'volume' ? (
+        {mode === 'rate' ? (
+          // Rating: five dots, as many stars as the wheel gives it
+          <div
+            className={classes.rateStars}
+            role="meter"
+            aria-label={t('rating', { smart_count: rating })}
+            aria-valuemin={0}
+            aria-valuemax={5}
+            aria-valuenow={rating}
+            data-testid="rating-edit"
+          >
+            {[0, 1, 2, 3, 4].map((i) => (
+              <span key={i} className={i < rating ? classes.star : classes.dot}>
+                {i < rating ? '★' : '•'}
+              </span>
+            ))}
+          </div>
+        ) : mode === 'volume' ? (
           <>
             <div className={classes.volume} data-testid="volume">
               <Speaker className={classes.speaker} />
