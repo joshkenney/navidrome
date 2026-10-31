@@ -150,6 +150,9 @@ export const IpodBody = ({
   const face = { x: rim, y: rim, w: m.w - 2 * rim, h: m.h - 2 * rim }
   const dark = f.kind === 'plastic' && parseInt(f.top.slice(1, 3), 16) < 0x80
   const satin = f.kind === 'aluminium' && f.finish === 'satin'
+  // A front whose edges round off softly into shadow: the classics' metal, the 4th generation's
+  // plastic
+  const softEdge = satin || !!f.softEdge
   // Bead-blasted aluminium: the classic's front and the mini's tube, with no brushed streaks
   const blasted = satin || (f.kind === 'aluminium' && skin.tube)
   // The 3rd generation's thick plastic, rounding away at its edges, its wheel and buttons sunk in
@@ -273,8 +276,8 @@ export const IpodBody = ({
             ))}
           </linearGradient>
         )}
-        {satin && (
-          // The metal darkening softly as its edges round off
+        {softEdge && (
+          // The front darkening softly as its edges round off
           <filter id={u('edgeSoft')} x="-5%" y="-5%" width="110%" height="110%">
             <feGaussianBlur stdDeviation="0.9" />
           </filter>
@@ -739,7 +742,7 @@ export const IpodBody = ({
             fill={`url(#${u('sheen')})`}
           />
         )}
-        {satin && !plain && (
+        {softEdge && !plain && (
           <rect
             x={face.x}
             y={face.y}
@@ -748,7 +751,7 @@ export const IpodBody = ({
             rx={m.r - rim}
             fill="none"
             stroke="rgba(0,0,0,0.2)"
-            strokeWidth="3"
+            strokeWidth={satin ? 3 : 4}
             filter={`url(#${u('edgeSoft')})`}
           />
         )}
@@ -795,7 +798,7 @@ export const IpodBody = ({
             )}
           </>
         )}
-        {f.kind === 'plastic' && !rounded && !reflection && (
+        {f.kind === 'plastic' && !rounded && !reflection && !softEdge && (
           <rect
             x={face.x}
             y={face.y}
@@ -1127,7 +1130,7 @@ export const IpodBody = ({
           cy={wheel.cy}
           r={r * 0.8}
           color={skin.wheel.label}
-          size={wheel.d * 0.072}
+          size={wheel.d * (skin.wheel.labelSize || 0.072)}
           glyph={0.66}
           wide={0.9}
           spread={1.35}

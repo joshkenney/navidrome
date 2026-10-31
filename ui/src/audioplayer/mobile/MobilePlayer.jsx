@@ -506,7 +506,6 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
         <ScreenStrip
           audio={audio}
           controls={controls}
-          look={look}
           onOpen={openPlayer}
           onActions={setActionsItem}
         />

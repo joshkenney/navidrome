@@ -35,16 +35,16 @@ export const MODELS = {
     wheel: { cx: 30.9, cy: 77.9, d: 39.6 },
     center: 14,
   },
-  // 4th generation and iPod Photo (2004): the first click wheel
+  // 4th generation and iPod Photo (2004): the first click wheel. Measured from Apple's photo
   click4: {
     w: 61.8,
     h: 104.1,
-    r: 7.5,
-    window: { x: 10.6, y: 6.6, w: 40.6, h: 32.4, r: 0.8 },
-    lcd: { x: 11.1, y: 7.1, w: 39.6, h: 31.4 },
+    r: 6.3,
+    window: { x: 10.2, y: 6.4, w: 41.9, h: 34.2, r: 1.2 },
+    lcd: { x: 10.8, y: 7, w: 40.7, h: 33 },
     controls: 'click',
-    wheel: { cx: 30.9, cy: 69.6, d: 42.5 },
-    center: 15.6,
+    wheel: { cx: 30.9, cy: 71.6, d: 43 },
+    center: 13.8,
   },
   // 5th generation (2005): 103.5 x 61.8 mm, 2.5" 320x240 screen, smaller wheel
   click5: {
@@ -205,7 +205,8 @@ const ICY = {
   background:
     'radial-gradient(ellipse 90% 80% at 50% 35%, #d2dcf8 0%, #bfcdf2 50%, #a8b7dc 100%)',
   highlightText: '#e3e9fb',
-  glow: `${GLASS}, inset 0 0 10px rgba(40, 70, 150, 0.3)`,
+  // Crisp to its edges in Apple's photo, a fine light line inside the frame
+  glow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.4), inset 0 0 6px rgba(30, 45, 100, 0.3)',
   bulbs: 0.1,
 }
 
@@ -256,9 +257,11 @@ const WHITE_WHEEL = {
 }
 // The 4th generation's, lighter
 const CLICK4_WHEEL = {
-  surface: ['#e4e7e5', '#d4d7d6'],
-  label: '#ffffff',
-  center: ['#ffffff', '#eff0f1'],
+  surface: ['#e1e3e2', '#d8dad9'],
+  label: 'rgba(255, 255, 255, 0.9)',
+  center: ['#f8f8f8', '#eeeeee'],
+  // Its labels smaller than the later wheels' (see IpodBody)
+  labelSize: 0.056,
 }
 const BLACK_WHEEL = {
   surface: ['#20262a', '#14191c'],
@@ -294,6 +297,12 @@ const GLOSS_BLACK = {
     [0.77, '#0f1314', 1],
     [0.92, '#070d0f', 1],
   ],
+}
+// The 5th generation U2's, as in Apple's photo: a bright red wheel, white labels, a black centre
+const U2_5G_WHEEL = {
+  surface: ['#e4062e', '#b2001b'],
+  label: '#ffffff',
+  center: ['#0c0c0d', '#040404'],
 }
 const U2_WHEEL = {
   surface: ['#d4202f', '#b0101f'],
@@ -368,9 +377,9 @@ export const SKINS = [
     group: 'classic',
     model: 'click4',
     lcd: ICY,
-    face: plastic('#fdfdfd', '#e6e7e9'),
-    rim: true,
-    windowFrame: '#0d0d0e',
+    // Flat white plastic, its edge rounding off softly, no steel showing: Apple's photo
+    face: { ...plastic('#f7f7f7', '#ececec'), softEdge: true },
+    windowFrame: '#23262e',
     wheel: CLICK4_WHEEL,
   },
   {
@@ -379,9 +388,9 @@ export const SKINS = [
     group: 'classic',
     model: 'click4',
     lcd: PHOTO_LCD,
-    face: plastic('#fdfdfd', '#e6e7e9'),
-    rim: true,
-    windowFrame: '#0d0d0e',
+    // Flat white plastic, its edge rounding off softly, no steel showing: Apple's photo
+    face: { ...plastic('#f7f7f7', '#ececec'), softEdge: true },
+    windowFrame: '#23262e',
     wheel: CLICK4_WHEEL,
   },
   {
@@ -524,7 +533,7 @@ export const SKINS = [
     face: GLOSS_BLACK,
     rim: 'thin',
     windowFrame: '#050506',
-    wheel: U2_WHEEL,
+    wheel: U2_5G_WHEEL,
   },
 ]
 

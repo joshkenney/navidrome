@@ -186,6 +186,31 @@ describe('<MobilePlayer />', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
+  it("skips and sets the volume from the shuffle's pad, without opening the player", () => {
+    const { controls } = renderPlayer({
+      settings: { ipodSkin: 'classic-black' },
+    })
+    let level = 0.5
+    controls.volume = vi.fn(() => level)
+    controls.setVolume = vi.fn((v) => (level = v))
+    const press = (name) =>
+      fireEvent.click(screen.getByRole('button', { name }))
+    press('player.previousTrackText')
+    press('player.nextTrackText')
+    expect(controls.prev).toHaveBeenCalled()
+    expect(controls.next).toHaveBeenCalled()
+    press('player.mobile.volumeUp')
+    expect(level).toBeCloseTo(0.6)
+    press('player.mobile.volumeDown')
+    press('player.mobile.volumeDown')
+    expect(level).toBeCloseTo(0.4)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    // The song playing, printed on it, whatever the iPod chosen
+    expect(
+      screen.getByRole('button', { name: 'player.mobile.open' }),
+    ).toHaveTextContent('Song 2')
+  })
+
   it('opens the iPod on a tap, with a still square cover', () => {
     renderPlayer()
     openPlayer()
