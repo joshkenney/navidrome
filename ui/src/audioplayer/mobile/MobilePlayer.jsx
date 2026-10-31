@@ -9,6 +9,7 @@ import { ClickWheel } from './ClickWheel'
 import { useAudioState } from './useAudioState'
 import {
   capacityOf,
+  firmwareOf,
   lcdVars,
   modelOf,
   percentBox,
@@ -674,6 +675,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
                   ipodId: nav.ipodId,
                   ipodName: nav.ipodName,
                   capacity: capacityOf(look),
+                  firmware: firmwareOf(look),
                 }}
                 volumeLocked={!!volumeLocked.current}
                 view={view}

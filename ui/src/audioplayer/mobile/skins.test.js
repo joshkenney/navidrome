@@ -4,6 +4,7 @@ import {
   MODELS,
   SKINS,
   SKIN_GROUPS,
+  firmwareOf,
   lcdVars,
   modelOf,
   screenOf,
@@ -193,6 +194,26 @@ describe('skins', () => {
     const clear = skinFor('transparent')
     expect(clear.face.kind).toBe('clear')
     expect(clear.wheel.surface[0]).toMatch(/^#[0-2]/)
+  })
+
+  it('gives each iPod its last firmware, for About', () => {
+    const firmware = {
+      '1g': '1.5',
+      '3g': '2.3',
+      '4g': '3.1.1',
+      '4g-u2': '3.1.1',
+      photo: '1.2.1',
+      '5g-white': '1.3',
+      '5g-u2': '1.3',
+      transparent: '1.3',
+      'classic6-black': '1.1.2',
+      'classic-black': '2.0.5',
+      'mini2-blue': '1.4.1',
+    }
+    Object.entries(firmware).forEach(([id, version]) =>
+      expect(firmwareOf(skinFor(id)), id).toBe(version),
+    )
+    SKINS.forEach((s) => expect(firmwareOf(s), s.id).toMatch(/^\d+(\.\d+)+$/))
   })
 
   it('makes the 6th generation classic a deeper black than the 7th', () => {

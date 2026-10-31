@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import { makeStyles } from '@material-ui/core/styles'
-import config from '../../config'
 import { httpClient } from '../../dataProvider'
 import { useIpodName } from '../../ipods/useIpodName'
 import {
@@ -83,8 +82,8 @@ const gigabytes = (gb) =>
 
 // Settings > About, as on the iPod: the iPod's name, its songs, how much its folder holds (every
 // file in it), what that leaves of its model's biggest hard drive ("capacity", in GB), and the
-// software's version
-export const IpodAbout = ({ ipodId, ipodName, capacity, labels }) => {
+// model's last firmware
+export const IpodAbout = ({ ipodId, ipodName, capacity, firmware, labels }) => {
   const classes = useStyles()
   const name = useIpodName(ipodId, ipodName)
   const [stats, setStats] = useState(() =>
@@ -111,7 +110,7 @@ export const IpodAbout = ({ ipodId, ipodName, capacity, labels }) => {
       labels.available,
       used === null ? '…' : gigabytes(Math.max(0, capacity - used)),
     ],
-    [labels.version, config.version],
+    [labels.version, firmware],
   ]
   return (
     <div className={`${classes.about} songTitle`} data-testid="about">

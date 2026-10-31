@@ -12,6 +12,8 @@ export const MODELS = {
   // those of Apple's own drawing of it, for the iPod's 25th anniversary (2026)
   scroll: {
     // Its biggest hard drive, in GB (Settings > About)
+    // Its last firmware (Settings > About)
+    firmware: '1.5',
     capacity: 20,
     w: 61.8,
     h: 102,
@@ -28,6 +30,8 @@ export const MODELS = {
   // together
   row: {
     // Its biggest hard drive, in GB (Settings > About)
+    // Its last firmware (Settings > About)
+    firmware: '2.3',
     capacity: 40,
     w: 61.8,
     h: 104.1,
@@ -42,6 +46,8 @@ export const MODELS = {
   // 4th generation and iPod Photo (2004): the first click wheel. Measured from Apple's photo
   click4: {
     // Its biggest hard drive, in GB (Settings > About)
+    // Its last firmware (Settings > About)
+    firmware: '3.1.1',
     capacity: 40,
     w: 61.8,
     h: 104.1,
@@ -55,6 +61,8 @@ export const MODELS = {
   // 5th generation (2005): 103.5 x 61.8 mm, 2.5" 320x240 screen, smaller wheel
   click5: {
     // Its biggest hard drive, in GB (Settings > About)
+    // Its last firmware (Settings > About)
+    firmware: '1.3',
     capacity: 80,
     w: 61.8,
     h: 103.5,
@@ -69,6 +77,8 @@ export const MODELS = {
   // screen. Measured, like the 5th generation, from Apple's photos
   classic: {
     // Its biggest hard drive, in GB (Settings > About)
+    // Its last firmware (Settings > About)
+    firmware: '2.0.5',
     capacity: 160,
     w: 61.8,
     h: 103.5,
@@ -83,6 +93,8 @@ export const MODELS = {
   // front its corners are nearly square: the tube's roundness is on its sides
   mini: {
     // Its biggest hard drive, in GB (Settings > About)
+    // Its last firmware (Settings > About)
+    firmware: '1.4.1',
     capacity: 6,
     w: 50.8,
     h: 91.4,
@@ -432,6 +444,8 @@ export const SKINS = [
     group: 'classic',
     // The iPod Photo came with up to 60 GB
     capacity: 60,
+    // The iPod Photo's own line of firmware
+    firmware: '1.2.1',
     model: 'click4',
     lcd: PHOTO_LCD,
     // Flat white plastic, its edge rounding off softly, no steel showing: Apple's photo
@@ -465,6 +479,8 @@ export const SKINS = [
     id: 'classic-silver',
     name: '6th/7th generation classic, silver (2007)',
     group: 'classic',
+    // As the 6th generation (2007)
+    firmware: '1.1.2',
     model: 'classic',
     lcd: CLASSIC_LCD,
     face: aluminium('#ebebeb', '#d8d8d8', '#a2a2a2', 'satin'),
@@ -483,6 +499,8 @@ export const SKINS = [
     id: 'classic6-black',
     name: '6th generation classic, black (2007)',
     group: 'classic',
+    // The 6th generation (2007)
+    firmware: '1.1.2',
     model: 'classic',
     lcd: CLASSIC_LCD,
     // A deep black front
@@ -604,6 +622,9 @@ export const modelOf = (skin) => MODELS[skin.model]
 
 // How big its hard drive was, in GB: the biggest of its model, or of its edition
 export const capacityOf = (skin) => skin.capacity || modelOf(skin).capacity
+
+// The last firmware Apple released for it
+export const firmwareOf = (skin) => skin.firmware || modelOf(skin).firmware
 
 // Whether the front is dark (black and space grey iPods), for what is drawn on it
 export const isDark = (skin) => {
