@@ -41,7 +41,20 @@ const arcPath = (cx, cy, r, from, to) => {
   return `M${at(from)} A${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${at(to)}`
 }
 
-const Labels = ({ cx, cy, r, color, size, lower, filter }) => (
+// "glyph": how high the arrows are, against the text; "wide": how wide the arrows' triangles are;
+// "spread": how widely ▶❚❚ is spread
+const Labels = ({
+  cx,
+  cy,
+  r,
+  color,
+  size,
+  lower,
+  filter,
+  glyph = 0.85,
+  wide = 0.5,
+  spread = 1,
+}) => (
   <g fill={color} filter={filter}>
     <text
       x={cx}
@@ -55,9 +68,12 @@ const Labels = ({ cx, cy, r, color, size, lower, filter }) => (
     >
       {lower ? 'menu' : 'MENU'}
     </text>
-    <path d={skipPath(cx - r, cy, size * 0.85, false)} />
-    <path d={skipPath(cx + r, cy, size * 0.85, true)} />
-    <path d={playPausePath(cx, cy + r, size * 0.85)} />
+    <path d={skipPath(cx - r, cy, size * glyph, false, wide)} />
+    <path d={skipPath(cx + r, cy, size * glyph, true, wide)} />
+    <path
+      d={playPausePath(cx, cy + r, size * glyph)}
+      transform={`translate(${cx} 0) scale(${spread} 1) translate(${-cx} 0)`}
+    />
   </g>
 )
 
@@ -118,7 +134,9 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
   const f = skin.face
   // The 1st and 2nd generation, drawn after Apple's 25th-anniversary iPod: a polished chrome rim
   const chrome = skin.rim === 'chrome'
-  const rim = chrome ? 0.75 : skin.rim ? 0.55 : 0
+  // The 5th generation's and the classics': only a fine, dark edge shows
+  const thin = skin.rim === 'thin'
+  const rim = chrome ? 0.75 : thin ? 0.35 : skin.rim ? 0.55 : 0
   const face = { x: rim, y: rim, w: m.w - 2 * rim, h: m.h - 2 * rim }
   const dark = f.kind === 'plastic' && parseInt(f.top.slice(1, 3), 16) < 0x80
   const satin = f.kind === 'aluminium' && f.finish === 'satin'
@@ -127,6 +145,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
   // The 3rd generation's thick plastic, rounding away at its edges, its wheel and buttons sunk in
   const rounded = f.kind === 'plastic' && f.rounded
   const sunken = skin.wheel.sunken
+  const reflection = f.reflection
   const rowLit = !skin.row?.unlitLabel || lit
   const wheel = m.wheel
   const r = wheel.d / 2
@@ -217,6 +236,39 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
             </filter>
           </>
         )}
+        {thin && (
+          // The steel edge, mirroring the room: lighter at the top, dark at the bottom
+          <linearGradient id={u('thinRim')} x1="0" y1="0" x2="0.25" y2="1">
+            <stop offset="0" stopColor="#b4b6b8" />
+            <stop offset="0.5" stopColor="#6e7174" />
+            <stop offset="1" stopColor="#2e3033" />
+          </linearGradient>
+        )}
+        {reflection && (
+          <linearGradient
+            id={u('reflection')}
+            gradientUnits="userSpaceOnUse"
+            x1="0"
+            y1="0"
+            x2="0"
+            y2={m.h}
+          >
+            {reflection.map(([offset, color, opacity]) => (
+              <stop
+                key={offset}
+                offset={offset}
+                stopColor={color}
+                stopOpacity={opacity}
+              />
+            ))}
+          </linearGradient>
+        )}
+        {satin && (
+          // The metal darkening softly as its edges round off
+          <filter id={u('edgeSoft')} x="-5%" y="-5%" width="110%" height="110%">
+            <feGaussianBlur stdDeviation="0.9" />
+          </filter>
+        )}
         {chrome && (
           // Polished chrome: bands of light and dark all round, mirroring the room
           <linearGradient id={u('chrome')} x1="0" y1="0" x2="1" y2="1">
@@ -306,10 +358,10 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
           // Its bevelled edge, cut through the anodizing: catching the light at the top, in shadow
           // at the bottom
           <linearGradient id={u('chamfer')} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#ffffff" stopOpacity="0.6" />
-            <stop offset="0.12" stopColor="#ffffff" stopOpacity="0.3" />
-            <stop offset="0.6" stopColor="#ffffff" stopOpacity="0.14" />
-            <stop offset="1" stopColor="#000000" stopOpacity="0.35" />
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.55" />
+            <stop offset="0.06" stopColor="#ffffff" stopOpacity="0.08" />
+            <stop offset="0.5" stopColor="#000000" stopOpacity="0.08" />
+            <stop offset="1" stopColor="#000000" stopOpacity="0.4" />
           </linearGradient>
         )}
         {blasted && (
@@ -392,8 +444,14 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
             <stop offset="1" stopColor={skin.wheel.surface[1]} />
           </radialGradient>
         )}
-        {/* The centre button, slightly domed (the anniversary's: shaded from the bottom left) */}
-        {skin.wheel.border ? (
+        {/* The centre button, slightly domed (the anniversary's: shaded from the bottom left; the
+            classics': dished, in shadow at the top) */}
+        {skin.wheel.dished ? (
+          <linearGradient id={u('center')} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={skin.wheel.center[1]} />
+            <stop offset="1" stopColor={skin.wheel.center[0]} />
+          </linearGradient>
+        ) : skin.wheel.border ? (
           <radialGradient id={u('center')} cx="-0.09" cy="2.09" r="2.3">
             <stop offset="0" stopColor={skin.wheel.center[1]} />
             <stop offset="0.75" stopColor={skin.wheel.center[0]} />
@@ -473,7 +531,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
           width={m.w}
           height={m.h}
           rx={m.r}
-          fill={`url(#${u(chrome ? 'chrome' : 'steel')})`}
+          fill={`url(#${u(chrome ? 'chrome' : thin ? 'thinRim' : 'steel')})`}
         />
       )}
       {chrome && (
@@ -624,6 +682,25 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
             fill={`url(#${u('sheen')})`}
           />
         )}
+        {satin && (
+          <rect
+            x={face.x}
+            y={face.y}
+            width={face.w}
+            height={face.h}
+            rx={m.r - rim}
+            fill="none"
+            stroke="rgba(0,0,0,0.2)"
+            strokeWidth="3"
+            filter={`url(#${u('edgeSoft')})`}
+          />
+        )}
+        {reflection && (
+          <polygon
+            points={`${m.w * 0.162} 0 ${m.w} 0 ${m.w} ${m.h * 0.953}`}
+            fill={`url(#${u('reflection')})`}
+          />
+        )}
         {rounded && (
           <>
             <rect
@@ -659,15 +736,17 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
             />
           </>
         )}
-        {(f.kind === 'plastic' || f.kind === 'clear') && !rounded && (
-          <rect
-            x={face.x}
-            y={face.y}
-            width={face.w}
-            height={face.h}
-            fill={`url(#${u('gloss')})`}
-          />
-        )}
+        {(f.kind === 'plastic' || f.kind === 'clear') &&
+          !rounded &&
+          !reflection && (
+            <rect
+              x={face.x}
+              y={face.y}
+              width={face.w}
+              height={face.h}
+              fill={`url(#${u('gloss')})`}
+            />
+          )}
       </g>
       {/* The front's edge catching the light */}
       {satin && (
@@ -703,7 +782,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
                     ? 'rgba(255,255,255,0.18)'
                     : 'rgba(255,255,255,0.75)'
         }
-        strokeWidth={satin ? 0.6 : chrome ? 0.5 : 0.3}
+        strokeWidth={satin ? 0.4 : chrome ? 0.5 : thin ? 0.18 : 0.3}
       />
       {chrome && (
         // Where the plastic meets the chrome: a hairline of shadow and one of white
@@ -719,6 +798,24 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
         />
       )}
 
+      {thin && (
+        // The cut edge round the screen's glass, catching the light
+        <rect
+          x={m.window.x - 0.12}
+          y={m.window.y - 0.12}
+          width={m.window.w + 0.24}
+          height={m.window.h + 0.24}
+          rx={m.window.r + 0.12}
+          fill="none"
+          stroke="#ffffff"
+          strokeOpacity={
+            dark || (satin && parseInt(f.base.slice(1, 3), 16) < 0x80)
+              ? 0.45
+              : 0.95
+          }
+          strokeWidth="0.2"
+        />
+      )}
       {/* The screen's glass */}
       <rect
         x={m.window.x}
@@ -948,7 +1045,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
         />
       )}
       {/* Its rim, a little shadowed at the top, lit at the bottom: it is set into the front */}
-      {!sunken && (
+      {!sunken && !thin && (
         <circle
           cx={wheel.cx}
           cy={wheel.cy}
@@ -961,12 +1058,16 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
         />
       )}
       {m.controls === 'click' && (
+        // As in Apple's photos: near the wheel's edge, the arrows wide
         <Labels
           cx={wheel.cx}
           cy={wheel.cy}
-          r={r * 0.76}
+          r={r * 0.8}
           color={skin.wheel.label}
-          size={wheel.d * 0.065}
+          size={wheel.d * 0.072}
+          glyph={0.66}
+          wide={0.9}
+          spread={1.35}
         />
       )}
       {sunken ? (

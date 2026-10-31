@@ -37,6 +37,25 @@ describe('<IpodBody />', () => {
     expect(container.querySelector('rect[fill*="steel"]')).toBeNull()
   })
 
+  it("draws the 5th generation as in Apple's photos: the room reflected on its right, a fine dark edge", () => {
+    const { container } = render(<IpodBody skin={skinFor('5g-black')} />)
+    expect(
+      container.querySelector('polygon[fill*="reflection"]'),
+    ).not.toBeNull()
+    expect(container.querySelector('rect[fill*="gloss"]')).toBeNull()
+    expect(container.querySelector('rect[fill*="thinRim"]')).not.toBeNull()
+    expect(container.querySelector('rect[fill*="steel"]')).toBeNull()
+  })
+
+  it("dishes the classic's centre button: in shadow at the top, lit at the bottom", () => {
+    const skin = skinFor('classic-silver')
+    const { container } = render(<IpodBody skin={skin} />)
+    const stops = Array.from(
+      container.querySelector('linearGradient[id$="-center"]').children,
+    ).map((s) => s.getAttribute('stop-color'))
+    expect(stops).toEqual([skin.wheel.center[1], skin.wheel.center[0]])
+  })
+
   it('draws the space grey classic in smooth anodized aluminium, not brushed', () => {
     const { container } = render(<IpodBody skin={skinFor('classic-black')} />)
     const filters = Array.from(container.querySelectorAll('rect[filter]')).map(

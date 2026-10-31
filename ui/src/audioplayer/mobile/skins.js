@@ -50,23 +50,24 @@ export const MODELS = {
   click5: {
     w: 61.8,
     h: 103.5,
-    r: 7.5,
-    window: { x: 4.7, y: 4.6, w: 52.4, h: 39.4, r: 1 },
-    lcd: { x: 5.5, y: 5.25, w: 50.8, h: 38.1 },
+    r: 6,
+    window: { x: 4.7, y: 4.6, w: 52.4, h: 39.9, r: 1 },
+    lcd: { x: 5.5, y: 5.5, w: 50.8, h: 38.1 },
     controls: 'click',
-    wheel: { cx: 30.9, cy: 73.2, d: 38.6 },
-    center: 15,
+    wheel: { cx: 30.9, cy: 73.2, d: 38.2 },
+    center: 13.5,
   },
-  // 6th and 7th generation classic (2007-2009): anodized aluminium front, flatter corners
+  // 6th and 7th generation classic (2007-2009): anodized aluminium front, a black bezel round the
+  // screen. Measured, like the 5th generation, from Apple's photos
   classic: {
     w: 61.8,
     h: 103.5,
-    r: 5.6,
-    window: { x: 4.25, y: 4.4, w: 53.3, h: 41.2, r: 0.6 },
-    lcd: { x: 5.5, y: 5.8, w: 50.8, h: 38.1 },
+    r: 6,
+    window: { x: 4.5, y: 4.6, w: 52.8, h: 40, r: 0.6 },
+    lcd: { x: 5.5, y: 5.55, w: 50.8, h: 38.1 },
     controls: 'click',
-    wheel: { cx: 30.9, cy: 75.2, d: 38.7 },
-    center: 13.6,
+    wheel: { cx: 30.9, cy: 73.2, d: 38.2 },
+    center: 13.7,
   },
   // iPod mini (2004-2005): 91 x 51 mm, 1.67" 138x110 screen, an aluminium tube. Seen from the
   // front its corners are nearly square: the tube's roundness is on its sides
@@ -206,7 +207,8 @@ const MINI_LIGHT = {
 }
 
 // Materials. "face" is the front: glossy plastic, brushed aluminium or clear acrylic. The polished
-// steel back shows as a rim around the plastic fronts
+// steel back shows as a rim around the plastic fronts: "thin" on the 5th generation and the
+// classics, where it shows only as a fine, dark edge in Apple's photos
 const plastic = (top, bottom) => ({ kind: 'plastic', top, bottom })
 // The 1st and 2nd generation, as Apple drew them for the iPod's 25th anniversary: white plastic
 // greying towards the bottom left, a polished chrome rim, a raised ring of buttons catching the
@@ -245,22 +247,38 @@ const CLICK4_WHEEL = {
 }
 const BLACK_WHEEL = {
   surface: ['#20262a', '#14191c'],
-  label: '#a3a7aa',
+  label: '#d9dbdd',
   center: ['#0e1215', '#06090b'],
 }
 // The 5th generation's glossy plastic: greying towards the bottom left, the black with a faint
-// blue in it
+// blue in it. "reflection": as in Apple's photos, the room reflected in the right of its front,
+// beyond a straight edge running from the top left to the bottom right, fading downwards: [where
+// (0 the top, 1 the bottom), colour, opacity]
 const GLOSS_WHITE = {
   kind: 'plastic',
   top: '#f6f7f8',
   bottom: '#c7cbce',
   diagonal: true,
+  reflection: [
+    [0, '#ffffff', 0.5],
+    [0.6, '#ffffff', 0.3],
+    [1, '#ffffff', 0.12],
+  ],
 }
 const GLOSS_BLACK = {
   kind: 'plastic',
-  top: '#171d21',
+  top: '#080e10',
   bottom: '#04090b',
   diagonal: true,
+  reflection: [
+    [0, '#848e93', 1],
+    [0.2, '#6d797e', 1],
+    [0.39, '#495358', 1],
+    [0.58, '#272d30', 1],
+    [0.68, '#171c1d', 1],
+    [0.77, '#0f1314', 1],
+    [0.92, '#070d0f', 1],
+  ],
 }
 const U2_WHEEL = {
   surface: ['#d4202f', '#b0101f'],
@@ -372,7 +390,7 @@ export const SKINS = [
     model: 'click5',
     lcd: COLOR_LCD,
     face: GLOSS_WHITE,
-    rim: true,
+    rim: 'thin',
     windowFrame: '#0b0b0c',
     wheel: WHITE_WHEEL,
   },
@@ -383,7 +401,7 @@ export const SKINS = [
     model: 'click5',
     lcd: COLOR_LCD,
     face: GLOSS_BLACK,
-    rim: true,
+    rim: 'thin',
     windowFrame: '#050506',
     wheel: BLACK_WHEEL,
   },
@@ -393,14 +411,16 @@ export const SKINS = [
     group: 'classic',
     model: 'classic',
     lcd: CLASSIC_LCD,
-    face: aluminium('#dadada', '#c4c4c4', '#999999', 'satin'),
-    rim: true,
+    face: aluminium('#ebebeb', '#d8d8d8', '#a2a2a2', 'satin'),
+    rim: 'thin',
     windowFrame: '#0b0b0c',
-    // A white wheel, grey labels, and a centre button of the front's aluminium
+    // A white wheel, grey labels, and a centre button of the front's aluminium, dished: in
+    // shadow at the top, lit at the bottom
     wheel: {
-      surface: ['#fafcfd', '#eef2f5'],
+      surface: ['#f8fbfc', '#f1f4f6'],
       label: '#9da8b3',
-      center: ['#dadada', '#c3c3c3'],
+      center: ['#e0e0e0', '#b8b8b8'],
+      dished: true,
     },
   },
   {
@@ -411,12 +431,13 @@ export const SKINS = [
     lcd: CLASSIC_LCD,
     // A deep black front
     face: aluminium('#3c3b3e', '#262528', '#0d0d0e', 'satin'),
-    rim: true,
+    rim: 'thin',
     windowFrame: '#050506',
     wheel: {
       surface: ['#161616', '#0b0b0b'],
       label: '#c9c9cb',
-      center: ['#323133', '#232224'],
+      center: ['#3a393b', '#1c1b1d'],
+      dished: true,
     },
   },
   {
@@ -426,13 +447,14 @@ export const SKINS = [
     model: 'classic',
     lcd: CLASSIC_LCD,
     // The 2008-2009 "black": space grey, lighter than the 6th generation's
-    face: aluminium('#5c5b5e', '#454446', '#1a191b', 'satin'),
-    rim: true,
+    face: aluminium('#555356', '#434144', '#1d1d1e', 'satin'),
+    rim: 'thin',
     windowFrame: '#050506',
     wheel: {
       surface: ['#232323', '#1a1a1b'],
       label: '#dcdcde',
-      center: ['#514f52', '#3c3b3d'],
+      center: ['#5c5a5d', '#2e2d2e'],
+      dished: true,
     },
   },
   mini('mini-silver', 'mini, silver (2004)', '#f1f2f4', '#c9ccd1', '#9fa3aa'),
@@ -510,7 +532,7 @@ export const SKINS = [
     model: 'click5',
     lcd: COLOR_LCD,
     face: GLOSS_BLACK,
-    rim: true,
+    rim: 'thin',
     windowFrame: '#050506',
     wheel: U2_WHEEL,
   },
@@ -521,12 +543,13 @@ export const SKINS = [
     model: 'classic',
     lcd: CLASSIC_LCD,
     face: aluminium('#d93444', '#c42132', '#a3172a', 'satin'),
-    rim: true,
+    rim: 'thin',
     windowFrame: '#0b0b0c',
     wheel: {
       surface: ['#fbfbfb', '#efefef'],
       label: '#b6b8bc',
       center: ['#ececee', '#cfd1d5'],
+      dished: true,
     },
   },
 ]
