@@ -8,7 +8,8 @@ import { IpodScreen } from './IpodScreen'
 import { ClickWheel } from './ClickWheel'
 import { useAudioState } from './useAudioState'
 import { lcdVars, modelOf, percentBox, screenOf, skinFor } from './skins'
-import { IpodBody } from './IpodBody'
+import { IpodFront, prepareFront } from './IpodFront'
+import { blurredCover } from './blurredCover'
 import { setHaptics } from './haptics'
 import { setClicks } from './clicks'
 import { addTracks, playTracks } from '../../actions'
@@ -61,6 +62,15 @@ const useStyles = makeStyles(
       background: '#0d0d0f',
       touchAction: 'none',
     },
+    // Blurred small (see blurredCover), stretched to the screen
+    blurred: {
+      position: 'absolute',
+      inset: 0,
+      backgroundSize: '100% 100%',
+      animation: '$ndIpodFadeIn 300ms ease-out',
+    },
+    '@keyframes ndIpodFadeIn': { from: { opacity: 0 } },
+    // Where the cover can't be read (from another site): blurred by the browser
     blur: {
       position: 'absolute',
       inset: '-10%',
@@ -81,9 +91,22 @@ const useStyles = makeStyles(
           width: 'min(calc(100vw - 28px), calc((100vh - 48px) * var(--ratio)))',
         },
       ],
-      filter:
-        'drop-shadow(0 18px 28px rgba(0,0,0,0.55)) drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
       willChange: 'transform',
+    },
+    // Its shadow, behind it: a shape of its own, not a filter over the whole iPod, which would be
+    // drawn again whenever anything on the iPod changed
+    shadow: {
+      position: 'absolute',
+      inset: 0,
+      boxShadow: '0 18px 28px rgba(0,0,0,0.55), 0 2px 4px rgba(0,0,0,0.4)',
+    },
+    // Where the iPod will be, while it isn't open: to draw its front ahead (see prepareFront)
+    probe: {
+      position: 'fixed',
+      left: 0,
+      top: 0,
+      visibility: 'hidden',
+      pointerEvents: 'none',
     },
     body: { position: 'absolute', inset: 0, display: 'block' },
     // The lit screen, under the iPod's glass
@@ -442,9 +465,43 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     if (open) setDragY(0)
   }, [open])
 
+  // The cover behind the iPod, blurred
+  const [backdrop, setBackdrop] = useState(null)
+  const cover = audio.item.cover
+  useEffect(() => {
+    let live = true
+    setBackdrop(null)
+    blurredCover(cover).then((url) => live && setBackdrop({ url }))
+    return () => {
+      live = false
+    }
+  }, [cover])
+
+  // While the player is closed, its front is drawn ahead, when the phone has nothing else to do
+  const probe = useRef(null)
+  useEffect(() => {
+    if (open || !probe.current) return undefined
+    const el = probe.current
+    const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1500))
+    const cancel = window.cancelIdleCallback || clearTimeout
+    const handle = idle(() => {
+      prepareFront(look, el)
+      if (cover) blurredCover(cover)
+    })
+    return () => cancel(handle)
+  }, [open, look, cover])
+
   const model = modelOf(look)
   return (
     <>
+      {!open && (
+        <div
+          ref={probe}
+          className={`${classes.device} ${classes.probe}`}
+          style={{ '--ratio': `${model.w} / ${model.h}` }}
+          aria-hidden
+        />
+      )}
       {!open && (
         <ScreenStrip
           audio={audio}
@@ -468,11 +525,11 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
           onPointerUp={onDragEnd}
           onPointerCancel={onDragEnd}
         >
-          {audio.item.cover && (
+          {cover && backdrop && (
             <div
-              className={classes.blur}
+              className={backdrop.url ? classes.blurred : classes.blur}
               style={{
-                backgroundImage: `url("${audio.item.cover}")`,
+                backgroundImage: `url("${backdrop.url || cover}")`,
                 opacity: 1 - Math.min(0.8, dragY / 500),
               }}
               aria-hidden
@@ -487,7 +544,13 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
               transition: dragging ? 'none' : 'transform 220ms ease-out',
             }}
           >
-            <IpodBody skin={look} lit={lit} className={classes.body} />
+            <div
+              className={classes.shadow}
+              style={{
+                borderRadius: `${(model.r / model.w) * 100}% / ${(model.r / model.h) * 100}%`,
+              }}
+            />
+            <IpodFront skin={look} lit={lit} className={classes.body} />
             <div className={classes.lcd} style={percentBox(model, model.lcd)}>
               <IpodScreen
                 audio={audio}

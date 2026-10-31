@@ -79,31 +79,33 @@ const Labels = ({
 
 // A button or wheel sunk into the front (the 3rd generation's): in shadow inside its top left
 // edge, lit inside its bottom right, a fine line where it meets the front
-const Well = ({ id, u, cx, cy, r, fill }) => (
+const Well = ({ id, u, cx, cy, r, fill, plain }) => (
   <g>
     <clipPath id={id}>
       <circle cx={cx} cy={cy} r={r} />
     </clipPath>
     <circle cx={cx} cy={cy} r={r} fill={fill} />
-    <g clipPath={`url(#${id})`} fill="none">
-      <circle
-        cx={cx + 0.35}
-        cy={cy + 0.45}
-        r={r}
-        stroke="rgba(60,66,64,0.32)"
-        strokeWidth="1.3"
-        filter={`url(#${u('wellShade')})`}
-      />
-      <circle
-        cx={cx - 0.25}
-        cy={cy - 0.3}
-        r={r}
-        stroke="#ffffff"
-        strokeOpacity="0.9"
-        strokeWidth="0.55"
-        filter={`url(#${u('wellLight')})`}
-      />
-    </g>
+    {!plain && (
+      <g clipPath={`url(#${id})`} fill="none">
+        <circle
+          cx={cx + 0.35}
+          cy={cy + 0.45}
+          r={r}
+          stroke="rgba(60,66,64,0.32)"
+          strokeWidth="1.3"
+          filter={`url(#${u('wellShade')})`}
+        />
+        <circle
+          cx={cx - 0.25}
+          cy={cy - 0.3}
+          r={r}
+          stroke="#ffffff"
+          strokeOpacity="0.9"
+          strokeWidth="0.55"
+          filter={`url(#${u('wellLight')})`}
+        />
+      </g>
+    )}
     <circle
       cx={cx}
       cy={cy}
@@ -125,8 +127,16 @@ const Well = ({ id, u, cx, cy, r, fill }) => (
   </g>
 )
 
-// "lit": whether the backlight is on, which lit the 3rd generation's buttons too
-export const IpodBody = ({ skin, lit = true, className, style }) => {
+// "lit": whether the backlight is on, which lit the 3rd generation's buttons too. "plain": without
+// its filters (grain, soft light and shadow), quick to draw, while the whole of it is being drawn
+// (see bodyPicture)
+export const IpodBody = ({
+  skin,
+  lit = true,
+  plain = false,
+  className,
+  style,
+}) => {
   const id = useRef(null)
   if (id.current === null) id.current = `ipod${++ids}`
   const u = (name) => `${id.current}-${name}`
@@ -652,7 +662,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
             />
           </>
         )}
-        {f.kind === 'aluminium' && !blasted && (
+        {f.kind === 'aluminium' && !blasted && !plain && (
           <rect
             x={face.x}
             y={face.y}
@@ -662,7 +672,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
             opacity="0.5"
           />
         )}
-        {blasted && (
+        {blasted && !plain && (
           <rect
             x={face.x}
             y={face.y}
@@ -682,7 +692,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
             fill={`url(#${u('sheen')})`}
           />
         )}
-        {satin && (
+        {satin && !plain && (
           <rect
             x={face.x}
             y={face.y}
@@ -725,15 +735,17 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
               fill={`url(#${u('edgeTop')})`}
             />
             {/* The light running down its rounded left edge and round the bottom corner */}
-            <path
-              d={`M2.6 14 V${face.h - m.r} A${m.r - 2.6} ${m.r - 2.6} 0 0 0 ${m.r} ${face.h - 2.6} H9`}
-              fill="none"
-              stroke="#ffffff"
-              strokeOpacity="0.55"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              filter={`url(#${u('shine')})`}
-            />
+            {!plain && (
+              <path
+                d={`M2.6 14 V${face.h - m.r} A${m.r - 2.6} ${m.r - 2.6} 0 0 0 ${m.r} ${face.h - 2.6} H9`}
+                fill="none"
+                stroke="#ffffff"
+                strokeOpacity="0.55"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                filter={`url(#${u('shine')})`}
+              />
+            )}
           </>
         )}
         {(f.kind === 'plastic' || f.kind === 'clear') &&
@@ -844,7 +856,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
       {/* The 1st and 2nd generation's ring of buttons around the wheel */}
       {m.controls === 'ring' && (
         <>
-          {skin.ring.raised && (
+          {skin.ring.raised && !plain && (
             // Raised off the front: its shadow, down and to the left
             <circle
               cx={m.ring.cx - 0.4}
@@ -864,7 +876,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
             }
             strokeWidth="0.3"
           />
-          {skin.ring.raised && (
+          {skin.ring.raised && !plain && (
             // The light caught on its rounded top, at the upper right and lower left
             <g
               fill="none"
@@ -935,6 +947,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
               <Well
                 id={u(`row${i}`)}
                 u={u}
+                plain={plain}
                 cx={x}
                 cy={m.row.cy}
                 r={m.row.d / 2}
@@ -953,7 +966,9 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
             <g
               fill={rowLit ? skin.row.label : skin.row.unlitLabel}
               filter={
-                rowLit && skin.row.glow ? `url(#${u('glow')})` : undefined
+                rowLit && skin.row.glow && !plain
+                  ? `url(#${u('glow')})`
+                  : undefined
               }
               data-lit={rowLit ? 'true' : 'false'}
               style={{ transition: 'fill 400ms ease-out' }}
@@ -986,7 +1001,9 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
           cy={wheel.cy - 0.5}
           r={r}
           fill="rgba(122,122,122,0.6)"
-          filter={skin.ring?.raised ? `url(#${u('soft')})` : undefined}
+          filter={
+            skin.ring?.raised && !plain ? `url(#${u('soft')})` : undefined
+          }
         />
       )}
       {sunken ? (
@@ -994,6 +1011,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
           <Well
             id={u('wheelWell')}
             u={u}
+            plain={plain}
             cx={wheel.cx}
             cy={wheel.cy}
             r={r}
@@ -1024,7 +1042,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
           }
         />
       )}
-      {skin.wheel.textured && (
+      {skin.wheel.textured && !plain && (
         <circle
           cx={wheel.cx}
           cy={wheel.cy}
@@ -1084,6 +1102,7 @@ export const IpodBody = ({ skin, lit = true, className, style }) => {
           <Well
             id={u('centerWell')}
             u={u}
+            plain={plain}
             cx={wheel.cx}
             cy={wheel.cy}
             r={m.center / 2}
