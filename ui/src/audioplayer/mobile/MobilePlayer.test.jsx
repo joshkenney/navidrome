@@ -65,6 +65,14 @@ vi.mock('../../subsonic', () => ({
   },
 }))
 
+// The size of Bob's iPod's folder, every file in it, as the server measured it
+vi.mock('../../dataProvider', () => ({
+  default: {},
+  httpClient: vi.fn(() =>
+    Promise.resolve({ json: { id: 2, size: 9.2e9, measuring: false } }),
+  ),
+}))
+
 // iPod Facts: Bob's iPod, its songs and their size
 vi.mock('../../ipods/ipodDataCache', () => {
   const facts = {
@@ -830,13 +838,14 @@ describe('<MobilePlayer />', () => {
     expect(store.getState().player.mode).toBe('order')
     expect(store.getState().settings.ipodClicks).toBe(true)
     expect(store.getState().settings.ipodBacklight).toBe(10)
-    // About: the iPod's name, its songs, its hard drive and what is left of it
+    // About: the iPod's name, its songs, what its folder holds, and what that leaves of the model's
+    // biggest hard drive (20 GB)
     fireEvent.click(await screen.findByTestId('menu-about'))
     const about = await screen.findByTestId('about')
     expect(about).toHaveTextContent("Bob's iPod")
     await vi.waitFor(() => expect(about).toHaveTextContent('1,029'))
-    expect(about).toHaveTextContent('20 GB')
-    expect(about).toHaveTextContent('15.3 GB')
+    await vi.waitFor(() => expect(about).toHaveTextContent('9.2 GB'))
+    expect(about).toHaveTextContent('10.8 GB')
   })
 
   it('shows no picture for a song with no cover of its own, the song centred, but on the classics, which showed the placeholder', async () => {

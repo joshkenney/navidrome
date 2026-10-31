@@ -185,6 +185,7 @@ func ipodAccessKey(version string) string {
 func (api *Router) addIpodRoutes(r chi.Router) {
 	r.Route("/ipods", func(r chi.Router) {
 		r.Get("/facts", api.getIpodFacts)
+		r.Get("/{id}/size", api.getIpodSize)
 		r.Get("/network", api.getIpodNetwork)
 		r.Get("/match", api.getIpodMatch)
 		r.Get("/best", api.getIpodBestCopy)

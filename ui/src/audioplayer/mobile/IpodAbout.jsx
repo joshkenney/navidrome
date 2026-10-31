@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { makeStyles } from '@material-ui/core/styles'
 import config from '../../config'
+import { httpClient } from '../../dataProvider'
 import { useIpodName } from '../../ipods/useIpodName'
 import {
   FACTS_URL,
@@ -46,12 +47,43 @@ const useStyles = makeStyles(
 const statsOf = (facts, ipodId) =>
   facts?.superlatives?.find((s) => s.id === ipodId) || null
 
-// "9.2 GB"
-const gigabytes = (gb) =>
-  `${gb.toLocaleString(undefined, { maximumFractionDigits: 1 })} GB`
+// The size on disk of the iPod's folder (its library's, every file in it), as the server measured
+// it (see ipod_size.go): it measures it in the background, so it is asked again a few times
+const SIZE_RETRY_MS = 2000
+const SIZE_RETRIES = 15
+const useFolderSize = (ipodId) => {
+  const [size, setSize] = useState(null)
+  useEffect(() => {
+    if (ipodId == null) return undefined
+    let live = true
+    let timer = null
+    const ask = (tries) =>
+      httpClient(`/api/ipods/${ipodId}/size`)
+        .then(({ json }) => {
+          if (!live) return
+          if (json.size != null) setSize(json.size)
+          if (json.measuring && tries > 0)
+            timer = setTimeout(() => ask(tries - 1), SIZE_RETRY_MS)
+        })
+        .catch(() => {})
+    ask(SIZE_RETRIES)
+    return () => {
+      live = false
+      clearTimeout(timer)
+    }
+  }, [ipodId])
+  return size
+}
 
-// Settings > About, as on the iPod: the iPod's name, its songs, its hard drive ("capacity", in GB,
-// the biggest of its model) and what its songs leave of it, and the software's version
+// "9.2 GB", or under a gigabyte "640 MB"
+const gigabytes = (gb) =>
+  gb < 1
+    ? `${(gb * 1000).toLocaleString(undefined, { maximumFractionDigits: gb < 0.01 ? 1 : 0 })} MB`
+    : `${gb.toLocaleString(undefined, { maximumFractionDigits: 1 })} GB`
+
+// Settings > About, as on the iPod: the iPod's name, its songs, how much its folder holds (every
+// file in it), what that leaves of its model's biggest hard drive ("capacity", in GB), and the
+// software's version
 export const IpodAbout = ({ ipodId, ipodName, capacity, labels }) => {
   const classes = useStyles()
   const name = useIpodName(ipodId, ipodName)
@@ -68,10 +100,13 @@ export const IpodAbout = ({ ipodId, ipodName, capacity, labels }) => {
     }
   }, [ipodId])
 
-  const used = stats ? stats.totalSize / 1e9 : null
+  // Until the folder is measured, the songs' own size
+  const folder = useFolderSize(ipodId)
+  const used =
+    folder != null ? folder / 1e9 : stats ? stats.totalSize / 1e9 : null
   const lines = [
     [labels.songs, stats ? stats.songCount.toLocaleString() : '…'],
-    [labels.capacity, gigabytes(capacity)],
+    [labels.capacity, used === null ? '…' : gigabytes(used)],
     [
       labels.available,
       used === null ? '…' : gigabytes(Math.max(0, capacity - used)),
