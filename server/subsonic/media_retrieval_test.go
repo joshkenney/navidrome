@@ -66,6 +66,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			_, err := router.GetCoverArt(w, newGetRequest("id=34"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(w.Header().Get("cache-control")).To(Equal("public, max-age=315360000"))
+			Expect(w.Header().Get("x-nd-placeholder")).To(BeEmpty())
 
 			// A cover can be found later for an album showing the placeholder
 			w = httptest.NewRecorder()
@@ -73,6 +74,7 @@ var _ = Describe("MediaRetrievalController", func() {
 			_, err = router.GetCoverArt(w, newGetRequest("id=al-34"))
 			Expect(err).ToNot(HaveOccurred())
 			Expect(w.Header().Get("cache-control")).To(Equal("public, max-age=3600"))
+			Expect(w.Header().Get("x-nd-placeholder")).To(Equal("true"))
 		})
 
 		It("should fail when the file is not found", func() {

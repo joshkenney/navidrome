@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { makeStyles } from '@material-ui/core/styles'
 import subsonic from '../../subsonic'
 import { fetchRandomAlbums } from './ipodBrowse'
+import { isRealCover } from './realCover'
 
 // How long each cover shows, and how long the next takes to fade in over it
 export const COVER_MS = 6000
@@ -67,17 +68,47 @@ export const CoverShuffle = ({ libraryId, fallback, className }) => {
 
   useEffect(() => {
     if (covers.length < 2) return undefined
-    const timer = setInterval(() => setAt((i) => i + 1), COVER_MS)
+    const timer = setInterval(
+      () =>
+        setAt((i) => {
+          let next = i + 1
+          const skip = placeholders.current
+          while (
+            skip.has(covers[next % covers.length]) &&
+            next < i + covers.length
+          )
+            next++
+          return next
+        }),
+      COVER_MS,
+    )
     return () => clearInterval(timer)
   }, [covers])
 
-  // The next cover, loaded ahead, so it fades in whole
+  // The albums with no cover of their own (the server's placeholder) are passed over: the one
+  // shown, at once, the next one when its time comes. The next one is fetched ahead (to know), so
+  // it fades in whole
+  const placeholders = useRef(new Set())
   useEffect(() => {
-    if (covers.length < 2 || typeof Image === 'undefined') return
-    new Image().src = covers[(at + 1) % covers.length]
+    if (!covers.length) return undefined
+    let live = true
+    const current = covers[at % covers.length]
+    const next = covers[(at + 1) % covers.length]
+    isRealCover(current).then((real) => {
+      if (!live || real) return
+      placeholders.current.add(current)
+      if (placeholders.current.size < covers.length) setAt((i) => i + 1)
+    })
+    isRealCover(next).then((real) => {
+      if (!real) placeholders.current.add(next)
+    })
+    return () => {
+      live = false
+    }
   }, [at, covers])
 
-  const list = covers.length ? covers : fallback ? [fallback] : []
+  const real = covers.filter((url) => !placeholders.current.has(url))
+  const list = real.length ? covers : fallback ? [fallback] : []
   // The cover before, under the one fading in
   const shown = list.length > 1 ? [at - 1, at] : list.length ? [at] : []
   return (

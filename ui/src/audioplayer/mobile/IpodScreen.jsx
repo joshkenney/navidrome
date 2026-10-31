@@ -8,6 +8,7 @@ import { IpodMenu } from './IpodMenu'
 import { usePress } from './usePress'
 import { Marquee } from './Marquee'
 import { CoverShuffle } from './CoverShuffle'
+import { useRealCover } from './realCover'
 import { IpodAbout } from './IpodAbout'
 import { useBattery } from './useBattery'
 
@@ -529,6 +530,18 @@ const useStyles = makeStyles(
       },
       '& $fill': { borderRadius: 0 },
     },
+    // No cover: the song alone, centred
+    centred: {
+      justifyContent: 'center',
+      alignItems: 'center !important',
+      '& $info, & $classicInfo': {
+        flex: '0 1 auto',
+        maxWidth: '100%',
+        alignItems: 'center',
+        textAlign: 'center',
+        paddingTop: 0,
+      },
+    },
     info: {
       flex: 1,
       minWidth: 0,
@@ -720,14 +733,30 @@ export const IpodScreen = ({
     })
 
   const rating = Math.round(ratingShown ?? song.rating ?? 0)
+  // A song with no cover of its own (the server's placeholder): no picture, the song centred.
+  // Until that is known, the picture's place is kept, empty. The classics showed their
+  // placeholder, as the server's
+  const placeholderShown = classic
+  const realCover = useRealCover(art && !placeholderShown ? item.cover : null)
+  const showCover = !!item.cover && (placeholderShown || realCover !== false)
+  const coverStyle =
+    !placeholderShown && realCover === null
+      ? { visibility: 'hidden' }
+      : undefined
+  const centred = art && !showCover
+  // Without a picture, swiping or holding the song does what it did on the picture
+  const songHandlers = centred ? cover.handlers : {}
   const nowPlaying = (
     <div className={classes.nowPlaying}>
       {classic ? (
-        <div className={classes.classicBody}>
-          {item.cover && (
+        <div
+          className={`${classes.classicBody} ${centred ? classes.centred : ''}`}
+        >
+          {showCover && (
             <span className={classes.classicCover} data-testid="cover-tilt">
               <img
                 className={classes.cover}
+                style={coverStyle}
                 src={item.cover}
                 alt={song.album || title}
                 draggable={false}
@@ -735,7 +764,11 @@ export const IpodScreen = ({
               />
             </span>
           )}
-          <div className={`${classes.classicInfo} songTitle`}>
+          <div
+            className={`${classes.classicInfo} songTitle`}
+            data-testid="now-playing-song"
+            {...songHandlers}
+          >
             <Marquee className={classes.classicTitle}>{title}</Marquee>
             {artist && (
               <Marquee className={classes.classicLine}>{artist}</Marquee>
@@ -780,8 +813,8 @@ export const IpodScreen = ({
               {position}
             </div>
           )}
-          <div className={classes.body}>
-            {item.cover &&
+          <div className={`${classes.body} ${centred ? classes.centred : ''}`}>
+            {showCover &&
               (coverLook === 'lowRes' || coverLook === 'tilt' ? (
                 <span
                   className={classes[coverLook]}
@@ -789,6 +822,7 @@ export const IpodScreen = ({
                 >
                   <img
                     className={classes.cover}
+                    style={coverStyle}
                     src={
                       coverLook === 'lowRes'
                         ? lowResCover(item.cover)
@@ -802,13 +836,18 @@ export const IpodScreen = ({
               ) : (
                 <img
                   className={classes.cover}
+                  style={coverStyle}
                   src={item.cover}
                   alt={song.album || title}
                   draggable={false}
                   {...cover.handlers}
                 />
               ))}
-            <div className={`${classes.info} songTitle`}>
+            <div
+              className={`${classes.info} songTitle`}
+              data-testid="now-playing-song"
+              {...songHandlers}
+            >
               <Marquee className={classes.title}>{title}</Marquee>
               {artist && <Marquee className={classes.line}>{artist}</Marquee>}
               {song.album && (

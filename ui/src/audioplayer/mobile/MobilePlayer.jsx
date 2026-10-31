@@ -17,6 +17,7 @@ import {
 } from './skins'
 import { IpodFront, prepareFront } from './IpodFront'
 import { blurredCover } from './blurredCover'
+import { isRealCover } from './realCover'
 import { setHaptics } from './haptics'
 import { setClicks } from './clicks'
 import {
@@ -568,13 +569,16 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     if (open) setDragY(0)
   }, [open])
 
-  // The cover behind the iPod, blurred
+  // The cover behind the iPod, blurred; none for a song with no cover of its own
   const [backdrop, setBackdrop] = useState(null)
   const cover = audio.item.cover
   useEffect(() => {
     let live = true
     setBackdrop(null)
-    blurredCover(cover).then((url) => live && setBackdrop({ url }))
+    if (!cover) return undefined
+    isRealCover(cover)
+      .then((real) => (real ? blurredCover(cover) : false))
+      .then((url) => live && url !== false && setBackdrop({ url }))
     return () => {
       live = false
     }

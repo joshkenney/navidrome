@@ -84,6 +84,9 @@ func (api *Router) GetCoverArt(w http.ResponseWriter, r *http.Request) (*respons
 	if artwork.IsPlaceholder(lastUpdate) {
 		// Not for long: the cover finder or an admin can give the album a cover later
 		w.Header().Set("cache-control", "public, max-age=3600")
+		// Said plainly, for clients that show no picture rather than the placeholder (the phone
+		// iPods' screens)
+		w.Header().Set("x-nd-placeholder", "true")
 	} else {
 		w.Header().Set("cache-control", "public, max-age=315360000")
 	}

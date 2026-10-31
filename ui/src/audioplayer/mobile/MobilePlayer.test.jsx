@@ -5,6 +5,7 @@ import { Provider } from 'react-redux'
 import { createStore } from 'redux'
 import { MobilePlayer } from './MobilePlayer'
 import subsonic from '../../subsonic'
+import { forgetCovers } from './realCover'
 
 // jsdom has no PointerEvent: without it, simulated pointer events have no coordinates
 if (!window.PointerEvent) {
@@ -836,6 +837,43 @@ describe('<MobilePlayer />', () => {
     await vi.waitFor(() => expect(about).toHaveTextContent('1,029'))
     expect(about).toHaveTextContent('20 GB')
     expect(about).toHaveTextContent('15.3 GB')
+  })
+
+  it('shows no picture for a song with no cover of its own, the song centred, but on the classics, which showed the placeholder', async () => {
+    forgetCovers()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          headers: { get: (h) => (h === 'x-nd-placeholder' ? 'true' : null) },
+        }),
+      ),
+    )
+    try {
+      for (const ipodSkin of ['5g-white', 'photo']) {
+        const { unmount } = renderPlayer({ settings: { ipodSkin } })
+        openPlayer()
+        await vi.waitFor(() =>
+          expect(screen.queryByAltText('Blue Album')).toBeNull(),
+        )
+        const song = screen.getByTestId('now-playing-song')
+        expect(song).toHaveTextContent('Song 2')
+        expect(song.parentElement.className).toMatch(/centred/)
+        unmount()
+      }
+      const { unmount } = renderPlayer({
+        settings: { ipodSkin: 'classic-black' },
+      })
+      openPlayer()
+      expect(screen.getByAltText('Blue Album')).toBeVisible()
+      expect(
+        screen.getByTestId('now-playing-song').parentElement.className,
+      ).not.toMatch(/centred/)
+      unmount()
+    } finally {
+      vi.unstubAllGlobals()
+      forgetCovers()
+    }
   })
 
   it("leaves the album off the mini's small screen", () => {
