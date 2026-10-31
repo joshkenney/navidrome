@@ -8,6 +8,7 @@ import { IpodMenu } from './IpodMenu'
 import { usePress } from './usePress'
 import { Marquee } from './Marquee'
 import { CoverShuffle } from './CoverShuffle'
+import { IpodAbout } from './IpodAbout'
 import { useBattery } from './useBattery'
 
 // Film grain, for the iPod Photo's covers
@@ -668,6 +669,8 @@ export const IpodScreen = ({
   linearBattery = false,
   // The song's rating, in stars (0 to 5), as the classics show it, and set it ("rate" mode)
   rating: ratingShown,
+  // Settings > About: { ipodId, ipodName, capacity }
+  about,
 }) => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -953,7 +956,13 @@ export const IpodScreen = ({
         <Marquee className={classes.headerTitle}>
           {menu?.isMenu
             ? menu.title
-            : t(view === 'upNext' ? 'upNext' : 'nowPlaying')}
+            : t(
+                view === 'upNext'
+                  ? 'upNext'
+                  : view === 'about'
+                    ? 'about'
+                    : 'nowPlaying',
+              )}
         </Marquee>
         {classic && (
           <PlayState className={classes.classicGlyph} playing={playing} />
@@ -1019,6 +1028,16 @@ export const IpodScreen = ({
           />
         ) : view === 'upNext' ? (
           <UpNext queue={queue} current={index} {...upNext} />
+        ) : view === 'about' ? (
+          <IpodAbout
+            {...about}
+            labels={{
+              songs: t('songs'),
+              capacity: t('capacity'),
+              available: t('available'),
+              version: t('version'),
+            }}
+          />
         ) : (
           nowPlaying
         )}

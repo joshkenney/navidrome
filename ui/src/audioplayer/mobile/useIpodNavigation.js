@@ -26,7 +26,13 @@ export const MENU_TYPES = [
   'songs',
   'artistAlbums',
   'albumSongs',
+  'settings',
+  'backlightTimer',
+  'resetSettings',
 ]
+
+// The backlight timers to choose from, in seconds (0: off), as in Personal settings
+export const BACKLIGHT_TIMES = [0, 2, 5, 10, 'always']
 
 const songId = (song) => song?.mediaFileId || song?.id
 
@@ -100,8 +106,17 @@ const loaders = {
   albumSongs: (s) => fetchAlbumSongs(s.albumId),
 }
 
-// "t" translates player.mobile.* keys; "playSongs(records, selectedId)" plays a list of songs
-export const useIpodNavigation = ({ song, t, playSongs, onClose }) => {
+// "t" translates player.mobile.* keys; "playSongs(records, selectedId)" plays a list of songs.
+// "settings": what Settings shows and changes, the player's and Navidrome's own settings: {
+// shuffle, repeat ('off', 'one', 'all'), clicker, backlight (a timer, or undefined where the
+// screen has no backlight), and setShuffle, setRepeat, setClicker, setBacklight, reset }
+export const useIpodNavigation = ({
+  song,
+  t,
+  playSongs,
+  onClose,
+  settings = {},
+}) => {
   const [stack, setStack] = useState(() => stackFor(song))
   const [ipod, setIpod] = useState({
     id: song?.libraryId,
@@ -147,7 +162,59 @@ export const useIpodNavigation = ({ song, t, playSongs, onClose }) => {
         ipod.id && { key: 'shuffle', label: t('shuffleSongs') },
         { key: 'nowPlaying', label: t('nowPlaying'), more: true },
         { key: 'upNext', label: t('upNext'), more: true },
+        { key: 'settings', label: t('settings'), more: true },
       ].filter(Boolean)
+    }
+    // Settings, as on the iPod: each with what it is set to
+    if (screen.type === 'settings') {
+      const onOff = (on) => t(on ? 'on' : 'off')
+      return [
+        { key: 'about', label: t('about'), more: true },
+        {
+          key: 'shuffle',
+          label: t('shuffle'),
+          side: onOff(settings.shuffle),
+          setting: true,
+        },
+        {
+          key: 'repeat',
+          label: t('repeat'),
+          side: t(`repeat_${settings.repeat || 'off'}`),
+          setting: true,
+        },
+        settings.backlight !== undefined && {
+          key: 'backlight',
+          label: t('backlightTimer'),
+          more: true,
+        },
+        {
+          key: 'clicker',
+          label: t('clicker'),
+          side: onOff(settings.clicker),
+          setting: true,
+        },
+        { key: 'reset', label: t('resetAll'), more: true },
+      ].filter(Boolean)
+    }
+    if (screen.type === 'backlightTimer') {
+      return BACKLIGHT_TIMES.map((time) => ({
+        key: String(time),
+        label:
+          time === 0
+            ? t('off')
+            : time === 'always'
+              ? t('alwaysOn')
+              : t('seconds', { smart_count: time }),
+        side: time === settings.backlight ? '✓' : undefined,
+        setting: true,
+        value: time,
+      }))
+    }
+    if (screen.type === 'resetSettings') {
+      return [
+        { key: 'cancel', label: t('cancel') },
+        { key: 'reset', label: t('reset') },
+      ]
     }
     if (screen.type === 'music') {
       return [
@@ -226,6 +293,30 @@ export const useIpodNavigation = ({ song, t, playSongs, onClose }) => {
           })
         else push({ type: item.key })
         break
+      case 'settings':
+        if (item.key === 'about') push({ type: 'about' })
+        else if (item.key === 'shuffle')
+          settings.setShuffle?.(!settings.shuffle)
+        else if (item.key === 'repeat') {
+          const next = { off: 'one', one: 'all', all: 'off' }
+          settings.setRepeat?.(next[settings.repeat || 'off'])
+        } else if (item.key === 'clicker')
+          settings.setClicker?.(!settings.clicker)
+        else if (item.key === 'backlight')
+          push({
+            type: 'backlightTimer',
+            selectId: String(settings.backlight),
+          })
+        else if (item.key === 'reset') push({ type: 'resetSettings' })
+        break
+      case 'backlightTimer':
+        settings.setBacklight?.(item.value)
+        setStack((s) => s.slice(0, -1))
+        break
+      case 'resetSettings':
+        if (item.key === 'reset') settings.reset?.()
+        setStack((s) => s.slice(0, -1))
+        break
       case 'music':
         push({ type: item.key })
         break
@@ -272,12 +363,16 @@ export const useIpodNavigation = ({ song, t, playSongs, onClose }) => {
     artists: t('artists'),
     albums: t('albums'),
     songs: t('songs'),
+    settings: t('settings'),
+    backlightTimer: t('backlightTimer'),
+    resetSettings: t('resetAll'),
   }
 
   return {
     screen,
     // The iPod (library) the menus are on
     ipodId: ipod.id,
+    ipodName: ipod.name,
     isMenu,
     title: screen.title || titles[screen.type],
     items,

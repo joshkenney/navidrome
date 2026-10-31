@@ -81,6 +81,13 @@ const useStyles = makeStyles(
       whiteSpace: 'nowrap',
     },
     side: { fontSize: row(0.42), color: (p) => p.lcd.muted },
+    // A setting's value (Settings): as big as the setting, as on the iPod
+    setting: {
+      fontSize: row(0.55),
+      color: (p) => p.lcd.text,
+      '[data-mono] &': { fontSize: row(0.66) },
+      '[data-software=fifth] &': { fontSize: row(0.68) },
+    },
     // The chevron on the items leading to another menu
     more: {
       display: 'block',
@@ -169,7 +176,13 @@ export const IpodMenu = ({
               </Marquee>
             )}
           </div>
-          {item.side && <span className={classes.side}>{item.side}</span>}
+          {item.side && (
+            <span
+              className={`${classes.side} ${item.setting ? classes.setting : ''}`}
+            >
+              {item.side}
+            </span>
+          )}
           {item.more && (
             <svg className={classes.more} viewBox="0 0 6 10" aria-hidden>
               <path

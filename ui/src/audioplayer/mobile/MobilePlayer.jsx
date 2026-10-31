@@ -7,12 +7,26 @@ import { ScreenStrip } from './ScreenStrip'
 import { IpodScreen } from './IpodScreen'
 import { ClickWheel } from './ClickWheel'
 import { useAudioState } from './useAudioState'
-import { lcdVars, modelOf, percentBox, screenOf, skinFor } from './skins'
+import {
+  capacityOf,
+  lcdVars,
+  modelOf,
+  percentBox,
+  screenOf,
+  skinFor,
+} from './skins'
 import { IpodFront, prepareFront } from './IpodFront'
 import { blurredCover } from './blurredCover'
 import { setHaptics } from './haptics'
 import { setClicks } from './clicks'
-import { addTracks, playTracks } from '../../actions'
+import {
+  addTracks,
+  playTracks,
+  setIpodBacklight,
+  setIpodClicks,
+  setIpodHaptics,
+  setPlayMode,
+} from '../../actions'
 import subsonic from '../../subsonic'
 import { useIpodNavigation } from './useIpodNavigation'
 import { PlayerActions } from './PlayerActions'
@@ -241,14 +255,12 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
   }
   useEffect(() => () => clearTimeout(modeTimer.current), [])
 
-  // Rating the song playing (the classics): its rating, as rated here or as Navidrome has it, where
-  // a loved song with no rating has five stars. Five stars love it, none unloves it
+  // Rating the song playing (the classics): its rating, as rated here or as Navidrome has it for
+  // this user. Any stars love it, none unloves it
   const canRate = look.lcd.software === 'classic' && !audio.isRadio
   const songId = audio.song.mediaFileId || audio.song.id
   const [ratings, setRatings] = useState({})
-  const songRating =
-    ratings[songId] ??
-    (Math.round(audio.song.rating || 0) || (audio.song.starred ? 5 : 0))
+  const songRating = ratings[songId] ?? Math.round(audio.song.rating || 0)
   const [draft, setDraft] = useState(null)
   const rating = useRef(null)
   const startRating = () => {
@@ -277,9 +289,10 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     setDraft(null)
     if (!id || to === from) return
     setRatings((r) => ({ ...r, [id]: to }))
-    const saved = [subsonic.setRating(id, to)]
-    if (to === 5) saved.push(subsonic.star(id))
-    if (to === 0) saved.push(subsonic.unstar(id))
+    const saved = [
+      subsonic.setRating(id, to),
+      to > 0 ? subsonic.star(id) : subsonic.unstar(id),
+    ]
     Promise.all(saved).catch((e) => {
       // eslint-disable-next-line no-console
       console.log('Error rating the song: ', e)
@@ -310,11 +323,38 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     },
     [dispatch],
   )
+  // Settings on the iPod: the player's shuffle and repeat (its play mode), and the iPod settings of
+  // Personal settings, the same ones
+  const playMode = useSelector((state) => state.player?.mode) || 'order'
+  const REPEAT_MODES = { off: 'order', one: 'singleLoop', all: 'orderLoop' }
+  const ipodSettings = {
+    shuffle: playMode === 'shufflePlay',
+    repeat:
+      playMode === 'singleLoop'
+        ? 'one'
+        : playMode === 'orderLoop'
+          ? 'all'
+          : 'off',
+    clicker: settings.ipodClicks !== false,
+    // Only the screens with a backlight that goes out
+    backlight: look.lcd.mono ? timer : undefined,
+    setShuffle: (on) => dispatch(setPlayMode(on ? 'shufflePlay' : 'order')),
+    setRepeat: (repeat) => dispatch(setPlayMode(REPEAT_MODES[repeat])),
+    setClicker: (on) => dispatch(setIpodClicks(on)),
+    setBacklight: (time) => dispatch(setIpodBacklight(time)),
+    reset: () => {
+      dispatch(setPlayMode('order'))
+      dispatch(setIpodClicks(true))
+      dispatch(setIpodHaptics(true))
+      dispatch(setIpodBacklight(BACKLIGHT_MS / 1000))
+    },
+  }
   const nav = useIpodNavigation({
     song: audio.song,
     t: (key, opts) => translate(`player.mobile.${key}`, opts),
     playSongs,
     onClose: closePlayer,
+    settings: ipodSettings,
   })
   const view = nav.screen.type
   // Opening the player shows the song playing, with the menus leading to it above
@@ -356,6 +396,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     showMode('volume', VOLUME_SHOWN_MS)
   }
   const scrub = (clicks) => {
+    if (view === 'about') return
     if (nav.isMenu) {
       nav.moveHighlight(clicks)
       return
@@ -401,6 +442,8 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     } else if (view === 'upNext') {
       if (highlight !== audio.index) controls.playAt(highlight)
       showNowPlaying()
+    } else if (view === 'about') {
+      // Nothing to pick
     } else if (mode === 'rate') {
       clearTimeout(modeTimer.current)
       setMode('progress')
@@ -623,6 +666,11 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
                 scrubTime={scrubTime}
                 mode={mode}
                 rating={draft ?? songRating}
+                about={{
+                  ipodId: nav.ipodId,
+                  ipodName: nav.ipodName,
+                  capacity: capacityOf(look),
+                }}
                 volumeLocked={!!volumeLocked.current}
                 view={view}
                 menu={nav}

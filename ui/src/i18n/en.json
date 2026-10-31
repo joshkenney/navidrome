@@ -732,7 +732,26 @@
       "songs": "Songs",
       "shuffleSongs": "Shuffle Songs",
       "loading": "Loading…",
-      "empty": "Nothing here"
+      "empty": "Nothing here",
+      "settings": "Settings",
+      "about": "About",
+      "shuffle": "Shuffle",
+      "repeat": "Repeat",
+      "repeat_off": "Off",
+      "repeat_one": "One",
+      "repeat_all": "All",
+      "backlightTimer": "Backlight Timer",
+      "clicker": "Clicker",
+      "resetAll": "Reset All Settings",
+      "reset": "Reset",
+      "cancel": "Cancel",
+      "on": "On",
+      "off": "Off",
+      "alwaysOn": "Always On",
+      "seconds": "%{smart_count} Second |||| %{smart_count} Seconds",
+      "capacity": "Capacity",
+      "available": "Available",
+      "version": "Version"
     }
   },
   "about": {

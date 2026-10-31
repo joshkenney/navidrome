@@ -64,6 +64,18 @@ vi.mock('../../subsonic', () => ({
   },
 }))
 
+// iPod Facts: Bob's iPod, its songs and their size
+vi.mock('../../ipods/ipodDataCache', () => {
+  const facts = {
+    superlatives: [{ id: 2, songCount: 1029, totalSize: 4.7e9 }],
+  }
+  return {
+    FACTS_URL: '/api/ipods/facts',
+    getCachedIpodData: () => undefined,
+    fetchIpodData: () => Promise.resolve(facts),
+  }
+})
+
 vi.mock('../../ipods/useIpodName', () => ({
   useIpodName: (id, name) => name,
 }))
@@ -101,27 +113,42 @@ const renderPlayer = ({
   current = 'u2',
   settings = {},
 } = {}) => {
-  // Adding tracks appends them, like the real reducer
+  // Adding tracks appends them, like the real reducer; the play mode and the iPod settings change
+  const settingKeys = {
+    SET_IPOD_CLICKS: 'ipodClicks',
+    SET_IPOD_HAPTICS: 'ipodHaptics',
+    SET_IPOD_BACKLIGHT: 'ipodBacklight',
+  }
   const reducer = (
     state = { player: { queue, current: { uuid: current } }, settings },
     action,
   ) =>
-    action.type === 'PLAYER_ADD_TRACKS'
-      ? {
-          ...state,
-          player: {
-            ...state.player,
-            queue: [
-              ...state.player.queue,
-              ...Object.values(action.data).map((s) => ({
-                uuid: `added-${s.id}`,
-                name: s.title,
-                song: s,
-              })),
-            ],
-          },
-        }
-      : state
+    action.type === 'PLAYER_SET_MODE'
+      ? { ...state, player: { ...state.player, mode: action.data.mode } }
+      : settingKeys[action.type]
+        ? {
+            ...state,
+            settings: {
+              ...state.settings,
+              [settingKeys[action.type]]: action.data,
+            },
+          }
+        : action.type === 'PLAYER_ADD_TRACKS'
+          ? {
+              ...state,
+              player: {
+                ...state.player,
+                queue: [
+                  ...state.player.queue,
+                  ...Object.values(action.data).map((s) => ({
+                    uuid: `added-${s.id}`,
+                    name: s.title,
+                    song: s,
+                  })),
+                ],
+              },
+            }
+          : state
   const store = createStore(reducer)
   const controls = {
     togglePlay: vi.fn(),
@@ -416,7 +443,7 @@ describe('<MobilePlayer />', () => {
     vi.useRealTimers()
   })
 
-  it('rates the song on the classics, the centre button pressed a second time: five stars love it, none unloves it', () => {
+  it('rates the song on the classics, the centre button pressed a second time: any stars love it, none unloves it', () => {
     vi.useFakeTimers()
     subsonic.setRating.mockClear()
     subsonic.star.mockClear()
@@ -467,6 +494,29 @@ describe('<MobilePlayer />', () => {
     expect(subsonic.unstar).toHaveBeenCalledWith('s2')
     expect(screen.queryByTestId('rating')).toBeNull()
     vi.useRealTimers()
+  })
+
+  it('loves a song rated three stars on the classics, as Navidrome keeps it for this user', () => {
+    subsonic.setRating.mockClear()
+    subsonic.star.mockClear()
+    renderPlayer({ settings: { ipodSkin: 'classic-silver' } })
+    openPlayer()
+    const wheel = layOutWheel()
+    const centerButton = screen.getByLabelText('player.mobile.select')
+    const tapCenter = () => {
+      fireEvent.pointerDown(centerButton, at(100, 100, 2))
+      fireEvent.pointerUp(centerButton, at(100, 100, 2))
+      fireEvent.click(centerButton)
+    }
+    tapCenter()
+    tapCenter()
+    fireEvent.pointerDown(wheel, at(100, 10))
+    fireEvent.pointerMove(wheel, at(190, 100))
+    fireEvent.pointerUp(wheel, at(190, 100))
+    tapCenter()
+    expect(subsonic.setRating).toHaveBeenCalledWith('s2', 3)
+    expect(subsonic.star).toHaveBeenCalledWith('s2')
+    expect(screen.getByTestId('rating')).toHaveTextContent('★★★')
   })
 
   it('sets the volume by turning the wheel on Now Playing, showing it a moment', () => {
@@ -737,6 +787,55 @@ describe('<MobilePlayer />', () => {
     await vi.waitFor(() =>
       expect(covers.querySelectorAll('img').length).toBeGreaterThan(0),
     )
+  })
+
+  it('has Settings in the main menu: shuffle, repeat, the backlight and the clicker, the same as Personal settings, and About', async () => {
+    const { store } = renderPlayer({ settings: { ipodSkin: '1g' } })
+    openPlayer()
+    const menu = () =>
+      fireEvent.click(screen.getByLabelText('player.mobile.menu'))
+    menu()
+    await screen.findByText('Song 1')
+    menu()
+    await screen.findByText('Pinkerton')
+    menu()
+    await screen.findByText('Pavement')
+    menu() // Music
+    menu() // The main menu
+    fireEvent.click(await screen.findByTestId('menu-settings'))
+    const row = (key) => screen.getByTestId(`menu-${key}`)
+    expect(row('shuffle')).toHaveTextContent('player.mobile.off')
+    // Shuffle: the player's own
+    fireEvent.click(row('shuffle'))
+    expect(store.getState().player.mode).toBe('shufflePlay')
+    expect(row('shuffle')).toHaveTextContent('player.mobile.on')
+    // Repeat: off, one, all
+    fireEvent.click(row('repeat'))
+    expect(store.getState().player.mode).toBe('singleLoop')
+    expect(row('repeat')).toHaveTextContent('player.mobile.repeat_one')
+    fireEvent.click(row('repeat'))
+    expect(store.getState().player.mode).toBe('orderLoop')
+    // The clicker, as in Personal settings
+    fireEvent.click(row('clicker'))
+    expect(store.getState().settings.ipodClicks).toBe(false)
+    // The backlight timer: its choices, the one picked going back to Settings
+    fireEvent.click(row('backlight'))
+    fireEvent.click(await screen.findByTestId('menu-2'))
+    expect(store.getState().settings.ipodBacklight).toBe(2)
+    expect(await screen.findByTestId('menu-about')).toBeInTheDocument()
+    // Reset All Settings: back as they were
+    fireEvent.click(row('reset'))
+    fireEvent.click(await screen.findByTestId('menu-reset'))
+    expect(store.getState().player.mode).toBe('order')
+    expect(store.getState().settings.ipodClicks).toBe(true)
+    expect(store.getState().settings.ipodBacklight).toBe(10)
+    // About: the iPod's name, its songs, its hard drive and what is left of it
+    fireEvent.click(await screen.findByTestId('menu-about'))
+    const about = await screen.findByTestId('about')
+    expect(about).toHaveTextContent("Bob's iPod")
+    await vi.waitFor(() => expect(about).toHaveTextContent('1,029'))
+    expect(about).toHaveTextContent('20 GB')
+    expect(about).toHaveTextContent('15.3 GB')
   })
 
   it("leaves the album off the mini's small screen", () => {

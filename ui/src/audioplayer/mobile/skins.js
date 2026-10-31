@@ -11,6 +11,8 @@ export const MODELS = {
   // 1st (2001) and 2nd (2002) generation: 102 x 61.8 mm, 2" 160x128 screen. Its proportions are
   // those of Apple's own drawing of it, for the iPod's 25th anniversary (2026)
   scroll: {
+    // Its biggest hard drive, in GB (Settings > About)
+    capacity: 20,
     w: 61.8,
     h: 102,
     r: 5.7,
@@ -25,6 +27,8 @@ export const MODELS = {
   // front. Measured from Apple's photo of it: a thin frame round the screen, big buttons close
   // together
   row: {
+    // Its biggest hard drive, in GB (Settings > About)
+    capacity: 40,
     w: 61.8,
     h: 104.1,
     r: 6,
@@ -37,6 +41,8 @@ export const MODELS = {
   },
   // 4th generation and iPod Photo (2004): the first click wheel. Measured from Apple's photo
   click4: {
+    // Its biggest hard drive, in GB (Settings > About)
+    capacity: 40,
     w: 61.8,
     h: 104.1,
     r: 6.3,
@@ -48,6 +54,8 @@ export const MODELS = {
   },
   // 5th generation (2005): 103.5 x 61.8 mm, 2.5" 320x240 screen, smaller wheel
   click5: {
+    // Its biggest hard drive, in GB (Settings > About)
+    capacity: 80,
     w: 61.8,
     h: 103.5,
     r: 6,
@@ -60,6 +68,8 @@ export const MODELS = {
   // 6th and 7th generation classic (2007-2009): anodized aluminium front, a black bezel round the
   // screen. Measured, like the 5th generation, from Apple's photos
   classic: {
+    // Its biggest hard drive, in GB (Settings > About)
+    capacity: 160,
     w: 61.8,
     h: 103.5,
     r: 6,
@@ -72,6 +82,8 @@ export const MODELS = {
   // iPod mini (2004-2005): 91 x 51 mm, 1.67" 138x110 screen, an aluminium tube. Seen from the
   // front its corners are nearly square: the tube's roundness is on its sides
   mini: {
+    // Its biggest hard drive, in GB (Settings > About)
+    capacity: 6,
     w: 50.8,
     h: 91.4,
     r: 1.4,
@@ -418,6 +430,8 @@ export const SKINS = [
     id: 'photo',
     name: '4th generation color, iPod Photo (2004)',
     group: 'classic',
+    // The iPod Photo came with up to 60 GB
+    capacity: 60,
     model: 'click4',
     lcd: PHOTO_LCD,
     // Flat white plastic, its edge rounding off softly, no steel showing: Apple's photo
@@ -549,6 +563,8 @@ export const SKINS = [
     id: '4g-u2',
     name: '4th generation U2 Special Edition (2004)',
     group: 'special',
+    // The U2 editions: 20 GB, then 30 GB
+    capacity: 20,
     model: 'click4',
     lcd: ICY,
     face: plastic('#2a2a2d', '#0e0e10'),
@@ -560,6 +576,7 @@ export const SKINS = [
     id: '5g-u2',
     name: '5th generation U2 Special Edition (2006)',
     group: 'special',
+    capacity: 30,
     model: 'click5',
     lcd: FIFTH_LCD,
     face: GLOSS_BLACK,
@@ -584,6 +601,9 @@ export const skinFor = (id, theme) =>
   )
 
 export const modelOf = (skin) => MODELS[skin.model]
+
+// How big its hard drive was, in GB: the biggest of its model, or of its edition
+export const capacityOf = (skin) => skin.capacity || modelOf(skin).capacity
 
 // Whether the front is dark (black and space grey iPods), for what is drawn on it
 export const isDark = (skin) => {
