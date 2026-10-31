@@ -499,31 +499,50 @@ export const IpodBody = ({
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
-        {/* Inside the transparent iPod: the circuit board's traces */}
-        <pattern
-          id={u('traces')}
-          width="6"
-          height="6"
-          patternUnits="userSpaceOnUse"
-        >
-          <path
-            d="M0 1.5 H3.5 L5 3 H6 M1 6 V4 L2.5 2.5 M4.5 0 V1.2"
-            stroke="#c9a54a"
-            strokeWidth="0.18"
-            fill="none"
-            opacity="0.75"
-          />
-          <circle cx="3.5" cy="1.5" r="0.3" fill="#d9b860" opacity="0.8" />
-        </pattern>
-        <linearGradient id={u('drive')} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#e4e6e9" />
-          <stop offset="0.5" stopColor="#b9bcc2" />
-          <stop offset="1" stopColor="#d6d8dc" />
-        </linearGradient>
-        <linearGradient id={u('battery')} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#474a52" />
-          <stop offset="1" stopColor="#2e3036" />
-        </linearGradient>
+        {f.kind === 'clear' && (
+          // Inside the transparent iPod: the circuit board, crowded with parts and traces
+          <>
+            <pattern
+              id={u('board')}
+              width="4.2"
+              height="3.6"
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                d="M0 0.7 H1.5 L2.2 1.4 H4.2 M0.4 3.6 V2.6 L1.1 1.9 M3.1 0 V0.8 M2.6 3.6 V2.8 H4.2"
+                stroke="#3c5244"
+                strokeWidth="0.1"
+                fill="none"
+              />
+              <rect x="0.5" y="1.3" width="0.7" height="0.3" fill="#8e958f" />
+              <rect x="2.8" y="1.8" width="0.3" height="0.6" fill="#9aa09b" />
+              <rect x="1.6" y="2.6" width="0.8" height="0.55" fill="#111412" />
+              <rect x="3.4" y="0.3" width="0.5" height="0.25" fill="#7d7356" />
+              <rect x="1.9" y="0.2" width="0.25" height="0.25" fill="#a7aca6" />
+              <circle cx="3.8" cy="3.1" r="0.15" fill="#6f7a71" />
+            </pattern>
+            <pattern
+              id={u('boardMore')}
+              width="5.3"
+              height="4.7"
+              patternUnits="userSpaceOnUse"
+              patternTransform="rotate(90)"
+            >
+              <rect x="0.6" y="0.9" width="0.9" height="0.4" fill="#7f8781" />
+              <rect x="3.1" y="2.6" width="1.2" height="0.8" fill="#121513" />
+              <path
+                d="M0 4 H2.4 L3 3.4 H5.3"
+                stroke="#3a4f41"
+                strokeWidth="0.1"
+                fill="none"
+              />
+            </pattern>
+            <linearGradient id={u('bracket')} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#b7bbbd" />
+              <stop offset="1" stopColor="#7d8285" />
+            </linearGradient>
+          </>
+        )}
         <clipPath id={u('faceClip')}>
           <rect
             x={face.x}
@@ -555,90 +574,118 @@ export const IpodBody = ({
       <g clipPath={`url(#${u('faceClip')})`}>
         {f.kind === 'clear' ? (
           <>
+            {/* The dark insides round the screen, seen through the clear case */}
             <rect
               x={face.x}
               y={face.y}
               width={face.w}
               height={face.h}
-              fill="#1a5536"
+              fill="#3f4444"
             />
+            {/* The circuit board, under the wheel */}
             <rect
-              x={face.x}
-              y={face.y}
-              width={face.w}
-              height={face.h}
-              fill={`url(#${u('traces')})`}
+              x={face.x + 2.2}
+              y={m.window.y + m.window.h + 8}
+              width={face.w - 4.4}
+              height={face.h - (m.window.y + m.window.h + 8) - 1.8}
+              fill="#26332b"
             />
-            {/* The hard drive, just behind the screen: its edges show round the glass */}
+            {['board', 'boardMore'].map((layer) => (
+              <rect
+                key={layer}
+                x={face.x + 2.2}
+                y={m.window.y + m.window.h + 8}
+                width={face.w - 4.4}
+                height={face.h - (m.window.y + m.window.h + 8) - 1.8}
+                fill={`url(#${u(layer)})`}
+              />
+            ))}
+            {/* Its chips, the orange ribbon cable to the left, a yellow part low on the right */}
+            <rect x="5" y={m.h - 32} width="5.5" height="4.5" fill="#121514" />
             <rect
-              x={m.window.x - 1.2}
-              y={m.window.y - 1}
-              width={m.window.w + 2.4}
-              height={m.window.h + 2}
-              rx="1.6"
-              fill={`url(#${u('drive')})`}
-              stroke="#7d8188"
-              strokeWidth="0.25"
-            />
-            {/* The battery, behind the wheel, with its label */}
-            <rect
-              x={face.x + 5}
-              y={m.wheel.cy - m.wheel.d / 2 - 2}
-              width={face.w - 10}
-              height={m.h - (m.wheel.cy - m.wheel.d / 2) - 2.5}
-              rx="2"
-              fill={`url(#${u('battery')})`}
-            />
-            <rect
-              x={face.x + 8}
-              y={m.h - 9}
-              width={face.w - 16}
-              height="3.2"
-              rx="0.5"
-              fill="#e9eaec"
-              opacity="0.75"
-            />
-            {/* Chips on the board between the screen and the wheel */}
-            <rect
-              x="4"
-              y={m.window.y + m.window.h + 2}
-              width="6.5"
-              height="4"
-              rx="0.3"
-              fill="#121214"
+              x={m.w - 11}
+              y={m.h - 41}
+              width="6"
+              height="5"
+              fill="#121514"
             />
             <rect
               x={m.w - 12}
-              y={m.window.y + m.window.h + 1.6}
-              width="5.5"
-              height="5.5"
-              rx="0.3"
-              fill="#121214"
+              y={m.h - 15}
+              width="6.5"
+              height="6"
+              fill="#141716"
+            />
+            <rect x="3" y={m.h - 45} width="9" height="3.6" fill="#c8742c" />
+            <rect
+              x="3"
+              y={m.h - 44.2}
+              width="9"
+              height="0.5"
+              fill="#e4a15c"
+              opacity="0.8"
+            />
+            <circle cx={m.w - 14.5} cy={m.h - 10.5} r="0.75" fill="#e9db4c" />
+            {/* The screen's black glass, and the black strip below it */}
+            <rect
+              x={m.window.x}
+              y={m.window.y}
+              width={m.window.w}
+              height={m.window.h + 5.5}
+              rx={m.window.r}
+              fill="#0c0d0e"
+            />
+            {/* The bracket holding the screen, screwed down at each end */}
+            <rect
+              x={m.window.x}
+              y={m.window.y + m.window.h + 5.5}
+              width={m.window.w}
+              height="2.4"
+              fill={`url(#${u('bracket')})`}
+            />
+            {[m.window.x + 3, m.window.x + m.window.w - 3].map((cx) => (
+              <g key={cx}>
+                <circle
+                  cx={cx}
+                  cy={m.window.y + m.window.h + 6.7}
+                  r="0.75"
+                  fill="#d3d6d8"
+                />
+                <path
+                  d={`M${cx - 0.45} ${m.window.y + m.window.h + 6.7} h0.9 M${cx} ${m.window.y + m.window.h + 6.25} v0.9`}
+                  stroke="#6d7174"
+                  strokeWidth="0.18"
+                />
+              </g>
+            ))}
+            {/* The clear case: its thick edges catching the light, a sheen across it */}
+            <rect
+              x={face.x + 1.1}
+              y={face.y + 1.1}
+              width={face.w - 2.2}
+              height={face.h - 2.2}
+              rx={m.r - rim - 1.1}
+              fill="none"
+              stroke="rgba(200,206,206,0.22)"
+              strokeWidth="2.2"
             />
             <rect
-              x={m.w / 2 + 5}
-              y={m.window.y + m.window.h + 2.6}
-              width="3"
-              height="2"
-              fill="#8a6a2c"
+              x={face.x + 2.2}
+              y={face.y + 2.2}
+              width={face.w - 4.4}
+              height={face.h - 4.4}
+              rx={m.r - rim - 2.2}
+              fill="none"
+              stroke="rgba(255,255,255,0.45)"
+              strokeWidth="0.15"
             />
-            {/* The click wheel's flex cable */}
-            <rect
-              x={m.w / 2 - 1.8}
-              y={m.window.y + m.window.h + 0.5}
-              width="3.6"
-              height={m.wheel.cy - m.wheel.d / 2 - (m.window.y + m.window.h)}
-              fill="#d08a34"
-              opacity="0.92"
-            />
-            {/* The clear acrylic over it all */}
             <rect
               x={face.x}
               y={face.y}
               width={face.w}
               height={face.h}
-              fill="#ffffff"
-              opacity="0.1"
+              fill={`url(#${u('gloss')})`}
+              opacity="0.35"
             />
           </>
         ) : (
@@ -748,17 +795,15 @@ export const IpodBody = ({
             )}
           </>
         )}
-        {(f.kind === 'plastic' || f.kind === 'clear') &&
-          !rounded &&
-          !reflection && (
-            <rect
-              x={face.x}
-              y={face.y}
-              width={face.w}
-              height={face.h}
-              fill={`url(#${u('gloss')})`}
-            />
-          )}
+        {f.kind === 'plastic' && !rounded && !reflection && (
+          <rect
+            x={face.x}
+            y={face.y}
+            width={face.w}
+            height={face.h}
+            fill={`url(#${u('gloss')})`}
+          />
+        )}
       </g>
       {/* The front's edge catching the light */}
       {satin && (
@@ -810,7 +855,7 @@ export const IpodBody = ({
         />
       )}
 
-      {thin && (
+      {thin && f.kind !== 'clear' && (
         // The cut edge round the screen's glass, catching the light
         <rect
           x={m.window.x - 0.12}

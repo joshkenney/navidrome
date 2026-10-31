@@ -102,6 +102,15 @@ const COLOR_LCD = {
   battery: GREEN_BATTERY,
   coverFilter: 'none',
 }
+// The 5th generation's screen (2005), as in Apple's photos: pale blue-white, its own software
+// ("fifth", see IpodScreen) with a striped blue progress bar
+const FIFTH_LCD = {
+  ...COLOR_LCD,
+  background: 'linear-gradient(180deg, #f1f5f8 0%, #e7eef3 55%, #dce5eb 100%)',
+  text: '#111111',
+  bar: 'linear-gradient(180deg, #a9d1f4 0%, #64a6e4 45%, #3482d4 55%, #4d95de 100%)',
+  software: 'fifth',
+}
 // The iPod Photo's screen (2004): colour, but small (220x176) and coarse. Its covers were tiny,
 // blocky and grainy (see IpodScreen)
 const PHOTO_LCD = {
@@ -314,7 +323,8 @@ const mini = (id, name, light, base, dark, label = MINI_LABEL) => ({
 export const SKINS = [
   {
     id: '1g',
-    name: '1st generation (2001)',
+    // The 2nd generation (2002) looked the same, a touch wheel in place of the scroll wheel
+    name: '1st and 2nd generation (2001-2002)',
     group: 'classic',
     model: 'scroll',
     lcd: FUGLY,
@@ -326,21 +336,6 @@ export const SKINS = [
       center: ['#f2f2f2', '#c9c8c8'],
       border: '#7e7e7e',
       textured: true,
-    },
-  },
-  {
-    id: '2g',
-    name: '2nd generation (2002)',
-    group: 'classic',
-    model: 'scroll',
-    lcd: FUGLY,
-    ...ANNIVERSARY,
-    // Its touch wheel didn't turn: smooth, a little whiter
-    wheel: {
-      surface: ['#f6f5f5', '#ebebeb'],
-      label: '#898989',
-      center: ['#f4f4f4', '#cdcccc'],
-      border: '#858585',
     },
   },
   {
@@ -394,7 +389,7 @@ export const SKINS = [
     name: '5th generation, white (2005)',
     group: 'classic',
     model: 'click5',
-    lcd: COLOR_LCD,
+    lcd: FIFTH_LCD,
     face: GLOSS_WHITE,
     rim: 'thin',
     windowFrame: '#0b0b0c',
@@ -405,7 +400,7 @@ export const SKINS = [
     name: '5th generation, black (2005)',
     group: 'classic',
     model: 'click5',
-    lcd: COLOR_LCD,
+    lcd: FIFTH_LCD,
     face: GLOSS_BLACK,
     rim: 'thin',
     windowFrame: '#050506',
@@ -497,15 +492,16 @@ export const SKINS = [
     name: 'Transparent',
     group: 'transparent',
     model: 'click5',
-    lcd: COLOR_LCD,
-    // A clear acrylic front over the insides: circuit board, hard drive, battery
+    lcd: FIFTH_LCD,
+    // A 5th generation in a clear case: its circuit board under the wheel, the screen's black
+    // glass and the bracket holding it, a black wheel
     face: { kind: 'clear' },
-    rim: true,
-    windowFrame: '#0b0b0c',
+    rim: 'thin',
+    windowFrame: '#0b0c0d',
     wheel: {
-      surface: ['rgba(255,255,255,0.5)', 'rgba(255,255,255,0.28)'],
-      label: 'rgba(255,255,255,0.95)',
-      center: ['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.4)'],
+      surface: ['#202224', '#121315'],
+      label: '#f4f4f4',
+      center: ['#1a1b1d', '#0b0c0d'],
     },
   },
   {
@@ -520,43 +516,15 @@ export const SKINS = [
     wheel: U2_WHEEL,
   },
   {
-    id: '4g-hp',
-    name: 'Harry Potter Collector’s Edition (2005)',
-    group: 'special',
-    // A white iPod Photo, the Hogwarts crest engraved on its back
-    model: 'click4',
-    lcd: PHOTO_LCD,
-    face: plastic('#fdfdfd', '#e6e7e9'),
-    rim: true,
-    windowFrame: '#0d0d0e',
-    wheel: CLICK4_WHEEL,
-  },
-  {
     id: '5g-u2',
     name: '5th generation U2 Special Edition (2006)',
     group: 'special',
     model: 'click5',
-    lcd: COLOR_LCD,
+    lcd: FIFTH_LCD,
     face: GLOSS_BLACK,
     rim: 'thin',
     windowFrame: '#050506',
     wheel: U2_WHEEL,
-  },
-  {
-    id: 'red',
-    name: 'Red, in the style of (PRODUCT)RED',
-    group: 'special',
-    model: 'classic',
-    lcd: CLASSIC_LCD,
-    face: aluminium('#d93444', '#c42132', '#a3172a', 'satin'),
-    rim: 'thin',
-    windowFrame: '#0b0b0c',
-    wheel: {
-      surface: ['#fbfbfb', '#efefef'],
-      label: '#b6b8bc',
-      center: ['#ececee', '#cfd1d5'],
-      dished: true,
-    },
   },
 ]
 
@@ -565,8 +533,11 @@ export const SKIN_GROUPS = ['classic', 'mini', 'transparent', 'special']
 
 // The iPod chosen, or one matching the theme: the black 5th generation on dark themes, the white
 // one on light themes
+// iPods no longer offered, and the closest of those that are, for whoever had chosen them
+const RETIRED = { '2g': '1g', '4g-hp': 'photo', red: 'classic-silver' }
+
 export const skinFor = (id, theme) =>
-  SKINS.find((s) => s.id === id) ||
+  SKINS.find((s) => s.id === (RETIRED[id] || id)) ||
   SKINS.find(
     (s) => s.id === (theme?.palette?.type === 'dark' ? '5g-black' : '5g-white'),
   )

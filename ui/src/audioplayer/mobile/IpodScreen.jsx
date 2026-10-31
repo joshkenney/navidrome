@@ -83,6 +83,9 @@ const Speaker = ({ loud, className }) => (
 
 // The 6th and 7th generation's software, in Apple's photos: bold Helvetica
 const HELVETICA = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+// The 5th generation's: Apple's Myriad-based Podium Sans, for which Source Sans 3 stands in (also
+// one of the UI fonts, see fonts/uiFonts)
+const PODIUM = `"Source Sans 3", "Myriad Pro", ${HELVETICA}`
 
 // The classic's ▶ or ❚❚ in the header: blue, shining at the top
 const PlayState = ({ playing, className }) => (
@@ -110,6 +113,61 @@ const PlayState = ({ playing, className }) => (
 
 const useStyles = makeStyles(
   {
+    '@font-face': {
+      fontFamily: 'Source Sans 3',
+      fontStyle: 'normal',
+      fontWeight: '200 900',
+      fontDisplay: 'swap',
+      src: "url('fonts/SourceSans3-Variable.woff2') format('woff2')",
+    },
+    // The 5th generation's software: the song beside a smaller cover, where it is in the queue
+    // above them, a striped blue bar with the times below it
+    fifth: {
+      '&$fifth, &$fifth *': {
+        fontFamily: `${PODIUM} !important`,
+        letterSpacing: 'normal !important',
+      },
+      fontWeight: 600,
+      '& $header': {
+        background:
+          'linear-gradient(180deg, #fbfcfd 0%, #e6ecf1 50%, #d3dde4 100%)',
+        borderBottom: '1px solid #9eaab4',
+        fontSize: row(0.5),
+      },
+      '& $cover': {
+        height: 'auto',
+        width: '35%',
+        maxWidth: 'none',
+        borderRadius: 0,
+        boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.25)',
+      },
+      '& $body': { gap: row(0.5), padding: `${row(0.1)} ${row(0.4)}` },
+      '& $info': { justifyContent: 'center', gap: row(0.18) },
+      '& $title, & $line': {
+        fontSize: row(0.6),
+        lineHeight: row(0.78),
+        color: LCD.text,
+      },
+      '& $positionTop': {
+        fontSize: row(0.5),
+        padding: `${row(0.2)} ${row(0.4)} 0`,
+      },
+      '& $bar': {
+        height: row(0.44),
+        borderRadius: 0,
+        border: '1px solid #aeb7be',
+        background:
+          'linear-gradient(180deg, #ffffff 0%, #f2f4f6 50%, #e1e5e9 51%, #f7f8f9 100%)',
+        boxShadow: 'none',
+      },
+      // Its fill, striped
+      '& $fill': {
+        borderRadius: 0,
+        background: `repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0 1px, transparent 1px 4px), ${LCD.bar}`,
+      },
+      '& $times': { fontSize: row(0.58), marginTop: row(0.16) },
+      '& $footer': { padding: `0 ${row(0.4)} ${row(0.3)}` },
+    },
     // The 6th and 7th generation classic's software (see the classic* styles). Its font outweighs
     // the UI font's (see fonts/uiFonts)
     classic: {
@@ -585,6 +643,7 @@ export const IpodScreen = ({
     : t('batteryUnknown')
 
   const classic = software === 'classic'
+  const fifth = software === 'fifth'
   // The classic's main menu, beside the covers of the iPod's albums
   const home = classic && menu?.isMenu && menu.screen?.type === 'main'
   const scrubbing = scrubTime !== null || mode === 'scrub'
@@ -651,49 +710,59 @@ export const IpodScreen = ({
           </div>
         </div>
       ) : art ? (
-        <div className={classes.body}>
-          {item.cover &&
-            (coverLook === 'lowRes' || coverLook === 'tilt' ? (
-              <span
-                className={classes[coverLook]}
-                data-testid={`cover-${coverLook}`}
-              >
+        <>
+          {fifth && position && (
+            <div
+              className={`${classes.positionTop} songTitle`}
+              data-testid="now-playing-position"
+            >
+              {position}
+            </div>
+          )}
+          <div className={classes.body}>
+            {item.cover &&
+              (coverLook === 'lowRes' || coverLook === 'tilt' ? (
+                <span
+                  className={classes[coverLook]}
+                  data-testid={`cover-${coverLook}`}
+                >
+                  <img
+                    className={classes.cover}
+                    src={
+                      coverLook === 'lowRes'
+                        ? lowResCover(item.cover)
+                        : item.cover
+                    }
+                    alt={song.album || title}
+                    draggable={false}
+                    {...cover.handlers}
+                  />
+                </span>
+              ) : (
                 <img
                   className={classes.cover}
-                  src={
-                    coverLook === 'lowRes'
-                      ? lowResCover(item.cover)
-                      : item.cover
-                  }
+                  src={item.cover}
                   alt={song.album || title}
                   draggable={false}
                   {...cover.handlers}
                 />
-              </span>
-            ) : (
-              <img
-                className={classes.cover}
-                src={item.cover}
-                alt={song.album || title}
-                draggable={false}
-                {...cover.handlers}
-              />
-            ))}
-          <div className={`${classes.info} songTitle`}>
-            <Marquee className={classes.title}>{title}</Marquee>
-            {artist && <Marquee className={classes.line}>{artist}</Marquee>}
-            {song.album && (
-              <Marquee className={classes.line}>{song.album}</Marquee>
-            )}
-            {!isRadio && song.libraryId && (
-              <IpodLabel
-                className={classes.ipod}
-                libraryId={song.libraryId}
-                libraryName={song.libraryName}
-              />
-            )}
+              ))}
+            <div className={`${classes.info} songTitle`}>
+              <Marquee className={classes.title}>{title}</Marquee>
+              {artist && <Marquee className={classes.line}>{artist}</Marquee>}
+              {song.album && (
+                <Marquee className={classes.line}>{song.album}</Marquee>
+              )}
+              {!isRadio && song.libraryId && (
+                <IpodLabel
+                  className={classes.ipod}
+                  libraryId={song.libraryId}
+                  libraryName={song.libraryName}
+                />
+              )}
+            </div>
           </div>
-        </div>
+        </>
       ) : (
         <>
           {position && (
@@ -718,7 +787,7 @@ export const IpodScreen = ({
         </>
       )}
       <div className={`${classes.footer} songTitle`}>
-        {art && !classic && position && (
+        {art && !classic && !fifth && position && (
           <div className={classes.position}>{position}</div>
         )}
         {mode === 'volume' ? (
@@ -797,7 +866,13 @@ export const IpodScreen = ({
       >
         {!classic && (
           <span className={classes.headerSide} aria-hidden>
-            {playing ? '▶' : '❚❚'}
+            {fifth ? (
+              <PlayState className={classes.classicGlyph} playing={playing} />
+            ) : playing ? (
+              '▶'
+            ) : (
+              '❚❚'
+            )}
           </span>
         )}
         <Marquee className={classes.headerTitle}>
@@ -877,7 +952,7 @@ export const IpodScreen = ({
 
   return (
     <div
-      className={`${classes.root} ${mono ? classes.mono : ''} ${classic ? classes.classic : ''} ${home ? classes.home : ''}`}
+      className={`${classes.root} ${mono ? classes.mono : ''} ${classic ? classes.classic : ''} ${fifth ? classes.fifth : ''} ${home ? classes.home : ''}`}
       data-mono={mono ? 'true' : undefined}
       data-software={software}
     >

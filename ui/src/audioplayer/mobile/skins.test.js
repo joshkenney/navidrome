@@ -64,7 +64,6 @@ describe('skins', () => {
     expect(ids).toEqual(
       expect.arrayContaining([
         '1g',
-        '2g',
         '3g',
         '4g',
         'photo',
@@ -83,21 +82,28 @@ describe('skins', () => {
         'mini2-green',
         'transparent',
         '4g-u2',
-        '4g-hp',
         '5g-u2',
-        'red',
       ]),
     )
   })
 
+  it('folds the 2nd generation into the 1st, and puts the iPods no longer offered on the closest', () => {
+    const ids = SKINS.map((s) => s.id)
+    ;['2g', '4g-hp', 'red'].forEach((id) => expect(ids).not.toContain(id))
+    expect(skinFor('1g').name).toMatch(/1st and 2nd generation/)
+    expect(skinFor('2g').id).toBe('1g')
+    expect(skinFor('4g-hp').id).toBe('photo')
+    expect(skinFor('red').id).toBe('classic-silver')
+  })
+
   it('gives the first iPods black and white screens: text only, and each generation its backlight', () => {
-    const mono = ['1g', '2g', '3g', '4g', '4g-u2', 'mini-pink']
+    const mono = ['1g', '3g', '4g', '4g-u2', 'mini-pink']
     mono.forEach((id) => {
       const lcd = skinFor(id).lcd
       expect(lcd.mono, id).toBe(true)
       expect(lcd.unlit, `${id} without its backlight`).toBeTruthy()
     })
-    ;['photo', '4g-hp', '5g-black', 'classic-silver'].forEach((id) =>
+    ;['photo', '5g-black', 'classic-silver'].forEach((id) =>
       expect(skinFor(id).lcd.mono, id).toBeFalsy(),
     )
     const rgb = (css, i = 1) => {
@@ -107,7 +113,6 @@ describe('skins', () => {
     // 1st and 2nd generation, after Apple's 25th-anniversary iPod: a pale, cool white, its bulbs
     // glowing at the edges, in a warm dark grey ink
     const fugly = skinFor('1g').lcd
-    expect(fugly).toBe(skinFor('2g').lcd)
     const [fr, fg, fb] = rgb(fugly.background, 2)
     expect(fb).toBeGreaterThan(fr)
     expect(Math.min(fr, fg, fb)).toBeGreaterThan(190)
@@ -140,11 +145,9 @@ describe('skins', () => {
   })
 
   it('gives the iPod Photo small, grainy covers and the classic covers in perspective', () => {
-    ;['photo', '4g-hp'].forEach((id) =>
-      expect(skinFor(id).lcd.cover, id).toBe('lowRes'),
-    )
-    ;['classic-silver', 'classic-black', 'classic6-black', 'red'].forEach(
-      (id) => expect(skinFor(id).lcd.cover, id).toBe('tilt'),
+    expect(skinFor('photo').lcd.cover).toBe('lowRes')
+    ;['classic-silver', 'classic-black', 'classic6-black'].forEach((id) =>
+      expect(skinFor(id).lcd.cover, id).toBe('tilt'),
     )
     ;['5g-white', '5g-black', 'transparent'].forEach((id) =>
       expect(skinFor(id).lcd.cover, id).toBeUndefined(),
@@ -174,6 +177,22 @@ describe('skins', () => {
     expect(lcdVars(skinFor('4g').lcd)['--lcd-battery']).toBe(
       skinFor('4g').lcd.text,
     )
+  })
+
+  it("gives the 5th generation and the classics their own software, as in Apple's photos", () => {
+    ;['5g-white', '5g-black', '5g-u2', 'transparent'].forEach((id) =>
+      expect(skinFor(id).lcd.software, id).toBe('fifth'),
+    )
+    ;['classic-silver', 'classic-black', 'classic6-black'].forEach((id) =>
+      expect(skinFor(id).lcd.software, id).toBe('classic'),
+    )
+    ;['1g', '4g', 'photo', 'mini-pink'].forEach((id) =>
+      expect(skinFor(id).lcd.software, id).toBeUndefined(),
+    )
+    // The transparent one: a 5th generation in a clear case, with a black wheel
+    const clear = skinFor('transparent')
+    expect(clear.face.kind).toBe('clear')
+    expect(clear.wheel.surface[0]).toMatch(/^#[0-2]/)
   })
 
   it('makes the 6th generation classic a deeper black than the 7th', () => {

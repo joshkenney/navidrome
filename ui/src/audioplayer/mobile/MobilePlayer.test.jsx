@@ -698,8 +698,22 @@ describe('<MobilePlayer />', () => {
     // The colour screen's palette doesn't change with the backlight
     expect(
       screen.getByRole('dialog').style.getPropertyValue('--lcd-bg'),
-    ).toMatch(/#e9eff3/)
+    ).toMatch(/#f1f5f8/)
     vi.useRealTimers()
+  })
+
+  it("shows the 5th generation's Now Playing: where the song is at the top, the times under a striped bar", () => {
+    renderPlayer({ settings: { ipodSkin: '5g-white' } })
+    openPlayer()
+    const ipod = screen.getByRole('dialog')
+    expect(ipod.querySelector('[data-software="fifth"]')).not.toBeNull()
+    expect(screen.getByTestId('now-playing-position')).toHaveTextContent(
+      'player.mobile.position',
+    )
+    expect(screen.getByAltText('Blue Album')).toBeInTheDocument()
+    const bar = screen.getByLabelText('player.mobile.seek').parentElement
+    expect(bar.nextSibling).toHaveTextContent('0:50')
+    expect(bar.nextSibling).toHaveTextContent('-2:30')
   })
 
   it('hides the progress for radio streams', () => {
