@@ -276,6 +276,8 @@ export const useIpodNavigation = ({ song, t, playSongs, onClose }) => {
 
   return {
     screen,
+    // The iPod (library) the menus are on
+    ipodId: ipod.id,
     isMenu,
     title: screen.title || titles[screen.type],
     items,

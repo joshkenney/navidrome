@@ -46,6 +46,11 @@ const useStyles = makeStyles(
       color: (p) => p.lcd.text,
       // The early iPods' menus: no lines between the items, bigger text
       '[data-mono] &': { borderBottom: 'none' },
+      // The classic's: no lines either
+      '[data-software=classic] &': {
+        borderBottom: 'none',
+        padding: `${row(0.06)} ${row(0.22)}`,
+      },
     },
     highlighted: {
       background: (p) => p.lcd.highlight,

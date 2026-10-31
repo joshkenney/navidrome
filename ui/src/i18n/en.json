@@ -709,6 +709,7 @@
       "batteryCharging": "Battery %{percent}%, charging",
       "volume": "Volume",
       "volumeLocked": "Volume: use the side buttons",
+      "rating": "Rated %{smart_count} star |||| Rated %{smart_count} stars",
       "batteryUnknown": "Battery",
       "upNext": "Up Next",
       "remove": "Remove",

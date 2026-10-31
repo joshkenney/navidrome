@@ -558,6 +558,7 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
                 mono={!!look.lcd.mono}
                 album={!look.lcd.noAlbum}
                 coverLook={look.lcd.cover}
+                software={look.lcd.software}
                 controls={controls}
                 scrubTime={scrubTime}
                 mode={mode}

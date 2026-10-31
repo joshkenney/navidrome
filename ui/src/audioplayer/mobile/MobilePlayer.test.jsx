@@ -45,6 +45,12 @@ vi.mock('./ipodBrowse', () => {
     fetchAlbums: vi.fn(() => ok([])),
     fetchSongs: vi.fn(() => ok([])),
     fetchShuffle: vi.fn(() => ok([])),
+    fetchRandomAlbums: vi.fn(() =>
+      ok([
+        { id: 'al0', name: 'Pinkerton', albumArtist: 'Weezer' },
+        { id: 'al1', name: 'Blue Album', albumArtist: 'Weezer' },
+      ]),
+    ),
   }
 })
 vi.mock('../../ipods/useIpodName', () => ({
@@ -575,6 +581,47 @@ describe('<MobilePlayer />', () => {
     )
     // The phone keeps its battery to itself here: full
     expect(screen.getAllByTestId('battery-bar')).toHaveLength(4)
+  })
+
+  it("shows the classic's Now Playing: a big cover, the song, its rating, and the times either side of the bar", () => {
+    const rated = song(2)
+    rated.song.rating = 4
+    renderPlayer({
+      queue: [song(1), rated],
+      settings: { ipodSkin: 'classic-black' },
+    })
+    openPlayer()
+    expect(
+      screen.getByRole('dialog').querySelector('[data-software="classic"]'),
+    ).not.toBeNull()
+    expect(screen.getByTestId('cover-tilt')).toBeInTheDocument()
+    expect(screen.getByTestId('rating')).toHaveTextContent('★★★★')
+    expect(screen.getByTestId('now-playing-position')).toHaveTextContent(
+      'player.mobile.position',
+    )
+    const bar = screen.getByLabelText('player.mobile.seek').parentElement
+    expect(bar.previousSibling).toHaveTextContent('0:50')
+    expect(bar.nextSibling).toHaveTextContent('-2:30')
+  })
+
+  it("shows the classic's main menu beside the iPod's album covers", async () => {
+    renderPlayer({ settings: { ipodSkin: 'classic-silver' } })
+    openPlayer()
+    expect(screen.queryByTestId('cover-shuffle')).toBeNull()
+    const menu = () =>
+      fireEvent.click(screen.getByLabelText('player.mobile.menu'))
+    menu()
+    await screen.findByText('Song 1')
+    menu()
+    await screen.findByText('Pinkerton')
+    menu()
+    await screen.findByText('Pavement')
+    menu() // Music
+    menu() // The main menu
+    const covers = await screen.findByTestId('cover-shuffle')
+    await vi.waitFor(() =>
+      expect(covers.querySelectorAll('img').length).toBeGreaterThan(0),
+    )
   })
 
   it("leaves the album off the mini's small screen", () => {

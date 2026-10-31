@@ -109,14 +109,20 @@ const PHOTO_LCD = {
   coverFilter: 'contrast(1.06) saturate(1.12)',
   cover: 'lowRes',
 }
-// The 6th and 7th generation classic's screen (2007): a deeper blue bar with a tighter shine, and
-// the cover leaning back in perspective over its reflection
+// The 6th and 7th generation classic's screen (2007), as in Apple's photos: white, black text in
+// bold Helvetica, a light, glossy blue progress bar, and its own software ("classic", see
+// IpodScreen): a big cover leaning back over its reflection, and the main menu beside the
+// album covers, one after another
 const CLASSIC_LCD = {
   ...COLOR_LCD,
-  bar: 'linear-gradient(180deg, #7fa6f0 0%, #2f63d6 40%, #1442b5 52%, #1d4fc4 100%)',
+  background: '#ffffff',
+  text: '#000000',
+  muted: '#3a3a3a',
+  bar: 'linear-gradient(180deg, #d9efff 0%, #93cdf8 32%, #4aa3ea 52%, #3d97e3 78%, #8ccdfb 100%)',
   accent: '#1a4bc0',
   highlight: 'linear-gradient(180deg, #4f86e8 0%, #1f55c9 100%)',
   cover: 'tilt',
+  software: 'classic',
 }
 // The black and white screens (1st to 4th generation, and the mini) showed no covers, only text,
 // and lit up with a backlight that went out after a few seconds (see MobilePlayer), leaving the

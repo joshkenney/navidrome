@@ -79,3 +79,13 @@ export const fetchShuffle = (libraryId) =>
     _start: 0,
     _end: 200,
   })
+
+// Albums of the iPod in a random order, for the covers beside the classic's main menu
+export const fetchRandomAlbums = (libraryId) =>
+  list('album', {
+    library_id: libraryId,
+    _sort: 'random',
+    _order: 'ASC',
+    _start: 0,
+    _end: 24,
+  })

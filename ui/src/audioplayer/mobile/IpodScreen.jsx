@@ -7,6 +7,7 @@ import { UpNext } from './UpNext'
 import { IpodMenu } from './IpodMenu'
 import { usePress } from './usePress'
 import { Marquee } from './Marquee'
+import { CoverShuffle } from './CoverShuffle'
 import { useBattery } from './useBattery'
 
 // Film grain, for the iPod Photo's covers
@@ -80,8 +81,55 @@ const Speaker = ({ loud, className }) => (
   </svg>
 )
 
+// The 6th and 7th generation's software, in Apple's photos: bold Helvetica
+const HELVETICA = '"Helvetica Neue", Helvetica, Arial, sans-serif'
+
+// The classic's ▶ or ❚❚ in the header: blue, shining at the top
+const PlayState = ({ playing, className }) => (
+  <svg className={className} viewBox="0 0 10 10" aria-hidden>
+    <defs>
+      <linearGradient id="ndIpodPlayState" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor="#8fd0ff" />
+        <stop offset="0.5" stopColor="#3a9be8" />
+        <stop offset="1" stopColor="#1f6fd0" />
+      </linearGradient>
+    </defs>
+    <path
+      d={
+        playing
+          ? 'M1 0.5 L9.5 5 L1 9.5 Z'
+          : 'M1.5 1 H4 V9 H1.5 Z M6 1 H8.5 V9 H6 Z'
+      }
+      fill="url(#ndIpodPlayState)"
+      stroke="#1a5fb4"
+      strokeWidth="0.5"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
 const useStyles = makeStyles(
   {
+    // The 6th and 7th generation classic's software (see the classic* styles). Its font outweighs
+    // the UI font's (see fonts/uiFonts)
+    classic: {
+      '&$classic, &$classic *': {
+        fontFamily: `${HELVETICA} !important`,
+        letterSpacing: 'normal !important',
+      },
+      fontWeight: 700,
+    },
+    // The classic's main menu: the menu on the left half, the covers of the iPod's albums on the
+    // right
+    home: {},
+    homeMenu: {
+      flex: '0 0 50%',
+      minWidth: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      background: LCD.background,
+    },
+    homeCovers: { flex: '0 0 50%' },
     // The black and white screens, drawn after Apple's 25th-anniversary iPod: bigger text, a thick
     // rule under the title, an outlined progress bar, all a little soft
     mono: {
@@ -97,6 +145,7 @@ const useStyles = makeStyles(
       userSelect: 'none',
       // The 1st and 2nd generation's text smears a little
       textShadow: 'var(--lcd-ghost, none)',
+      '&$home': { flexDirection: 'row' },
     },
     header: {
       flex: '0 0 auto',
@@ -119,6 +168,24 @@ const useStyles = makeStyles(
       },
     },
     headerSide: { width: row(1.1), display: 'flex', alignItems: 'center' },
+    // The classic's header: light grey, its title on the left, a blue ▶ by the battery
+    classicHeader: {
+      height: row(0.8),
+      padding: `0 ${row(0.22)}`,
+      fontSize: row(0.48),
+      color: '#000',
+      background:
+        'linear-gradient(180deg, #fdfdfd 0%, #e9eaec 50%, #d4d6d9 100%)',
+      borderBottom: '1px solid #9aa0a6',
+      '& $headerTitle': { textAlign: 'left' },
+      '& $headerSide': { width: 'auto' },
+    },
+    classicGlyph: {
+      flex: '0 0 auto',
+      margin: `0 ${row(0.16)}`,
+      height: row(0.36),
+      width: 'auto',
+    },
     headerTitle: {
       flex: 1,
       minWidth: 0,
@@ -271,6 +338,84 @@ const useStyles = makeStyles(
           'below 1px linear-gradient(transparent 62%, rgba(255, 255, 255, 0.32))',
       },
     },
+    // The classic's Now Playing: a big cover leaning back over its reflection on the left, the
+    // song beside it, black and grey, then its rating and where it is in the queue
+    classicBody: {
+      flex: '1 1 auto',
+      minHeight: 0,
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: row(0.36),
+      padding: `${row(0.4)} ${row(0.3)} 0`,
+    },
+    classicCover: {
+      flex: '0 0 auto',
+      width: '44%',
+      aspectRatio: '1 / 1',
+      '& > img': {
+        width: '100%',
+        height: '100%',
+        maxWidth: 'none',
+        borderRadius: 0,
+        boxShadow: 'none',
+        // Turned from its top: the top edge level, the bottom rising to the right
+        transform: `perspective(${row(9)}) rotateY(18deg)`,
+        transformOrigin: 'left top',
+        WebkitBoxReflect:
+          'below 0 linear-gradient(transparent 70%, rgba(255, 255, 255, 0.35))',
+      },
+    },
+    classicInfo: {
+      flex: 1,
+      minWidth: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: row(0.1),
+      paddingTop: row(0.3),
+    },
+    classicTitle: {
+      fontSize: row(0.58),
+      lineHeight: row(0.74),
+      color: '#000',
+    },
+    classicLine: {
+      fontSize: row(0.46),
+      lineHeight: row(0.62),
+      color: LCD.muted,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    },
+    stars: {
+      fontSize: row(0.5),
+      lineHeight: row(0.66),
+      letterSpacing: row(0.02),
+      color: '#000',
+    },
+    classicPosition: {
+      fontSize: row(0.5),
+      lineHeight: row(0.66),
+      color: '#000',
+    },
+    // The time played and left on either side of the bar, white and glossy round its blue
+    classicProgress: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: row(0.3),
+      fontSize: row(0.48),
+      color: '#000',
+      fontVariantNumeric: 'tabular-nums',
+      '& $bar': {
+        flex: 1,
+        height: row(0.42),
+        borderRadius: 0,
+        border: '1px solid #b7bcc3',
+        background:
+          'linear-gradient(180deg, #ffffff 0%, #f1f2f4 50%, #e2e4e8 51%, #f6f7f8 100%)',
+        boxShadow: 'none',
+      },
+      '& $fill': { borderRadius: 0 },
+    },
     info: {
       flex: 1,
       minWidth: 0,
@@ -405,6 +550,8 @@ export const IpodScreen = ({
   mode = 'progress',
   // Whether the phone keeps the volume to itself (iPhones): a hint to use its buttons instead
   volumeLocked = false,
+  // The iPod's own software, where it differs: "classic" (the 6th and 7th generation)
+  software,
 }) => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -437,6 +584,9 @@ export const IpodScreen = ({
       })
     : t('batteryUnknown')
 
+  const classic = software === 'classic'
+  // The classic's main menu, beside the covers of the iPod's albums
+  const home = classic && menu?.isMenu && menu.screen?.type === 'main'
   const scrubbing = scrubTime !== null || mode === 'scrub'
   const shown = scrubTime !== null ? scrubTime : currentTime
   const progress = duration > 0 ? Math.min(100, (shown / duration) * 100) : 0
@@ -449,9 +599,58 @@ export const IpodScreen = ({
       total: queue.length.toLocaleString(),
     })
 
+  const rating = Math.round(song.rating || 0)
   const nowPlaying = (
     <div className={classes.nowPlaying}>
-      {art ? (
+      {classic ? (
+        <div className={classes.classicBody}>
+          {item.cover && (
+            <span className={classes.classicCover} data-testid="cover-tilt">
+              <img
+                className={classes.cover}
+                src={item.cover}
+                alt={song.album || title}
+                draggable={false}
+                {...cover.handlers}
+              />
+            </span>
+          )}
+          <div className={`${classes.classicInfo} songTitle`}>
+            <Marquee className={classes.classicTitle}>{title}</Marquee>
+            {artist && (
+              <Marquee className={classes.classicLine}>{artist}</Marquee>
+            )}
+            {song.album && (
+              <Marquee className={classes.classicLine}>{song.album}</Marquee>
+            )}
+            {rating > 0 && (
+              <div
+                className={classes.stars}
+                role="img"
+                aria-label={t('rating', { smart_count: rating })}
+                data-testid="rating"
+              >
+                {'★'.repeat(rating)}
+              </div>
+            )}
+            {position && (
+              <div
+                className={classes.classicPosition}
+                data-testid="now-playing-position"
+              >
+                {position}
+              </div>
+            )}
+            {!isRadio && song.libraryId && (
+              <IpodLabel
+                className={classes.ipod}
+                libraryId={song.libraryId}
+                libraryName={song.libraryName}
+              />
+            )}
+          </div>
+        </div>
+      ) : art ? (
         <div className={classes.body}>
           {item.cover &&
             (coverLook === 'lowRes' || coverLook === 'tilt' ? (
@@ -519,7 +718,9 @@ export const IpodScreen = ({
         </>
       )}
       <div className={`${classes.footer} songTitle`}>
-        {art && position && <div className={classes.position}>{position}</div>}
+        {art && !classic && position && (
+          <div className={classes.position}>{position}</div>
+        )}
         {mode === 'volume' ? (
           <>
             <div className={classes.volume} data-testid="volume">
@@ -545,7 +746,8 @@ export const IpodScreen = ({
           </>
         ) : (
           !isRadio && (
-            <>
+            <div className={classic ? classes.classicProgress : undefined}>
+              {classic && <span>{formatTime(shown)}</span>}
               <div className={classes.bar}>
                 {/* Scrubbing, the early iPods showed just the diamond on an empty bar */}
                 {!(mono && scrubbing) && (
@@ -573,31 +775,39 @@ export const IpodScreen = ({
                   onChange={(e) => controls.seek(Number(e.target.value))}
                 />
               </div>
-              <div className={classes.times}>
-                <span>{formatTime(shown)}</span>
+              {classic ? (
                 <span>{formatTime(duration - shown, true)}</span>
-              </div>
-            </>
+              ) : (
+                <div className={classes.times}>
+                  <span>{formatTime(shown)}</span>
+                  <span>{formatTime(duration - shown, true)}</span>
+                </div>
+              )}
+            </div>
           )
         )}
       </div>
     </div>
   )
 
-  return (
-    <div
-      className={`${classes.root} ${mono ? classes.mono : ''}`}
-      data-mono={mono ? 'true' : undefined}
-    >
-      <div className={`${classes.header} songTitle`}>
-        <span className={classes.headerSide} aria-hidden>
-          {playing ? '▶' : '❚❚'}
-        </span>
+  const screen = (
+    <>
+      <div
+        className={`${classes.header} ${classic ? classes.classicHeader : ''} songTitle`}
+      >
+        {!classic && (
+          <span className={classes.headerSide} aria-hidden>
+            {playing ? '▶' : '❚❚'}
+          </span>
+        )}
         <Marquee className={classes.headerTitle}>
           {menu?.isMenu
             ? menu.title
             : t(view === 'upNext' ? 'upNext' : 'nowPlaying')}
         </Marquee>
+        {classic && (
+          <PlayState className={classes.classicGlyph} playing={playing} />
+        )}
         <span className={classes.headerSide}>
           {mono ? (
             <span
@@ -662,6 +872,27 @@ export const IpodScreen = ({
           nowPlaying
         )}
       </div>
+    </>
+  )
+
+  return (
+    <div
+      className={`${classes.root} ${mono ? classes.mono : ''} ${classic ? classes.classic : ''} ${home ? classes.home : ''}`}
+      data-mono={mono ? 'true' : undefined}
+      data-software={software}
+    >
+      {home ? (
+        <>
+          <div className={classes.homeMenu}>{screen}</div>
+          <CoverShuffle
+            className={classes.homeCovers}
+            libraryId={menu.ipodId}
+            fallback={item.cover}
+          />
+        </>
+      ) : (
+        screen
+      )}
     </div>
   )
 }
