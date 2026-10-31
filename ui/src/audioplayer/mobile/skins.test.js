@@ -216,6 +216,21 @@ describe('skins', () => {
     SKINS.forEach((s) => expect(firmwareOf(s), s.id).toMatch(/^\d+(\.\d+)+$/))
   })
 
+  it('lets the iPods that rated songs rate them: the 3rd and 4th generation, the minis, the classics', () => {
+    const rating = SKINS.filter((s) => s.lcd.rates).map((s) => s.id)
+    ;[
+      '3g',
+      '4g',
+      '4g-u2',
+      'mini-silver',
+      'mini2-blue',
+      'classic-black',
+    ].forEach((id) => expect(rating, id).toContain(id))
+    ;['1g', 'photo', '5g-white', '5g-u2', 'transparent'].forEach((id) =>
+      expect(rating, id).not.toContain(id),
+    )
+  })
+
   it('makes the 6th generation classic a deeper black than the 7th', () => {
     const light = (hex) =>
       [1, 3, 5].reduce((sum, k) => sum + parseInt(hex.slice(k, k + 2), 16), 0)

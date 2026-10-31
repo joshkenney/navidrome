@@ -528,6 +528,55 @@ describe('<MobilePlayer />', () => {
     expect(screen.getByTestId('rating')).toHaveTextContent('★★★')
   })
 
+  it.each(['3g', '4g', '4g-u2', 'mini-silver'])(
+    'rates the song on the %s too, its stars drawn in the screen ink: any stars love it',
+    (ipodSkin) => {
+      subsonic.setRating.mockClear()
+      subsonic.star.mockClear()
+      subsonic.unstar.mockClear()
+      renderPlayer({ settings: { ipodSkin } })
+      openPlayer()
+      const wheel = layOutWheel()
+      const centerButton = screen.getByLabelText('player.mobile.select')
+      const tapCenter = () => {
+        fireEvent.pointerDown(centerButton, at(100, 100, 2))
+        fireEvent.pointerUp(centerButton, at(100, 100, 2))
+        fireEvent.click(centerButton)
+      }
+      tapCenter()
+      expect(screen.getByTestId('scrub-diamond')).toBeInTheDocument()
+      tapCenter()
+      const meter = screen.getByTestId('rating-edit')
+      expect(meter).toHaveAttribute('aria-valuenow', '0')
+      fireEvent.pointerDown(wheel, at(100, 10))
+      fireEvent.pointerMove(wheel, at(190, 100))
+      fireEvent.pointerUp(wheel, at(190, 100))
+      expect(meter).toHaveAttribute('aria-valuenow', '3')
+      // Pictures of stars, the screen's font having none
+      expect(meter.querySelectorAll('svg')).toHaveLength(3)
+      tapCenter()
+      expect(screen.queryByTestId('rating-edit')).toBeNull()
+      expect(subsonic.setRating).toHaveBeenCalledWith('s2', 3)
+      expect(subsonic.star).toHaveBeenCalledWith('s2')
+    },
+  )
+
+  it("doesn't rate on the 1st generation, which couldn't: the centre button only scrubs", () => {
+    renderPlayer({ settings: { ipodSkin: '1g' } })
+    openPlayer()
+    const centerButton = screen.getByLabelText('player.mobile.select')
+    const tapCenter = () => {
+      fireEvent.pointerDown(centerButton, at(100, 100, 2))
+      fireEvent.pointerUp(centerButton, at(100, 100, 2))
+      fireEvent.click(centerButton)
+    }
+    tapCenter()
+    expect(screen.getByTestId('scrub-diamond')).toBeInTheDocument()
+    tapCenter()
+    expect(screen.queryByTestId('scrub-diamond')).toBeNull()
+    expect(screen.queryByTestId('rating-edit')).toBeNull()
+  })
+
   it('sets the volume by turning the wheel on Now Playing, showing it a moment', () => {
     vi.useFakeTimers()
     const { controls } = renderPlayer()

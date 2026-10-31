@@ -78,6 +78,17 @@ const SegmentedBattery = ({ level, charging, linear = false, className }) => {
   )
 }
 
+// A star of the rating on the black and white screens, their font having none: five points, in
+// the screen's ink
+const Star = ({ className }) => (
+  <svg className={className} viewBox="0 0 10 10" aria-hidden>
+    <path
+      fill="currentColor"
+      d="M5 .4 6.35 3.6 9.8 3.9 7.2 6.15 8 9.55 5 7.75 2 9.55 2.8 6.15.2 3.9 3.65 3.6Z"
+    />
+  </svg>
+)
+
 // A speaker, quiet (no sound waves) or loud, at the ends of the volume bar
 const Speaker = ({ loud, className }) => (
   <svg className={className} viewBox="0 0 13 10" aria-hidden>
@@ -511,6 +522,13 @@ const useStyles = makeStyles(
     },
     star: { width: row(0.5), textAlign: 'center' },
     dot: { width: row(0.5), textAlign: 'center', color: '#5a5a5a' },
+    // In ink on the black and white screens, the stars drawn
+    monoRate: {
+      color: 'var(--lcd-text)',
+      gap: row(0.22),
+      '& $dot': { color: 'var(--lcd-text)' },
+    },
+    monoStar: { display: 'block', width: row(0.5), height: row(0.5) },
     // The time played and left on either side of the bar, white and glossy round its blue
     classicProgress: {
       display: 'flex',
@@ -893,7 +911,7 @@ export const IpodScreen = ({
         {mode === 'rate' ? (
           // Rating: five dots, as many stars as the wheel gives it
           <div
-            className={classes.rateStars}
+            className={`${classes.rateStars} ${mono ? classes.monoRate : ''}`}
             role="meter"
             aria-label={t('rating', { smart_count: rating })}
             aria-valuemin={0}
@@ -903,7 +921,13 @@ export const IpodScreen = ({
           >
             {[0, 1, 2, 3, 4].map((i) => (
               <span key={i} className={i < rating ? classes.star : classes.dot}>
-                {i < rating ? '★' : '•'}
+                {i >= rating ? (
+                  '•'
+                ) : mono ? (
+                  <Star className={classes.monoStar} />
+                ) : (
+                  '★'
+                )}
               </span>
             ))}
           </div>

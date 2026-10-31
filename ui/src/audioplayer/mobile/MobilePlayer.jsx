@@ -46,8 +46,9 @@ const VOLUME_PER_CLICK = 1 / 40
 const VOLUME_SHOWN_MS = 2500
 const SECONDS_PER_CLICK = 1
 const SCRUB_IDLE_MS = 5000
-// The 6th and 7th generation: a second press of the centre button rates the song, a star for
-// this many wheel clicks (24 degrees), until it is pressed again or the wheel is left alone
+// The iPods that rate songs (the 3rd and 4th generation, the minis, the 6th and 7th): a second
+// press of the centre button rates the song, a star for this many wheel clicks
+// (24 degrees), until it is pressed again or the wheel is left alone
 const CLICKS_PER_STAR = 4
 const RATE_IDLE_MS = 5000
 // Degrees of a wheel click: fine for scrubbing, coarser for moving through the queue
@@ -257,9 +258,9 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
   }
   useEffect(() => () => clearTimeout(modeTimer.current), [])
 
-  // Rating the song playing (the classics): its rating, as rated here or as Navidrome has it for
+  // Rating the song playing (the classics, the 3rd and 4th generation and the minis): its rating, as rated here or as Navidrome has it for
   // this user. Any stars love it, none unloves it
-  const canRate = look.lcd.software === 'classic' && !audio.isRadio
+  const canRate = !!look.lcd.rates && !audio.isRadio
   const songId = audio.song.mediaFileId || audio.song.id
   const [ratings, setRatings] = useState({})
   const songRating = ratings[songId] ?? Math.round(audio.song.rating || 0)
@@ -433,9 +434,9 @@ export const MobilePlayer = ({ audioInstance, controls }) => {
     showMode('scrub', SCRUB_IDLE_MS)
   }
 
-  // The centre button: on Now Playing it switches the wheel to scrubbing, then (on the classics) to
-  // rating the song, and back; in Up Next it plays the highlighted song; in a menu, it picks the
-  // highlighted item
+  // The centre button: on Now Playing it switches the wheel to scrubbing, then (where the iPod
+  // rates songs) to rating the song, and back; in Up Next it plays the highlighted song; in a menu,
+  // it picks the highlighted item
   // Up Next is reached from the main menu: a song picked there shows Now Playing
   const showNowPlaying = () => nav.push({ type: 'nowPlaying' })
   const onCenter = () => {

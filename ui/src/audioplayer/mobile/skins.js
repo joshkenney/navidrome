@@ -186,6 +186,8 @@ const CLASSIC_LCD = {
   highlight: 'linear-gradient(180deg, #4f86e8 0%, #1f55c9 100%)',
   cover: 'tilt',
   software: 'classic',
+  // The centre button, pressed again on Now Playing, rates the song (see MobilePlayer)
+  rates: true,
 }
 // The black and white screens (1st to 4th generation, and the mini) showed no covers, only text,
 // and lit up with a backlight that went out after a few seconds (see MobilePlayer), leaving the
@@ -250,6 +252,7 @@ const MUTED_BLUE = {
   highlightText: '#dfe6f0',
   glow: 'inset 0 0 0 1px rgba(255, 255, 255, 0.4), inset 0 0 6px rgba(30, 40, 70, 0.3)',
   bulbs: 0.05,
+  rates: true,
 }
 
 // 4th generation: a cool periwinkle
@@ -264,6 +267,7 @@ const ICY = {
   bulbs: 0.1,
   // Its battery: one bar, as long as the charge (see IpodScreen)
   batteryFill: 'linear',
+  rates: true,
 }
 
 // The mini: a cool, pale blue. Its small screen showed the song and the artist playing, not the
@@ -276,6 +280,7 @@ const MINI_LIGHT = {
   glow: GLASS,
   bulbs: 0.08,
   noAlbum: true,
+  rates: true,
 }
 
 // Materials. "face" is the front: glossy plastic, brushed aluminium or clear acrylic. The polished
