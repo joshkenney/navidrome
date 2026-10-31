@@ -6,7 +6,7 @@ import { Marquee } from './Marquee'
 import { buzz } from './haptics'
 
 // Height of the strip, without the phone's safe area (the iPhone home bar)
-export const STRIP_HEIGHT = 64
+export const STRIP_HEIGHT = 72
 
 // How far up a swipe goes to open the player
 const SWIPE_OPEN = 30
@@ -50,7 +50,7 @@ const useStyles = makeStyles(
       aspectRatio: '1 / 1',
       padding: 3,
       boxSizing: 'border-box',
-      marginLeft: 4,
+      marginRight: 4,
     },
     padFace: { width: '100%', height: '100%', display: 'block' },
     padButton: {
@@ -83,14 +83,14 @@ const useStyles = makeStyles(
       outline: 'none',
     },
     title: {
-      fontSize: 14,
+      fontSize: 15,
       lineHeight: '18px',
       fontWeight: 600,
       whiteSpace: 'nowrap',
       overflow: 'hidden',
     },
     artist: {
-      fontSize: 12,
+      fontSize: 13,
       lineHeight: '16px',
       color: '#8b8c90',
       whiteSpace: 'nowrap',
@@ -105,13 +105,13 @@ const useStyles = makeStyles(
       overflow: 'hidden',
     },
     fill: { height: '100%', background: '#9a9ca0' },
-    // The cap over its USB plug, at the end, a seam before it
+    // The cap over its USB plug, at the left end, a seam after it
     cap: {
       flex: '0 0 auto',
       alignSelf: 'stretch',
-      width: 30,
-      borderLeft: '1px solid rgba(0, 0, 0, 0.16)',
-      boxShadow: 'inset 1px 0 0 #ffffff',
+      width: 34,
+      borderRight: '1px solid rgba(0, 0, 0, 0.16)',
+      boxShadow: 'inset -1px 0 0 #ffffff',
       background:
         'linear-gradient(180deg, #f7f7f8 0%, #ebebec 55%, #dadadc 100%)',
     },
@@ -161,8 +161,8 @@ const PadFace = ({ playing, className }) => (
 )
 
 // The collapsed phone player: whatever the iPod chosen, a 1st generation iPod shuffle lying along
-// the bottom, the song playing printed on it, its pad playing and pausing, skipping and setting
-// the volume. A tap or a swipe up opens the whole iPod
+// the bottom, its cap on the left, the song playing printed on it, its pad on the right playing
+// and pausing, skipping and setting the volume. A tap or a swipe up opens the whole iPod
 export const ScreenStrip = ({ audio, controls, onOpen, onActions }) => {
   const classes = useStyles()
   const translate = useTranslate()
@@ -245,6 +245,22 @@ export const ScreenStrip = ({ audio, controls, onOpen, onActions }) => {
       onClick={onClick}
     >
       <div className={classes.shuffle}>
+        <div className={classes.cap} aria-hidden />
+        <div
+          className={classes.info}
+          role="button"
+          tabIndex={0}
+          aria-label={translate('player.mobile.open')}
+          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen()}
+        >
+          <Marquee className={classes.title}>{title}</Marquee>
+          {artist && <div className={classes.artist}>{artist}</div>}
+          {!isRadio && (
+            <div className={classes.track}>
+              <div className={classes.fill} style={{ width: `${progress}%` }} />
+            </div>
+          )}
+        </div>
         <div className={classes.pad}>
           <PadFace className={classes.padFace} playing={playing} />
           {padButton(classes.up, translate('player.mobile.volumeUp'), () =>
@@ -265,22 +281,6 @@ export const ScreenStrip = ({ audio, controls, onOpen, onActions }) => {
           )}
           {padButton(classes.middle, playLabel, controls.togglePlay)}
         </div>
-        <div
-          className={classes.info}
-          role="button"
-          tabIndex={0}
-          aria-label={translate('player.mobile.open')}
-          onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onOpen()}
-        >
-          <Marquee className={classes.title}>{title}</Marquee>
-          {artist && <div className={classes.artist}>{artist}</div>}
-          {!isRadio && (
-            <div className={classes.track}>
-              <div className={classes.fill} style={{ width: `${progress}%` }} />
-            </div>
-          )}
-        </div>
-        <div className={classes.cap} aria-hidden />
       </div>
     </div>
   )
