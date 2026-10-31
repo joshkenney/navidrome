@@ -46,6 +46,8 @@ const useStyles = makeStyles(
       color: (p) => p.lcd.text,
       // The early iPods' menus: no lines between the items, bigger text
       '[data-mono] &': { borderBottom: 'none' },
+      // The 5th generation's (and the iPod Photo's): none either
+      '[data-software=fifth] &': { borderBottom: 'none' },
       // The classic's: no lines either
       '[data-software=classic] &': {
         borderBottom: 'none',
@@ -64,6 +66,8 @@ const useStyles = makeStyles(
       fontSize: row(0.55),
       lineHeight: row(0.72),
       '[data-mono] &': { fontSize: row(0.66), lineHeight: row(0.84) },
+      // The 5th generation's and the iPod Photo's: big, as in Apple's photos
+      '[data-software=fifth] &': { fontSize: row(0.68), lineHeight: row(0.86) },
       overflow: 'hidden',
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',

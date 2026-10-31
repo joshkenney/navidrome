@@ -112,11 +112,16 @@ const FIFTH_LCD = {
   software: 'fifth',
 }
 // The iPod Photo's screen (2004): colour, but small (220x176) and coarse. Its covers were tiny,
-// blocky and grainy (see IpodScreen)
+// blocky and grainy (see IpodScreen). Its software, in Apple's photo, was the 5th generation's to
+// come: pale blue-white, a light grey title bar, black text, a blue bar on the item the wheel is on
 const PHOTO_LCD = {
   ...COLOR_LCD,
+  background: FIFTH_LCD.background,
+  text: '#111111',
+  highlight: 'linear-gradient(180deg, #3f8ad8 0%, #2470c4 50%, #1a60b2 100%)',
   coverFilter: 'contrast(1.06) saturate(1.12)',
   cover: 'lowRes',
+  software: 'fifth',
 }
 // The 6th and 7th generation classic's screen (2007), as in Apple's photos: white, black text in
 // bold Helvetica, a light, glossy blue progress bar, and its own software ("classic", see
@@ -386,7 +391,7 @@ export const SKINS = [
   },
   {
     id: 'photo',
-    name: 'iPod Photo (2004)',
+    name: '4th generation color, iPod Photo (2004)',
     group: 'classic',
     model: 'click4',
     lcd: PHOTO_LCD,

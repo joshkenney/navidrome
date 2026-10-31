@@ -143,7 +143,7 @@ const useStyles = makeStyles(
         background:
           'linear-gradient(180deg, #fbfcfd 0%, #e6ecf1 50%, #d3dde4 100%)',
         borderBottom: '1px solid #9eaab4',
-        fontSize: row(0.5),
+        fontSize: row(0.6),
       },
       '& $cover': {
         height: 'auto',
@@ -151,6 +151,14 @@ const useStyles = makeStyles(
         maxWidth: 'none',
         borderRadius: 0,
         boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.25)',
+      },
+      // The iPod Photo's cover, its pixels showing, as big
+      '& $lowRes': {
+        height: 'auto',
+        width: '35%',
+        maxWidth: 'none',
+        borderRadius: 0,
+        '& > img': { width: '100%' },
       },
       '& $body': { gap: row(0.5), padding: `${row(0.1)} ${row(0.4)}` },
       '& $info': { justifyContent: 'center', gap: row(0.18) },

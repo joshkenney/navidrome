@@ -180,13 +180,13 @@ describe('skins', () => {
   })
 
   it("gives the 5th generation and the classics their own software, as in Apple's photos", () => {
-    ;['5g-white', '5g-black', '5g-u2', 'transparent'].forEach((id) =>
+    ;['5g-white', '5g-black', '5g-u2', 'transparent', 'photo'].forEach((id) =>
       expect(skinFor(id).lcd.software, id).toBe('fifth'),
     )
     ;['classic-silver', 'classic-black', 'classic6-black'].forEach((id) =>
       expect(skinFor(id).lcd.software, id).toBe('classic'),
     )
-    ;['1g', '4g', 'photo', 'mini-pink'].forEach((id) =>
+    ;['1g', '4g', 'mini-pink'].forEach((id) =>
       expect(skinFor(id).lcd.software, id).toBeUndefined(),
     )
     // The transparent one: a 5th generation in a clear case, with a black wheel
