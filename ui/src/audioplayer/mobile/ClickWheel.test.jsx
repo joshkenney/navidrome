@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { cleanup, render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ClickWheel } from './ClickWheel'
 import { resetHaptics } from './haptics'
@@ -83,6 +83,28 @@ describe('<ClickWheel />', () => {
     expect(h.onPlay).toHaveBeenCalled()
     expect(h.onCenter).toHaveBeenCalled()
     expect(navigator.vibrate).toHaveBeenCalled()
+  })
+
+  it('sinks the centre button a little when pressed, but on the 3rd generation, whose was touch-sensitive', () => {
+    const centre = () => screen.getByLabelText('player.mobile.select')
+    ;[
+      '1g',
+      '4g',
+      'photo',
+      '5g-u2',
+      'classic-black',
+      'mini2-blue',
+      'transparent',
+    ].forEach((id) => {
+      const { unmount } = render(<div />)
+      unmount()
+      renderWheel({ skin: skinFor(id) })
+      expect(centre().className, id).toMatch(/sinks/)
+      document.body.innerHTML = ''
+    })
+    renderWheel({ skin: skinFor('3g') })
+    expect(centre().className).toMatch(/still/)
+    expect(centre().className).not.toMatch(/sinks/)
   })
 
   it('clicks once every 6° when turned clockwise, buzzing as it clicks', () => {

@@ -47,6 +47,19 @@ const useStyles = makeStyles(
     next: { right: '3%', top: '30%', width: '22%', height: '40%' },
     play: { bottom: '3%', left: '30%', width: '40%', height: '22%' },
     center: { transform: 'translate(-50%, -50%)', left: '50%', top: '50%' },
+    // The centre button, pressed, sinks a little: shaded at the top, a faint light catching its
+    // lower edge, easing back when let go
+    sinks: {
+      transition: 'box-shadow 180ms ease-out, background 180ms ease-out',
+      '&:active': {
+        background: 'rgba(0, 0, 0, 0.06)',
+        boxShadow:
+          'inset 0 2px 5px rgba(0, 0, 0, 0.32), inset 0 -1px 2px rgba(255, 255, 255, 0.14)',
+        transition: 'box-shadow 60ms ease-in, background 60ms ease-in',
+      },
+    },
+    // The 3rd generation's was touch-sensitive, and didn't move
+    still: { '&:active': { background: 'transparent' } },
   },
   { name: 'NDClickWheel' },
 )
@@ -202,10 +215,16 @@ export const ClickWheel = ({
         Object.entries(buttons).map(([key, [label, onClick, cls]]) =>
           button(key, label, onClick, cls),
         )}
-      {button('select', t('select'), onCenter, classes.center, {
-        width: `${center * 100}%`,
-        height: `${center * 100}%`,
-      })}
+      {button(
+        'select',
+        t('select'),
+        onCenter,
+        `${classes.center} ${m.controls === 'row' ? classes.still : classes.sinks}`,
+        {
+          width: `${center * 100}%`,
+          height: `${center * 100}%`,
+        },
+      )}
     </div>
   )
 
