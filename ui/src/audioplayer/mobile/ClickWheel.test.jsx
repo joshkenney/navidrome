@@ -1,5 +1,5 @@
 import React from 'react'
-import { cleanup, render, screen, fireEvent } from '@testing-library/react'
+import { act, cleanup, render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ClickWheel } from './ClickWheel'
 import { resetHaptics } from './haptics'
@@ -83,6 +83,43 @@ describe('<ClickWheel />', () => {
     expect(h.onPlay).toHaveBeenCalled()
     expect(h.onCenter).toHaveBeenCalled()
     expect(navigator.vibrate).toHaveBeenCalled()
+  })
+
+  it('tilts the click wheel in at the edge pressed, a moment at least, and not while turning', () => {
+    vi.useFakeTimers()
+    const h = renderWheel()
+    const tilt = screen.getByTestId('wheel-press')
+    const menu = screen.getByLabelText('player.mobile.menu')
+    expect(tilt).not.toHaveAttribute('data-pressed')
+    fireEvent.pointerDown(menu, at(100, 10))
+    expect(tilt).toHaveAttribute('data-pressed', 'menu')
+    expect(tilt.style.background).toMatch(/to bottom/)
+    // A quick tap still shows
+    fireEvent.pointerUp(menu, at(100, 10))
+    expect(tilt).toHaveAttribute('data-pressed', 'menu')
+    act(() => vi.advanceTimersByTime(150))
+    expect(tilt).not.toHaveAttribute('data-pressed')
+    // A turn started on a button isn't pressing it
+    const next = screen.getByLabelText('player.nextTrackText')
+    fireEvent.pointerDown(next, at(190, 100))
+    expect(tilt).toHaveAttribute('data-pressed', 'next')
+    fireEvent.pointerMove(h.wheel, at(170, 160))
+    expect(tilt).not.toHaveAttribute('data-pressed')
+    vi.useRealTimers()
+  })
+
+  it('pushes in the ring button pressed on the 1st and 2nd generation, and no ovals anywhere', () => {
+    renderWheel({ skin: skinFor('1g') })
+    expect(screen.queryByTestId('wheel-press')).toBeNull()
+    const ring = screen.getByTestId('ring-press')
+    fireEvent.pointerDown(screen.getByLabelText('player.mobile.playPause'))
+    expect(ring).toHaveAttribute('data-pressed', 'play')
+    expect(ring.querySelectorAll('path').length).toBeGreaterThan(0)
+    cleanup()
+    // The 3rd generation's lit buttons show by themselves
+    renderWheel({ skin: skinFor('3g') })
+    expect(screen.queryByTestId('wheel-press')).toBeNull()
+    expect(screen.queryByTestId('ring-press')).toBeNull()
   })
 
   it('sinks the centre button a little when pressed, but on the 3rd generation, whose was touch-sensitive', () => {

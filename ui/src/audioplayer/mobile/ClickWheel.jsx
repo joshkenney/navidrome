@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslate } from 'react-admin'
 import { makeStyles } from '@material-ui/core/styles'
 import { buzz } from './haptics'
@@ -9,6 +9,35 @@ import { circleBox, modelOf } from './skins'
 const DRAG_SLOP = 8
 // Holding MENU this long toggles the backlight, like the iPod's
 export const MENU_HOLD_MS = 600
+// A press shows at least this long, so a quick tap is seen
+const PRESS_SHOWN_MS = 120
+
+// Which way each button lies from the centre, for the press: [x, y]
+const SIDES = { menu: [0, -1], play: [0, 1], prev: [-1, 0], next: [1, 0] }
+// The 1st and 2nd generation's ring buttons, each a quarter of the ring between its grooves:
+// the angle (degrees, clockwise from the right) at its middle
+const RING_ANGLES = { next: 0, play: 90, prev: 180, menu: 270 }
+
+// A quarter of a ring, from "a0" to "a1" degrees, between radii r0 and r1 (a 100x100 box)
+const ringSegment = (r0, r1, a0, a1) => {
+  const at = (r, a) => {
+    const rad = (a * Math.PI) / 180
+    return `${50 + r * Math.cos(rad)} ${50 + r * Math.sin(rad)}`
+  }
+  return `M${at(r1, a0)} A${r1} ${r1} 0 0 1 ${at(r1, a1)} L${at(r0, a1)} A${r0} ${r0} 0 0 0 ${at(r0, a0)}Z`
+}
+
+// The click wheel pressed at one edge: it tilts in, that edge shaded with a soft shadow inside it,
+// the far edge catching a little light. Only the wheel: the centre button is left out
+const tilt = ([x, y]) => {
+  const to = { '0,-1': 'bottom', '0,1': 'top', '-1,0': 'right', '1,0': 'left' }[
+    `${x},${y}`
+  ]
+  return {
+    background: `linear-gradient(to ${to}, rgba(0, 0, 0, 0.13) 0%, rgba(0, 0, 0, 0.04) 22%, transparent 45%, rgba(255, 255, 255, 0.05) 100%)`,
+    boxShadow: `inset ${-x * 3}px ${-y * 3}px 5px -2px rgba(0, 0, 0, 0.32), inset ${x * 2}px ${y * 2}px 3px -2px rgba(255, 255, 255, 0.22)`,
+  }
+}
 
 const useStyles = makeStyles(
   {
@@ -38,10 +67,24 @@ const useStyles = makeStyles(
       cursor: 'pointer',
       borderRadius: '50%',
       WebkitTapHighlightColor: 'transparent',
+    },
+    // The 3rd generation's buttons, touch-sensitive and lit: pressed, a little darker
+    rowButton: {
       transition: 'background 120ms',
-      // Pressed, a button darkens a little, like the plastic under a thumb
       '&:active': { background: 'rgba(0, 0, 0, 0.1)' },
     },
+    // The press, drawn over the wheel or the ring: easing in quickly, and out
+    press: {
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      borderRadius: '50%',
+      pointerEvents: 'none',
+      opacity: 0,
+      transition: 'opacity 200ms ease-out',
+    },
+    pressed: { opacity: 1, transition: 'opacity 60ms ease-in' },
     menu: { top: '3%', left: '30%', width: '40%', height: '22%' },
     prev: { left: '3%', top: '30%', width: '22%', height: '40%' },
     next: { right: '3%', top: '30%', width: '22%', height: '40%' },
@@ -63,6 +106,44 @@ const useStyles = makeStyles(
   },
   { name: 'NDClickWheel' },
 )
+
+// One of the 1st and 2nd generation's ring buttons pushed in: its quarter of the ring a little
+// darker, shadowed inside along its top and left edges, as the light falls from above
+const RingPress = ({ angle, inner }) => {
+  const id = `nd-ring-press-${angle}`
+  const d = ringSegment(inner, 49.6, angle - 44.2, angle + 44.2)
+  return (
+    <>
+      <defs>
+        <clipPath id={`${id}-clip`}>
+          <path d={d} />
+        </clipPath>
+        <filter id={`${id}-blur`} x="-10%" y="-10%" width="120%" height="120%">
+          <feGaussianBlur stdDeviation="0.9" />
+        </filter>
+      </defs>
+      <g clipPath={`url(#${id}-clip)`}>
+        <path d={d} fill="rgba(0, 0, 0, 0.045)" />
+        <path
+          d={d}
+          fill="none"
+          stroke="rgba(0, 0, 0, 0.26)"
+          strokeWidth="1.8"
+          transform="translate(0.3 1.1)"
+          filter={`url(#${id}-blur)`}
+        />
+        <path
+          d={d}
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.6)"
+          strokeWidth="1"
+          transform="translate(-0.3 -0.6)"
+          filter={`url(#${id}-blur)`}
+        />
+      </g>
+    </>
+  )
+}
 
 // The iPod's click wheel: MENU, previous, next and play/pause, and the centre button, laid out like
 // the iPod chosen ("skin"): on the wheel, on a ring around it (1st and 2nd generation) or in a row
@@ -95,6 +176,24 @@ export const ClickWheel = ({
   // Holding MENU: its timer, and whether it went off (then the click that ends the hold is no press)
   const hold = useRef({ timer: null, done: false })
   useEffect(() => () => clearTimeout(hold.current.timer), [])
+  // The button held down ("down"), and the last one pressed ("side"), kept as the press fades
+  const [down, setDown] = useState(null)
+  const [side, setSide] = useState(null)
+  const pressedAt = useRef(0)
+  const letGo = useRef(null)
+  useEffect(() => () => clearTimeout(letGo.current), [])
+  const pressDown = (key) => {
+    clearTimeout(letGo.current)
+    pressedAt.current = Date.now()
+    setSide(key)
+    setDown(key)
+  }
+  const pressUp = () => {
+    clearTimeout(letGo.current)
+    const left = PRESS_SHOWN_MS - (Date.now() - pressedAt.current)
+    if (left > 0) letGo.current = setTimeout(() => setDown(null), left)
+    else setDown(null)
+  }
 
   const press = (action) => () => {
     if (turned.current) {
@@ -150,6 +249,8 @@ export const ClickWheel = ({
       if (Math.hypot(e.clientX - tr.x, e.clientY - tr.y) < DRAG_SLOP) return
       tr.turning = true
       endHold() // A turn that starts on MENU isn't holding it
+      clearTimeout(letGo.current)
+      setDown(null) // Nor pressing the button it started on
       // Only now, so a plain tap still clicks the button under the finger
       wheel.current?.setPointerCapture?.(e.pointerId)
       onTurnStart?.()
@@ -172,24 +273,40 @@ export const ClickWheel = ({
     }
   }
 
-  const button = (key, label, onClick, className, style) => (
-    <button
-      key={key}
-      type="button"
-      className={`${classes.button} ${className || ''}`}
-      style={style}
-      aria-label={label}
-      data-no-swipe
-      onClick={press(onClick)}
-      {...(key === 'menu' && {
-        onPointerDown: startHold,
-        onPointerUp: endHold,
-        onPointerLeave: endHold,
-        onPointerCancel: endHold,
-        onContextMenu: (e) => e.preventDefault(),
-      })}
-    />
-  )
+  // Pressing a button on the wheel or the ring shows; the 3rd generation's light up by themselves
+  const shows = m.controls !== 'row'
+  const button = (key, label, onClick, className, style) => {
+    const isMenu = key === 'menu'
+    const shown = shows && key !== 'select'
+    return (
+      <button
+        key={key}
+        type="button"
+        className={`${classes.button} ${className || ''}`}
+        style={style}
+        aria-label={label}
+        data-no-swipe
+        onClick={press(onClick)}
+        onPointerDown={() => {
+          if (shown) pressDown(key)
+          if (isMenu) startHold()
+        }}
+        onPointerUp={() => {
+          if (shown) pressUp()
+          if (isMenu) endHold()
+        }}
+        onPointerLeave={() => {
+          if (shown) pressUp()
+          if (isMenu) endHold()
+        }}
+        onPointerCancel={() => {
+          if (shown) pressUp()
+          if (isMenu) endHold()
+        }}
+        {...(isMenu && { onContextMenu: (e) => e.preventDefault() })}
+      />
+    )
+  }
   const buttons = {
     menu: [t('menu'), onMenu, classes.menu],
     prev: [translate('player.previousTrackText'), onPrev, classes.prev],
@@ -197,6 +314,10 @@ export const ClickWheel = ({
     play: [t('playPause'), onPlay, classes.play],
   }
   const onWheel = m.controls === 'click'
+  // Where the ring's buttons begin, inside it (a 100x100 box): just outside the wheel
+  const ringInner = m.ring ? ((m.wheel.d / 2 + 0.6) / m.ring.d) * 100 : 0
+  // The wheel without its centre button
+  const hole = `radial-gradient(circle, transparent ${center * 50}%, #000 ${center * 50 + 0.6}%)`
 
   const wheelElement = (
     <div
@@ -211,6 +332,19 @@ export const ClickWheel = ({
       onPointerUp={endTurn}
       onPointerCancel={endTurn}
     >
+      {onWheel && (
+        <div
+          className={`${classes.press} ${down ? classes.pressed : ''}`}
+          style={{
+            ...(side && tilt(SIDES[side])),
+            WebkitMaskImage: hole,
+            maskImage: hole,
+          }}
+          data-testid="wheel-press"
+          data-pressed={down || undefined}
+          aria-hidden
+        />
+      )}
       {onWheel &&
         Object.entries(buttons).map(([key, [label, onClick, cls]]) =>
           button(key, label, onClick, cls),
@@ -237,6 +371,21 @@ export const ClickWheel = ({
           style={circleBox(m, m.ring)}
           data-no-swipe
         >
+          <svg
+            className={`${classes.press} ${down ? classes.pressed : ''}`}
+            viewBox="0 0 100 100"
+            data-testid="ring-press"
+            data-pressed={down || undefined}
+            aria-hidden
+          >
+            {side && (
+              <RingPress
+                key={side}
+                angle={RING_ANGLES[side]}
+                inner={ringInner}
+              />
+            )}
+          </svg>
           {Object.entries(buttons).map(([key, [label, onClick, cls]]) =>
             button(key, label, onClick, cls),
           )}
@@ -249,7 +398,7 @@ export const ClickWheel = ({
             key,
             label,
             onClick,
-            '',
+            classes.rowButton,
             circleBox(m, { cx: m.row.xs[i], cy: m.row.cy, d: m.row.d }),
           )
         })}
